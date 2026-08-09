@@ -330,7 +330,7 @@ export default function App() {
   }, []);
 
   // Helper to append log
-  const logActivity = (aktivitas: string, modul: string) => {
+  const logActivity = async (aktivitas: string, modul: string) => {
     const newLog: ActivityLog = {
       id: `act_${Date.now()}`,
       waktu: new Date().toLocaleString('id-ID'),
@@ -338,7 +338,11 @@ export default function App() {
       aktivitas,
       modul
     };
-    setActivities((prev) => [newLog, ...prev]);
+    try {
+      await setDoc(doc(db, 'activity_logs', newLog.id), newLog);
+    } catch (err) {
+      console.error('Error saving activity log to Firestore:', err);
+    }
   };
 
   // Login handler
@@ -415,43 +419,59 @@ export default function App() {
 
   // Handlers for Gangguan (Cloud Firestore synced)
   const handleAddGangguan = async (log: GangguanLog) => {
-    setGangguanList((prev) => [log, ...prev]);
     try {
       await setDoc(doc(db, 'gangguan_logs', log.id), log);
+      
+      // Recalculate health index for the affected feeder and save to Firestore
+      const affectedPenyulang = penyulangList.find((p) => p.id === log.penyulangId);
+      if (affectedPenyulang) {
+        const newFreq = affectedPenyulang.frekuensiGangguan + 1;
+        let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
+        if (newFreq === 0) newStatus = 'Sempurna';
+        else if (newFreq <= 3) newStatus = 'Sehat';
+        else if (newFreq <= 6) newStatus = 'Sakit';
+        else newStatus = 'Kronis';
+
+        const updatedPenyulang = {
+          ...affectedPenyulang,
+          frekuensiGangguan: newFreq,
+          healthIndexStatus: newStatus,
+          sectionTerlama: log.section,
+          gangguanTerakhir: `${log.tanggal} (${log.kodeGangguan})`
+        };
+
+        await setDoc(doc(db, 'penyulang_list', updatedPenyulang.id), updatedPenyulang);
+      }
     } catch (err) {
       console.error('Error saving Gangguan to Firestore:', err);
     }
 
-    // Recalculate health index for the affected feeder
-    setPenyulangList((prev) =>
-      prev.map((p) => {
-        if (p.id === log.penyulangId) {
-          const newFreq = p.frekuensiGangguan + 1;
+    logActivity(`Menambah log gangguan trip penyulang ${log.namaPenyulang} (${log.kodeGangguan})`, 'Matriks Gangguan');
+  };
+
+  const handleDeleteGangguan = async (id: string) => {
+    const logToDelete = gangguanList.find((g) => g.id === id);
+    try {
+      await deleteDoc(doc(db, 'gangguan_logs', id));
+      
+      if (logToDelete) {
+        const affectedPenyulang = penyulangList.find((p) => p.id === logToDelete.penyulangId);
+        if (affectedPenyulang && affectedPenyulang.frekuensiGangguan > 0) {
+          const newFreq = affectedPenyulang.frekuensiGangguan - 1;
           let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
           if (newFreq === 0) newStatus = 'Sempurna';
           else if (newFreq <= 3) newStatus = 'Sehat';
           else if (newFreq <= 6) newStatus = 'Sakit';
           else newStatus = 'Kronis';
 
-          return {
-            ...p,
+          const updatedPenyulang = {
+            ...affectedPenyulang,
             frekuensiGangguan: newFreq,
-            healthIndexStatus: newStatus,
-            sectionTerlama: log.section,
-            gangguanTerakhir: `${log.tanggal} (${log.kodeGangguan})`
+            healthIndexStatus: newStatus
           };
+          await setDoc(doc(db, 'penyulang_list', updatedPenyulang.id), updatedPenyulang);
         }
-        return p;
-      })
-    );
-
-    logActivity(`Menambah log gangguan trip penyulang ${log.namaPenyulang} (${log.kodeGangguan})`, 'Matriks Gangguan');
-  };
-
-  const handleDeleteGangguan = async (id: string) => {
-    setGangguanList((prev) => prev.filter((g) => g.id !== id));
-    try {
-      await deleteDoc(doc(db, 'gangguan_logs', id));
+      }
     } catch (err) {
       console.error('Error deleting Gangguan from Firestore:', err);
     }
@@ -459,24 +479,40 @@ export default function App() {
   };
 
   // Handlers for Master Data
-  const handleAddPenyulang = (p: Penyulang) => {
-    setPenyulangList((prev) => [p, ...prev]);
-    logActivity(`Menambah penyulang baru: ${p.namaPenyulang} (${p.kodeId})`, 'Master Data');
+  const handleAddPenyulang = async (p: Penyulang) => {
+    try {
+      await setDoc(doc(db, 'penyulang_list', p.id), p);
+      logActivity(`Menambah penyulang baru: ${p.namaPenyulang} (${p.kodeId})`, 'Master Data');
+    } catch (err) {
+      console.error('Error saving Penyulang to Firestore:', err);
+    }
   };
 
-  const handleDeletePenyulang = (id: string) => {
-    setPenyulangList((prev) => prev.filter((p) => p.id !== id));
-    logActivity('Menghapus data master penyulang', 'Master Data');
+  const handleDeletePenyulang = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'penyulang_list', id));
+      logActivity('Menghapus data master penyulang', 'Master Data');
+    } catch (err) {
+      console.error('Error deleting Penyulang from Firestore:', err);
+    }
   };
 
-  const handleAddSection = (s: SectionJaringan) => {
-    setSectionList((prev) => [s, ...prev]);
-    logActivity(`Menambah section baru: ${s.namaSection}`, 'Master Data');
+  const handleAddSection = async (s: SectionJaringan) => {
+    try {
+      await setDoc(doc(db, 'section_list', s.id), s);
+      logActivity(`Menambah section baru: ${s.namaSection}`, 'Master Data');
+    } catch (err) {
+      console.error('Error saving Section to Firestore:', err);
+    }
   };
 
-  const handleDeleteSection = (id: string) => {
-    setSectionList((prev) => prev.filter((s) => s.id !== id));
-    logActivity('Menghapus data section jaringan', 'Master Data');
+  const handleDeleteSection = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'section_list', id));
+      logActivity('Menghapus data section jaringan', 'Master Data');
+    } catch (err) {
+      console.error('Error deleting Section from Firestore:', err);
+    }
   };
 
   // Handlers for SAIDI / SAIFI (Cloud Firestore synced)
