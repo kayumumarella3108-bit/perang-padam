@@ -42,8 +42,8 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
 
   // Filtered List
   const filteredList = penyulangList.filter((p) => {
-    const matchesSearch = p.namaPenyulang.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.kodeId.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (p.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (p.kodeId || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedStatus === 'Semua Status' || p.healthIndexStatus === selectedStatus;
     return matchesSearch && matchesStatus;
   });

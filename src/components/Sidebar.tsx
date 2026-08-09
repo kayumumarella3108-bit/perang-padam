@@ -18,20 +18,23 @@ import {
   GitGraph,
   ChevronDown,
   ChevronRight,
-  Leaf
+  Leaf,
+  Lock
 } from 'lucide-react';
-import { ViewType } from '../types';
+import { ViewType, User } from '../types';
 
 interface SidebarProps {
   activeView: ViewType;
   onSelectView: (view: ViewType) => void;
   isOpen?: boolean;
+  currentUser?: User | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeView,
   onSelectView,
-  isOpen = true
+  isOpen = true,
+  currentUser
 }) => {
   const [pemeliharaanOpen, setPemeliharaanOpen] = useState(
     ['row', 'inspeksi_tier1', 'inspeksi_tier2', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView)
@@ -240,15 +243,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Kelola User & Hak Akses */}
           <button
-            onClick={() => onSelectView('kelola_user')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
-              activeView === 'kelola_user'
-                ? 'bg-blue-600/10 text-blue-400 font-bold'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            onClick={() => {
+              if (currentUser?.role === 'Koordinator') {
+                onSelectView('kelola_user');
+              }
+            }}
+            disabled={currentUser?.role !== 'Koordinator'}
+            title={currentUser?.role !== 'Koordinator' ? 'Menu ini dinonaktifkan (Hanya untuk Koordinator)' : 'Kelola User & Hak Akses'}
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+              currentUser?.role === 'Koordinator'
+                ? activeView === 'kelola_user'
+                  ? 'bg-blue-600/10 text-blue-400 font-bold cursor-pointer'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer'
+                : 'text-slate-600 bg-slate-950/20 opacity-40 cursor-not-allowed'
             }`}
           >
-            <Users className={`w-4 h-4 shrink-0 ${activeView === 'kelola_user' ? 'text-blue-400' : 'text-slate-400'}`} />
-            <span>Kelola User & Hak Akses</span>
+            <div className="flex items-center gap-3">
+              <Users className={`w-4 h-4 shrink-0 ${activeView === 'kelola_user' && currentUser?.role === 'Koordinator' ? 'text-blue-400' : 'text-slate-500'}`} />
+              <span>Kelola User & Hak Akses</span>
+            </div>
+            {currentUser?.role !== 'Koordinator' && (
+              <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            )}
           </button>
         </nav>
       </div>

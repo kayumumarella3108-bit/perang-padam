@@ -39,18 +39,20 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isPenyulangModalOpen, setIsPenyulangModalOpen] = useState(false);
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+  const [editingPenyulang, setEditingPenyulang] = useState<Penyulang | null>(null);
+  const [editingSection, setEditingSection] = useState<SectionJaringan | null>(null);
 
   // Filtered Penyulang
   const filteredPenyulang = penyulangList.filter((p) =>
-    p.namaPenyulang.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.namaGi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.kodeId.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.namaGi || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.kodeId || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Filtered Sections
   const filteredSections = sectionList.filter((s) =>
-    s.namaSection.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.namaPenyulang.toLowerCase().includes(searchQuery.toLowerCase())
+    (s.namaSection || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -189,7 +191,10 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => setIsPenyulangModalOpen(true)}
+                          onClick={() => {
+                            setEditingPenyulang(p);
+                            setIsPenyulangModalOpen(true);
+                          }}
                           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Edit Penyulang"
                         >
@@ -289,7 +294,10 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => setIsSectionModalOpen(true)}
+                          onClick={() => {
+                            setEditingSection(s);
+                            setIsSectionModalOpen(true);
+                          }}
                           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Edit Section"
                         >
@@ -361,15 +369,23 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
       {/* Modals */}
       <TambahPenyulangModal
         isOpen={isPenyulangModalOpen}
-        onClose={() => setIsPenyulangModalOpen(false)}
+        onClose={() => {
+          setIsPenyulangModalOpen(false);
+          setEditingPenyulang(null);
+        }}
         onSave={onAddPenyulang}
+        initialData={editingPenyulang}
       />
 
       <TambahSectionModal
         isOpen={isSectionModalOpen}
-        onClose={() => setIsSectionModalOpen(false)}
+        onClose={() => {
+          setIsSectionModalOpen(false);
+          setEditingSection(null);
+        }}
         onSave={onAddSection}
         penyulangList={penyulangList}
+        initialData={editingSection}
       />
     </div>
   );

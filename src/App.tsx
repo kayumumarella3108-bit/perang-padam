@@ -34,7 +34,8 @@ import {
   INITIAL_MATERIAL_PEMAKAIAN,
   INITIAL_ALKER_APD
 } from './data/mockData';
-import { db, collection, onSnapshot, doc, setDoc, deleteDoc, OperationType, handleFirestoreError } from './lib/firebase';
+import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
+import { Lock } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { TopHeader } from './components/TopHeader';
 import { Sidebar } from './components/Sidebar';
@@ -60,25 +61,25 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Domain data states
-  const [penyulangList, setPenyulangList] = useState<Penyulang[]>(INITIAL_PENYULANG);
-  const [sectionList, setSectionList] = useState<SectionJaringan[]>(INITIAL_SECTIONS);
-  const [gangguanList, setGangguanList] = useState<GangguanLog[]>(INITIAL_GANGGUAN);
-  const [rowList, setRowList] = useState<ROWItem[]>(INITIAL_ROW);
-  const [inspeksiList, setInspeksiList] = useState<InspeksiItem[]>(INITIAL_INSPEKSI);
-  const [tier1List, setTier1List] = useState<Tier1Item[]>(INITIAL_TIER1);
-  const [tier2List, setTier2List] = useState<Tier2Item[]>(INITIAL_TIER2);
-  const [monitoringList, setMonitoringList] = useState<MonitoringPemeliharaanItem[]>(INITIAL_MONITORING);
-  const [mapLayers, setMapLayers] = useState<MapLayerItem[]>(INITIAL_MAP_LAYERS);
-  const [activities, setActivities] = useState<ActivityLog[]>(INITIAL_ACTIVITIES);
-  const [saidiList, setSaidiList] = useState<SaidiSaifiData[]>(INITIAL_SAIDI);
+  const [penyulangList, setPenyulangList] = useState<Penyulang[]>(() => filterDeleted(INITIAL_PENYULANG));
+  const [sectionList, setSectionList] = useState<SectionJaringan[]>(() => filterDeleted(INITIAL_SECTIONS));
+  const [gangguanList, setGangguanList] = useState<GangguanLog[]>(() => filterDeleted(INITIAL_GANGGUAN));
+  const [rowList, setRowList] = useState<ROWItem[]>(() => filterDeleted(INITIAL_ROW));
+  const [inspeksiList, setInspeksiList] = useState<InspeksiItem[]>(() => filterDeleted(INITIAL_INSPEKSI));
+  const [tier1List, setTier1List] = useState<Tier1Item[]>(() => filterDeleted(INITIAL_TIER1));
+  const [tier2List, setTier2List] = useState<Tier2Item[]>(() => filterDeleted(INITIAL_TIER2));
+  const [monitoringList, setMonitoringList] = useState<MonitoringPemeliharaanItem[]>(() => filterDeleted(INITIAL_MONITORING));
+  const [mapLayers, setMapLayers] = useState<MapLayerItem[]>(() => filterDeleted(INITIAL_MAP_LAYERS));
+  const [activities, setActivities] = useState<ActivityLog[]>(() => filterDeleted(INITIAL_ACTIVITIES));
+  const [saidiList, setSaidiList] = useState<SaidiSaifiData[]>(() => filterDeleted(INITIAL_SAIDI));
   
   // Material & Alker APD States
-  const [stokList, setStokList] = useState<MaterialStokItem[]>(INITIAL_MATERIAL_STOK);
-  const [pemakaianList, setPemakaianList] = useState<MaterialPemakaianItem[]>(INITIAL_MATERIAL_PEMAKAIAN);
-  const [alkerApdList, setAlkerApdList] = useState<AlkerApdItem[]>(INITIAL_ALKER_APD);
+  const [stokList, setStokList] = useState<MaterialStokItem[]>(() => filterDeleted(INITIAL_MATERIAL_STOK));
+  const [pemakaianList, setPemakaianList] = useState<MaterialPemakaianItem[]>(() => filterDeleted(INITIAL_MATERIAL_PEMAKAIAN));
+  const [alkerApdList, setAlkerApdList] = useState<AlkerApdItem[]>(() => filterDeleted(INITIAL_ALKER_APD));
 
   // User Management State (RBAC)
-  const [usersList, setUsersList] = useState<User[]>([
+  const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
     { id: 'usr_1', username: 'koordinator_baguala', name: 'Bpk. Ahmad Fauzi', role: 'Koordinator', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
     { id: 'usr_2', username: 'admin_teknik_1', name: 'Sdr. Rizky Ramadhan', role: 'Admin Teknik', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
     { id: 'usr_3', username: 'bagian_teknik', name: 'Sdr. Hendra Pratama', role: 'Bagian Teknik', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
@@ -87,226 +88,270 @@ export default function App() {
     { id: 'usr_6', username: 'keandalan_up3', name: 'Tim Keandalan UP3 Ambon', role: 'UP3', unit: 'UP3 Ambon', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
     { id: 'usr_7', username: 'distribusi_uiw', name: 'Divisi Distribusi UIW MMU', role: 'UIW', unit: 'UIW MMU', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
     { id: 'usr_8', username: 'pln_nusadaya', name: 'Monitoring PLN Nusadaya', role: 'PLN Nusadaya', unit: 'PLN Nusadaya', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' }
-  ]);
+  ]));
 
   // REALTIME FIRESTORE SYNCHRONIZATION
   useEffect(() => {
+    const checkAndSeed = async () => {
+      // 1. Check local storage first
+      if (localStorage.getItem('perangpadam_seeded') === 'true') {
+        console.log('Database already seeded (verified by client local cache)');
+        return;
+      }
+
+      try {
+        const seedRef = doc(db, 'system_metadata', 'seeding');
+        const seedSnap = await getDoc(seedRef);
+        
+        if (seedSnap.exists()) {
+          console.log('Database already seeded (verified by cloud metadata)');
+          localStorage.setItem('perangpadam_seeded', 'true');
+          return;
+        }
+
+        // Double check if any actual data collection is already populated to avoid overwriting existing data
+        const testSnap = await getDocs(query(collection(db, 'penyulang_list'), limit(1)));
+        if (!testSnap.empty) {
+          console.log('Database collections already contain data. Skipping seeding and establishing seeding flag.');
+          await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
+          localStorage.setItem('perangpadam_seeded', 'true');
+          return;
+        }
+
+        console.log('Initial startup: Seeding database with default records...');
+
+        // Seed default users
+        const defaultUsers = [
+          { id: 'usr_1', username: 'koordinator_baguala', name: 'Bpk. Ahmad Fauzi', role: 'Koordinator', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_2', username: 'admin_teknik_1', name: 'Sdr. Rizky Ramadhan', role: 'Admin Teknik', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_3', username: 'bagian_teknik', name: 'Sdr. Hendra Pratama', role: 'Bagian Teknik', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_4', username: 'tl_baguala', name: 'Sdr. Samuel Leimena', role: 'Team Leader', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_5', username: 'manager_ulp', name: 'Bpk. Daniel Wattimena', role: 'Manager ULP', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_6', username: 'keandalan_up3', name: 'Tim Keandalan UP3 Ambon', role: 'UP3', unit: 'UP3 Ambon', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_7', username: 'distribusi_uiw', name: 'Divisi Distribusi UIW MMU', role: 'UIW', unit: 'UIW MMU', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
+          { id: 'usr_8', username: 'pln_nusadaya', name: 'Monitoring PLN Nusadaya', role: 'PLN Nusadaya', unit: 'PLN Nusadaya', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' }
+        ];
+        for (const item of defaultUsers) {
+          await setDoc(doc(db, 'app_users', item.id), item);
+        }
+
+        // Seed penyulang
+        for (const item of INITIAL_PENYULANG) {
+          await setDoc(doc(db, 'penyulang_list', item.id), item);
+        }
+
+        // Seed sections
+        for (const item of INITIAL_SECTIONS) {
+          await setDoc(doc(db, 'section_list', item.id), item);
+        }
+
+        // Seed map layers
+        for (const item of INITIAL_MAP_LAYERS) {
+          const firestoreDoc = {
+            ...item,
+            coordinates: item.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
+          };
+          await setDoc(doc(db, 'map_layers', item.id), firestoreDoc);
+        }
+
+        // Seed material stok
+        for (const item of INITIAL_MATERIAL_STOK) {
+          await setDoc(doc(db, 'material_stok', item.id), item);
+        }
+
+        // Seed material pemakaian
+        for (const item of INITIAL_MATERIAL_PEMAKAIAN) {
+          await setDoc(doc(db, 'material_pemakaian', item.id), item);
+        }
+
+        // Seed APD & alat kerja
+        for (const item of INITIAL_ALKER_APD) {
+          await setDoc(doc(db, 'alkerdan_apd', item.id), item);
+        }
+
+        // Seed gangguan logs
+        for (const item of INITIAL_GANGGUAN) {
+          await setDoc(doc(db, 'gangguan_logs', item.id), item);
+        }
+
+        // Seed SAIDI / SAIFI
+        for (const item of INITIAL_SAIDI) {
+          await setDoc(doc(db, 'saidi_saifi_logs', item.id), item);
+        }
+
+        // Seed activity logs
+        for (const item of INITIAL_ACTIVITIES) {
+          await setDoc(doc(db, 'activity_logs', item.id), item);
+        }
+
+        // Seed pemeliharaan ROW
+        const combinedRow = [...INITIAL_ROW, ...INITIAL_ROW_DATA];
+        for (const item of combinedRow) {
+          await setDoc(doc(db, 'pemeliharaan_row', item.id), item);
+        }
+
+        // Seed pemeliharaan tier 1
+        for (const item of INITIAL_TIER1) {
+          await setDoc(doc(db, 'pemeliharaan_tier1', item.id), item);
+        }
+
+        // Seed pemeliharaan tier 2
+        for (const item of INITIAL_TIER2) {
+          await setDoc(doc(db, 'pemeliharaan_tier2', item.id), item);
+        }
+
+        // Seed pemeliharaan monitoring
+        for (const item of INITIAL_MONITORING) {
+          await setDoc(doc(db, 'pemeliharaan_monitoring', item.id), item);
+        }
+
+        await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
+        localStorage.setItem('perangpadam_seeded', 'true');
+        console.log('Seeding completed successfully!');
+      } catch (err) {
+        console.error('Error in checkAndSeed:', err);
+      }
+    };
+
+    checkAndSeed();
+
     // 1. Sync Material Stok Masuk
     const unsubStok = onSnapshot(collection(db, 'material_stok'), (snapshot) => {
-      if (snapshot.empty) {
-        // Seed initial data to cloud if empty
-        INITIAL_MATERIAL_STOK.forEach((item) => {
-          setDoc(doc(db, 'material_stok', item.id), item);
-        });
-      } else {
-        const items: MaterialStokItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as MaterialStokItem));
-        setStokList(items);
-      }
+      const items: MaterialStokItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as MaterialStokItem));
+      setStokList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'material_stok');
     });
 
     // 2. Sync Material Pemakaian
     const unsubPemakaian = onSnapshot(collection(db, 'material_pemakaian'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_MATERIAL_PEMAKAIAN.forEach((item) => {
-          setDoc(doc(db, 'material_pemakaian', item.id), item);
-        });
-      } else {
-        const items: MaterialPemakaianItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as MaterialPemakaianItem));
-        setPemakaianList(items);
-      }
+      const items: MaterialPemakaianItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as MaterialPemakaianItem));
+      setPemakaianList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'material_pemakaian');
     });
 
     // 3. Sync Alat Kerja & APD
     const unsubAlker = onSnapshot(collection(db, 'alkerdan_apd'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_ALKER_APD.forEach((item) => {
-          setDoc(doc(db, 'alkerdan_apd', item.id), item);
-        });
-      } else {
-        const items: AlkerApdItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as AlkerApdItem));
-        setAlkerApdList(items);
-      }
+      const items: AlkerApdItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as AlkerApdItem));
+      setAlkerApdList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'alkerdan_apd');
     });
 
     // 4. Sync Gangguan Logs
     const unsubGangguan = onSnapshot(collection(db, 'gangguan_logs'), (snapshot) => {
-      if (!snapshot.empty) {
-        const items: GangguanLog[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as GangguanLog));
-        setGangguanList(items);
-      }
+      const items: GangguanLog[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as GangguanLog));
+      setGangguanList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'gangguan_logs');
     });
 
     // 5. Sync SAIDI/SAIFI
     const unsubSaidi = onSnapshot(collection(db, 'saidi_saifi_logs'), (snapshot) => {
-      if (!snapshot.empty) {
-        const items: SaidiSaifiData[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as SaidiSaifiData));
-        setSaidiList(items);
-      }
+      const items: SaidiSaifiData[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as SaidiSaifiData));
+      setSaidiList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'saidi_saifi_logs');
     });
 
     // 6. Sync Users list
     const unsubUsers = onSnapshot(collection(db, 'app_users'), (snapshot) => {
-      if (!snapshot.empty) {
-        const items: User[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as User));
-        setUsersList(items);
-      }
+      const items: User[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as User));
+      setUsersList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'app_users');
     });
 
     // 7. Sync Penyulang List
     const unsubPenyulang = onSnapshot(collection(db, 'penyulang_list'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_PENYULANG.forEach((item) => {
-          setDoc(doc(db, 'penyulang_list', item.id), item);
-        });
-      } else {
-        const items: Penyulang[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Penyulang));
-        setPenyulangList(items);
-      }
+      const items: Penyulang[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as Penyulang));
+      setPenyulangList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'penyulang_list');
     });
 
     // 8. Sync Section List
     const unsubSection = onSnapshot(collection(db, 'section_list'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_SECTIONS.forEach((item) => {
-          setDoc(doc(db, 'section_list', item.id), item);
-        });
-      } else {
-        const items: SectionJaringan[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as SectionJaringan));
-        setSectionList(items);
-      }
+      const items: SectionJaringan[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as SectionJaringan));
+      setSectionList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'section_list');
     });
 
     // 9. Sync Map Layers
     const unsubMapLayers = onSnapshot(collection(db, 'map_layers'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_MAP_LAYERS.forEach((item) => {
-          const firestoreDoc = {
-            ...item,
-            coordinates: item.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
-          };
-          setDoc(doc(db, 'map_layers', item.id), firestoreDoc);
-        });
-      } else {
-        const items: MapLayerItem[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const item: MapLayerItem = {
-            ...data,
-            id: data.id,
-            nama: data.nama,
-            tiangCount: data.tiangCount,
-            ruteLength: data.ruteLength,
-            tanggalImport: data.tanggalImport,
-            kategori: data.kategori,
-            visible: data.visible,
-            color: data.color,
-            coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number])
-          } as MapLayerItem;
-          items.push(item);
-        });
-        setMapLayers(items);
-      }
+      const items: MapLayerItem[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const item: MapLayerItem = {
+          ...data,
+          id: data.id,
+          nama: data.nama,
+          tiangCount: data.tiangCount,
+          ruteLength: data.ruteLength,
+          tanggalImport: data.tanggalImport,
+          kategori: data.kategori,
+          visible: data.visible,
+          color: data.color,
+          coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number])
+        } as MapLayerItem;
+        items.push(item);
+      });
+      setMapLayers(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'map_layers');
     });
 
     // 10. Sync Activity Logs
     const unsubActivities = onSnapshot(collection(db, 'activity_logs'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_ACTIVITIES.forEach((item) => {
-          setDoc(doc(db, 'activity_logs', item.id), item);
-        });
-      } else {
-        const items: ActivityLog[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as ActivityLog));
-        setActivities(items);
-      }
+      const items: ActivityLog[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as ActivityLog));
+      setActivities(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'activity_logs');
     });
 
     // 11. Sync Pemeliharaan ROW
     const unsubRow = onSnapshot(collection(db, 'pemeliharaan_row'), (snapshot) => {
-      if (snapshot.empty) {
-        // combine initial row & initial row data
-        const combined = [...INITIAL_ROW, ...INITIAL_ROW_DATA];
-        combined.forEach((item) => {
-          setDoc(doc(db, 'pemeliharaan_row', item.id), item);
-        });
-      } else {
-        const items: ROWItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as ROWItem));
-        setRowList(items);
-      }
+      const items: ROWItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as ROWItem));
+      setRowList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pemeliharaan_row');
     });
 
     // 12. Sync Inspeksi / Tier 1
     const unsubTier1 = onSnapshot(collection(db, 'pemeliharaan_tier1'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_TIER1.forEach((item) => {
-          setDoc(doc(db, 'pemeliharaan_tier1', item.id), item);
-        });
-      } else {
-        const items: Tier1Item[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Tier1Item));
-        setTier1List(items);
-      }
+      const items: Tier1Item[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as Tier1Item));
+      setTier1List(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pemeliharaan_tier1');
     });
 
     // 13. Sync Inspeksi / Tier 2
     const unsubTier2 = onSnapshot(collection(db, 'pemeliharaan_tier2'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_TIER2.forEach((item) => {
-          setDoc(doc(db, 'pemeliharaan_tier2', item.id), item);
-        });
-      } else {
-        const items: Tier2Item[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Tier2Item));
-        setTier2List(items);
-      }
+      const items: Tier2Item[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as Tier2Item));
+      setTier2List(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pemeliharaan_tier2');
     });
 
     // 14. Sync Pemeliharaan Monitoring
     const unsubMonitoring = onSnapshot(collection(db, 'pemeliharaan_monitoring'), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_MONITORING.forEach((item) => {
-          setDoc(doc(db, 'pemeliharaan_monitoring', item.id), item);
-        });
-      } else {
-        const items: MonitoringPemeliharaanItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as MonitoringPemeliharaanItem));
-        setMonitoringList(items);
-      }
+      const items: MonitoringPemeliharaanItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as MonitoringPemeliharaanItem));
+      setMonitoringList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pemeliharaan_monitoring');
     });
@@ -450,6 +495,8 @@ export default function App() {
   };
 
   const handleDeleteGangguan = async (id: string) => {
+    registerDeletedId(id);
+    setGangguanList((prev) => prev.filter((g) => g.id !== id));
     const logToDelete = gangguanList.find((g) => g.id === id);
     try {
       await deleteDoc(doc(db, 'gangguan_logs', id));
@@ -480,15 +527,30 @@ export default function App() {
 
   // Handlers for Master Data
   const handleAddPenyulang = async (p: Penyulang) => {
+    const isEdit = penyulangList.some((item) => item.id === p.id);
+    setPenyulangList((prev) => {
+      const exists = prev.some((item) => item.id === p.id);
+      if (exists) {
+        return prev.map((item) => (item.id === p.id ? p : item));
+      }
+      return [p, ...prev];
+    });
     try {
       await setDoc(doc(db, 'penyulang_list', p.id), p);
-      logActivity(`Menambah penyulang baru: ${p.namaPenyulang} (${p.kodeId})`, 'Master Data');
+      logActivity(
+        isEdit
+          ? `Mengubah data master penyulang: ${p.namaPenyulang} (${p.kodeId})`
+          : `Menambah penyulang baru: ${p.namaPenyulang} (${p.kodeId})`,
+        'Master Data'
+      );
     } catch (err) {
       console.error('Error saving Penyulang to Firestore:', err);
     }
   };
 
   const handleDeletePenyulang = async (id: string) => {
+    registerDeletedId(id);
+    setPenyulangList((prev) => prev.filter((p) => p.id !== id));
     try {
       await deleteDoc(doc(db, 'penyulang_list', id));
       logActivity('Menghapus data master penyulang', 'Master Data');
@@ -498,15 +560,30 @@ export default function App() {
   };
 
   const handleAddSection = async (s: SectionJaringan) => {
+    const isEdit = sectionList.some((item) => item.id === s.id);
+    setSectionList((prev) => {
+      const exists = prev.some((item) => item.id === s.id);
+      if (exists) {
+        return prev.map((item) => (item.id === s.id ? s : item));
+      }
+      return [s, ...prev];
+    });
     try {
       await setDoc(doc(db, 'section_list', s.id), s);
-      logActivity(`Menambah section baru: ${s.namaSection}`, 'Master Data');
+      logActivity(
+        isEdit
+          ? `Mengubah data master section jaringan: ${s.namaSection}`
+          : `Menambah section baru: ${s.namaSection}`,
+        'Master Data'
+      );
     } catch (err) {
       console.error('Error saving Section to Firestore:', err);
     }
   };
 
   const handleDeleteSection = async (id: string) => {
+    registerDeletedId(id);
+    setSectionList((prev) => prev.filter((s) => s.id !== id));
     try {
       await deleteDoc(doc(db, 'section_list', id));
       logActivity('Menghapus data section jaringan', 'Master Data');
@@ -527,6 +604,7 @@ export default function App() {
   };
 
   const handleDeleteSaidi = async (id: string) => {
+    registerDeletedId(id);
     setSaidiList((prev) => prev.filter((s) => s.id !== id));
     try {
       await deleteDoc(doc(db, 'saidi_saifi_logs', id));
@@ -558,6 +636,7 @@ export default function App() {
   };
 
   const handleDeleteStok = async (id: string) => {
+    registerDeletedId(id);
     setStokList((prev) => prev.filter((s) => s.id !== id));
     try {
       await deleteDoc(doc(db, 'material_stok', id));
@@ -589,6 +668,7 @@ export default function App() {
   };
 
   const handleDeletePemakaian = async (id: string) => {
+    registerDeletedId(id);
     setPemakaianList((prev) => prev.filter((p) => p.id !== id));
     try {
       await deleteDoc(doc(db, 'material_pemakaian', id));
@@ -620,6 +700,7 @@ export default function App() {
   };
 
   const handleDeleteAlkerApd = async (id: string) => {
+    registerDeletedId(id);
     setAlkerApdList((prev) => prev.filter((a) => a.id !== id));
     try {
       await deleteDoc(doc(db, 'alkerdan_apd', id));
@@ -653,6 +734,7 @@ export default function App() {
   };
 
   const handleDeleteUser = async (idOrUsername: string) => {
+    registerDeletedId(idOrUsername);
     setUsersList((prev) => prev.filter((u) => u.id !== idOrUsername && u.username !== idOrUsername));
     try {
       await deleteDoc(doc(db, 'app_users', idOrUsername));
@@ -682,7 +764,7 @@ export default function App() {
       {/* Main Workspace Body */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar Navigation */}
-        <Sidebar activeView={activeView} onSelectView={setActiveView} isOpen={sidebarOpen} />
+        <Sidebar activeView={activeView} onSelectView={setActiveView} isOpen={sidebarOpen} currentUser={user} />
 
         {/* Dynamic View Canvas */}
         <main className="flex-1 overflow-y-auto bg-slate-50 relative">
@@ -782,17 +864,35 @@ export default function App() {
           )}
 
           {activeView === 'kelola_user' && (
-            <UserManagementView
-              currentUser={user}
-              usersList={usersList}
-              onAddUser={handleAddUser}
-              onUpdateUser={handleUpdateUser}
-              onDeleteUser={handleDeleteUser}
-              onSwitchUserRole={(switchedUser) => {
-                setUser(switchedUser);
-                logActivity(`Switch mode/role sebagai: ${switchedUser.name} (${switchedUser.role})`, 'Simulasi RBAC');
-              }}
-            />
+            user.role === 'Koordinator' ? (
+              <UserManagementView
+                currentUser={user}
+                usersList={usersList}
+                onAddUser={handleAddUser}
+                onUpdateUser={handleUpdateUser}
+                onDeleteUser={handleDeleteUser}
+                onSwitchUserRole={(switchedUser) => {
+                  setUser(switchedUser);
+                  logActivity(`Switch mode/role sebagai: ${switchedUser.name} (${switchedUser.role})`, 'Simulasi RBAC');
+                }}
+              />
+            ) : (
+              <div className="p-12 text-center max-w-xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm mt-12 font-sans">
+                <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Akses Ditolak</h3>
+                <p className="text-sm text-slate-500 mb-6">
+                  Menu Kelola User & Hak Akses hanya dapat diakses oleh pengguna dengan role <strong>Koordinator</strong>.
+                </p>
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                >
+                  Kembali ke Dashboard
+                </button>
+              </div>
+            )
           )}
         </main>
       </div>

@@ -86,7 +86,7 @@ export const MaterialView: React.FC<MaterialViewProps> = ({
 
   // Process Stok Masuk
   stokList.forEach((item) => {
-    const key = item.namaMaterial.trim().toLowerCase();
+    const key = (item.namaMaterial || '').trim().toLowerCase();
     const existing = summaryMaterialMap.get(key) || {
       namaMaterial: item.namaMaterial,
       satuan: item.satuan || 'pcs',
@@ -101,7 +101,7 @@ export const MaterialView: React.FC<MaterialViewProps> = ({
 
   // Process Pemakaian
   pemakaianList.forEach((item) => {
-    const key = item.namaMaterial.trim().toLowerCase();
+    const key = (item.namaMaterial || '').trim().toLowerCase();
     const existing = summaryMaterialMap.get(key) || {
       namaMaterial: item.namaMaterial,
       satuan: item.satuan || 'pcs',
@@ -117,18 +117,18 @@ export const MaterialView: React.FC<MaterialViewProps> = ({
   const summaryList = Array.from(summaryMaterialMap.values());
 
   const filteredSummary = summaryList.filter((m) =>
-    m.namaMaterial.toLowerCase().includes(searchQuery.toLowerCase())
+    (m.namaMaterial || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredStokList = stokList.filter((s) =>
-    s.namaMaterial.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.namaMaterial || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (s.keterangan && s.keterangan.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredPemakaianList = pemakaianList.filter((p) =>
-    p.namaMaterial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.jenisPekerjaan.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.namaMaterial || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.lokasi || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.jenisPekerjaan || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Quick stats

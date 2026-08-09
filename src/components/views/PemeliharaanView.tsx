@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { ROWItem, InspeksiItem, ViewType, Tier1Item, Tier2Item, MonitoringPemeliharaanItem } from '../../types';
 import { exportToCSV } from '../../utils/exportCsv';
-import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
 
 interface PemeliharaanViewProps {
   currentSubView: ViewType;
@@ -143,18 +143,21 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   // Filtered lists based on searchQuery
   const filteredRowData = rowData.filter((r) => {
     const q = searchQuery.toLowerCase();
+    const penyulangStr = r.penyulang || r.namaPenyulang || '';
+    const sectionStr = r.section || r.lokasi || '';
+    const luarStr = r.luarTemuan || r.jenisPohon || '';
     return (
-      r.penyulang.toLowerCase().includes(q) ||
-      r.section.toLowerCase().includes(q) ||
-      (r.luarTemuan && r.luarTemuan.toLowerCase().includes(q))
+      penyulangStr.toLowerCase().includes(q) ||
+      sectionStr.toLowerCase().includes(q) ||
+      luarStr.toLowerCase().includes(q)
     );
   });
 
   const filteredTier1Data = tier1Data.filter((t) => {
     const q = searchQuery.toLowerCase();
     return (
-      t.penyulang.toLowerCase().includes(q) ||
-      t.section.toLowerCase().includes(q) ||
+      (t.penyulang || '').toLowerCase().includes(q) ||
+      (t.section || '').toLowerCase().includes(q) ||
       (t.temuanRow && t.temuanRow.toLowerCase().includes(q)) ||
       (t.konstruksi && t.konstruksi.toLowerCase().includes(q))
     );
@@ -163,8 +166,8 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   const filteredTier2Data = tier2Data.filter((t) => {
     const q = searchQuery.toLowerCase();
     return (
-      t.penyulang.toLowerCase().includes(q) ||
-      t.section.toLowerCase().includes(q) ||
+      (t.penyulang || '').toLowerCase().includes(q) ||
+      (t.section || '').toLowerCase().includes(q) ||
       (t.jenisTier2 && t.jenisTier2.toLowerCase().includes(q)) ||
       (t.temuanThermoUltrasound && t.temuanThermoUltrasound.toLowerCase().includes(q))
     );
@@ -173,10 +176,10 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   const filteredMonitoringData = monitoringData.filter((m) => {
     const q = searchQuery.toLowerCase();
     return (
-      m.penyulang.toLowerCase().includes(q) ||
-      m.section.toLowerCase().includes(q) ||
+      (m.penyulang || '').toLowerCase().includes(q) ||
+      (m.section || '').toLowerCase().includes(q) ||
       (m.keterangan && m.keterangan.toLowerCase().includes(q)) ||
-      (Array.isArray(m.jenisPemeliharaan) && m.jenisPemeliharaan.some((j) => j.toLowerCase().includes(q)))
+      (Array.isArray(m.jenisPemeliharaan) && m.jenisPemeliharaan.some((j) => (j || '').toLowerCase().includes(q)))
     );
   });
 
@@ -234,6 +237,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
     e.preventDefault();
     try {
       const id = editingId || `row_${Date.now()}`;
+      const statusValue = (Number(rRealisasiPangkas) >= Number(rJumlahTemuan) && Number(rJumlahTemuan) > 0) ? 'Selesai' : 'Perlu Pangkas';
       const newItem: ROWItem = {
         id,
         tanggal: rTanggal || '-',
@@ -244,7 +248,16 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         perluIzin: rPerluIzin !== '' ? rPerluIzin : '-',
         perluPadam: rPerluPadam !== '' ? rPerluPadam : '-',
         pohonBesar: rPohonBesar !== '' ? rPohonBesar : '-',
-        luarTemuan: rLuarTemuan || '-'
+        luarTemuan: rLuarTemuan || '-',
+        // Backward-compatibility properties for DashboardView
+        tiangId: 'T-Custom',
+        namaPenyulang: rPenyulang || '-',
+        lokasi: rSection || '-',
+        jumlahPohon: Number(rJumlahTemuan) || 0,
+        jenisPohon: rLuarTemuan || 'Pohon Rimbun',
+        status: statusValue as any,
+        prioritas: 'Sedang',
+        tanggalTemuan: rTanggal || '-'
       };
       await setDoc(doc(db, 'pemeliharaan_row', id), newItem);
       setIsModalOpen(false);
@@ -460,21 +473,31 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
             <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl">
               <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">TOTAL TEMUAN INSPEKSI</span>
               <div className="text-2xl font-extrabold text-slate-900 mt-1">
-                {rowData.reduce((acc, r) => acc + (typeof r.jumlahTemuanInspeksi === 'number' ? r.jumlahTemuanInspeksi : Number(r.jumlahTemuanInspeksi) || 0), 0)} Temuan
+                {rowData.reduce((acc, r) => acc + (typeof r.jumlahTemuanInspeksi === 'number' ? r.jumlahTemuanInspeksi : Number(r.jumlahTemuanInspeksi) || typeof r.jumlahPohon === 'number' ? r.jumlahPohon : Number(r.jumlahPohon) || 0), 0)} Temuan
               </div>
               <span className="text-[11px] text-slate-400">Kumulatif seluruh section</span>
             </div>
             <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl">
               <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-wider">REALISASI PANGKAS</span>
               <div className="text-2xl font-extrabold text-emerald-600 mt-1">
-                {rowData.reduce((acc, r) => acc + (typeof r.realisasiPangkas === 'number' ? r.realisasiPangkas : Number(r.realisasiPangkas) || 0), 0)} Pohon
+                {rowData.reduce((acc, r) => {
+                  if (typeof r.realisasiPangkas === 'number') return acc + r.realisasiPangkas;
+                  const val = Number(r.realisasiPangkas);
+                  if (!isNaN(val)) return acc + val;
+                  if (r.status === 'Selesai') return acc + (typeof r.jumlahPohon === 'number' ? r.jumlahPohon : Number(r.jumlahPohon) || 0);
+                  return acc;
+                }, 0)} Pohon
               </div>
               <span className="text-[11px] text-slate-400">Telah dieksekusi</span>
             </div>
             <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl">
               <span className="text-[10px] font-bold uppercase text-amber-600 tracking-wider">PERLU IZIN / PADAM</span>
               <div className="text-2xl font-extrabold text-amber-600 mt-1">
-                {rowData.reduce((acc, r) => acc + (typeof r.perluIzin === 'number' ? r.perluIzin : Number(r.perluIzin) || 0) + (typeof r.perluPadam === 'number' ? r.perluPadam : Number(r.perluPadam) || 0), 0)} Titik
+                {rowData.reduce((acc, r) => {
+                  const izin = typeof r.perluIzin === 'number' ? r.perluIzin : Number(r.perluIzin) || 0;
+                  const padam = typeof r.perluPadam === 'number' ? r.perluPadam : Number(r.perluPadam) || 0;
+                  return acc + izin + padam;
+                }, 0)} Titik
               </div>
               <span className="text-[11px] text-slate-400">Perlu koordinasi warga & tim padam</span>
             </div>
@@ -522,29 +545,29 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {filteredRowData.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3.5 font-mono text-slate-600 text-[11px] whitespace-nowrap">{r.tanggal || '-'}</td>
-                      <td className="px-4 py-3.5 font-bold text-emerald-700">{r.penyulang || '-'}</td>
-                      <td className="px-4 py-3.5 font-semibold text-slate-800">{r.section || '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-blue-600">{r.jumlahTemuanInspeksi ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-emerald-600">{r.realisasiPangkas ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-amber-600">{r.perluIzin ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-purple-600">{r.perluPadam ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-rose-600">{r.pohonBesar ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-slate-600 text-[11px] max-w-xs">{r.luarTemuan || '-'}</td>
+                      <td className="px-4 py-3.5 font-mono text-slate-600 text-[11px] whitespace-nowrap">{r.tanggal || r.tanggalTemuan || '-'}</td>
+                      <td className="px-4 py-3.5 font-bold text-emerald-700">{r.penyulang || r.namaPenyulang || '-'}</td>
+                      <td className="px-4 py-3.5 font-semibold text-slate-800">{r.section || r.lokasi || '-'}</td>
+                      <td className="px-4 py-3.5 text-center font-bold text-blue-600">{r.jumlahTemuanInspeksi !== undefined && r.jumlahTemuanInspeksi !== '-' ? r.jumlahTemuanInspeksi : r.jumlahPohon ?? '-'}</td>
+                      <td className="px-4 py-3.5 text-center font-bold text-emerald-600">{r.realisasiPangkas !== undefined && r.realisasiPangkas !== '-' ? r.realisasiPangkas : (r.status === 'Selesai' ? r.jumlahPohon : 0)}</td>
+                      <td className="px-4 py-3.5 text-center font-bold text-amber-600">{r.perluIzin !== undefined && r.perluIzin !== '-' ? r.perluIzin : '-'}</td>
+                      <td className="px-4 py-3.5 text-center font-bold text-purple-600">{r.perluPadam !== undefined && r.perluPadam !== '-' ? r.perluPadam : '-'}</td>
+                      <td className="px-4 py-3.5 text-center font-bold text-rose-600">{r.pohonBesar !== undefined && r.pohonBesar !== '-' ? r.pohonBesar : '-'}</td>
+                      <td className="px-4 py-3.5 text-slate-600 text-[11px] max-w-xs">{r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '-'}</td>
                       <td className="px-4 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => {
                               setEditingId(r.id);
-                              setRTanggal(r.tanggal);
-                              setRPenyulang(r.penyulang);
-                              setRSection(r.section);
-                              setRJumlahTemuan(String(r.jumlahTemuanInspeksi));
-                              setRRealisasiPangkas(String(r.realisasiPangkas));
-                              setRPerluIzin(String(r.perluIzin));
-                              setRPerluPadam(String(r.perluPadam));
-                              setRPohonBesar(String(r.pohonBesar));
-                              setRLuarTemuan(r.luarTemuan || '');
+                              setRTanggal(r.tanggal || r.tanggalTemuan || '');
+                              setRPenyulang(r.penyulang || r.namaPenyulang || '');
+                              setRSection(r.section || r.lokasi || '');
+                              setRJumlahTemuan(r.jumlahTemuanInspeksi !== undefined && r.jumlahTemuanInspeksi !== '-' ? String(r.jumlahTemuanInspeksi) : r.jumlahPohon !== undefined ? String(r.jumlahPohon) : '');
+                              setRRealisasiPangkas(r.realisasiPangkas !== undefined && r.realisasiPangkas !== '-' ? String(r.realisasiPangkas) : (r.status === 'Selesai' ? String(r.jumlahPohon) : ''));
+                              setRPerluIzin(r.perluIzin !== undefined && r.perluIzin !== '-' ? String(r.perluIzin) : '');
+                              setRPerluPadam(r.perluPadam !== undefined && r.perluPadam !== '-' ? String(r.perluPadam) : '');
+                              setRPohonBesar(r.pohonBesar !== undefined && r.pohonBesar !== '-' ? String(r.pohonBesar) : '');
+                              setRLuarTemuan(r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '');
                               setIsModalOpen(true);
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
@@ -552,14 +575,15 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={async () => {
-                              try {
-                                await deleteDoc(doc(db, 'pemeliharaan_row', r.id));
-                              } catch (error) {
-                                handleFirestoreError(error, OperationType.DELETE, 'pemeliharaan_row');
-                              }
-                            }}
+                           <button
+                             onClick={async () => {
+                               registerDeletedId(r.id);
+                               try {
+                                 await deleteDoc(doc(db, 'pemeliharaan_row', r.id));
+                               } catch (error) {
+                                 handleFirestoreError(error, OperationType.DELETE, 'pemeliharaan_row');
+                               }
+                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                             title="Hapus Data ROW"
                           >
@@ -634,6 +658,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                         </button>
                         <button
                           onClick={async () => {
+                            registerDeletedId(item.id);
                             try {
                               await deleteDoc(doc(db, 'pemeliharaan_tier1', item.id));
                             } catch (error) {
@@ -719,6 +744,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                         </button>
                         <button
                           onClick={async () => {
+                            registerDeletedId(item.id);
                             try {
                               await deleteDoc(doc(db, 'pemeliharaan_tier2', item.id));
                             } catch (error) {
@@ -806,6 +832,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                         </button>
                         <button
                           onClick={async () => {
+                            registerDeletedId(item.id);
                             try {
                               await deleteDoc(doc(db, 'pemeliharaan_monitoring', item.id));
                             } catch (error) {

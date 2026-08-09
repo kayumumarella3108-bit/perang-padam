@@ -5,11 +5,14 @@ import {
   collection,
   onSnapshot,
   doc,
+  getDoc,
+  getDocs,
   setDoc,
   addDoc,
   updateDoc,
   deleteDoc,
   query,
+  limit,
   orderBy
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
@@ -82,14 +85,47 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
+export const getDeletedIds = (): string[] => {
+  try {
+    const data = localStorage.getItem('perangpadam_deleted_ids');
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const registerDeletedId = (id: string) => {
+  try {
+    const ids = getDeletedIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem('perangpadam_deleted_ids', JSON.stringify(ids));
+    }
+  } catch (err) {
+    console.error('Error saving deleted ID to localStorage:', err);
+  }
+};
+
+export const filterDeleted = <T extends { id?: string; username?: string }>(items: T[]): T[] => {
+  const deletedIds = getDeletedIds();
+  return items.filter(item => {
+    if (item.id && deletedIds.includes(item.id)) return false;
+    if (item.username && deletedIds.includes(item.username)) return false;
+    return true;
+  });
+};
+
 export {
   collection,
   onSnapshot,
   doc,
+  getDoc,
+  getDocs,
   setDoc,
   addDoc,
   updateDoc,
   deleteDoc,
   query,
+  limit,
   orderBy
 };

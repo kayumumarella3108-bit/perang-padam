@@ -52,7 +52,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
 
   const filteredList = alkerApdList.filter((item) => {
     const matchesSearch =
-      item.namaAlker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.namaAlker || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.penanggungJawab && item.penanggungJawab.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.catatan && item.catatan.toLowerCase().includes(searchQuery.toLowerCase()));
 

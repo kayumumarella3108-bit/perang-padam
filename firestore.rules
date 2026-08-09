@@ -11,6 +11,11 @@ service cloud.firestore {
       return id is string && id.size() <= 128;
     }
 
+    match /system_metadata/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
     match /material_stok/{id} {
       allow get, write: if isValidId(id);
       allow list: if true;

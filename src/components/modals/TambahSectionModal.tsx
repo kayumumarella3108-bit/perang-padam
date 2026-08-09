@@ -7,19 +7,39 @@ interface TambahSectionModalProps {
   onClose: () => void;
   onSave: (section: SectionJaringan) => void;
   penyulangList: Penyulang[];
+  initialData?: SectionJaringan | null;
 }
 
 export const TambahSectionModal: React.FC<TambahSectionModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  penyulangList
+  penyulangList,
+  initialData
 }) => {
   const [namaSection, setNamaSection] = useState('');
-  const [penyulangId, setPenyulangId] = useState(penyulangList[0]?.id || '1');
+  const [penyulangId, setPenyulangId] = useState('');
   const [jumlahPelanggan, setJumlahPelanggan] = useState(0);
   const [sistemOperasi, setSistemOperasi] = useState<'Radial' | 'Loop'>('Radial');
   const [penyulangDiSupply, setPenyulangDiSupply] = useState('- Tidak Ada -');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setNamaSection(initialData.namaSection);
+        setPenyulangId(initialData.penyulangId);
+        setJumlahPelanggan(initialData.jumlahPelanggan);
+        setSistemOperasi(initialData.sistemOperasi);
+        setPenyulangDiSupply(initialData.penyulangDiSupply);
+      } else {
+        setNamaSection('');
+        setPenyulangId(penyulangList[0]?.id || '1');
+        setJumlahPelanggan(0);
+        setSistemOperasi('Radial');
+        setPenyulangDiSupply('- Tidak Ada -');
+      }
+    }
+  }, [isOpen, initialData, penyulangList]);
 
   if (!isOpen) return null;
 
@@ -29,8 +49,8 @@ export const TambahSectionModal: React.FC<TambahSectionModalProps> = ({
 
     const selectedP = penyulangList.find((p) => p.id === penyulangId);
 
-    const newSection: SectionJaringan = {
-      id: `s_${Date.now()}`,
+    const savedSection: SectionJaringan = {
+      id: initialData ? initialData.id : `s_${Date.now()}`,
       namaSection,
       penyulangId,
       namaPenyulang: selectedP?.namaPenyulang || 'LATERI 1',
@@ -39,7 +59,7 @@ export const TambahSectionModal: React.FC<TambahSectionModalProps> = ({
       penyulangDiSupply
     };
 
-    onSave(newSection);
+    onSave(savedSection);
     onClose();
   };
 

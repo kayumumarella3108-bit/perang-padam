@@ -50,8 +50,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [role, setRole] = useState<string>('Koordinator');
   const [unit, setUnit] = useState('ULP Baguala');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [password, setPassword] = useState('');
 
-  const canEdit = canEditData(currentUser);
+  // Strict check: only Koordinator can add/edit/delete users
+  const canEdit = currentUser?.role === 'Koordinator';
 
   const PRESET_AVATARS = [
     { label: 'Teknisi 1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
@@ -61,6 +63,19 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     { label: 'Supervisor', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' }
   ];
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setAvatarUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const openAddModal = () => {
     setEditingUser(null);
     setUsername('');
@@ -68,6 +83,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole('Koordinator');
     setUnit('ULP Baguala');
     setAvatarUrl(PRESET_AVATARS[0].url);
+    setPassword('');
     setIsModalOpen(true);
   };
 
@@ -78,6 +94,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole(user.role);
     setUnit(user.unit || 'ULP Baguala');
     setAvatarUrl(user.avatarUrl || '');
+    setPassword(user.password || '');
     setIsModalOpen(true);
   };
 
@@ -92,7 +109,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         name,
         role: role as any,
         unit,
-        avatarUrl
+        avatarUrl,
+        password
       };
       onUpdateUser(updated);
     } else {
@@ -103,7 +121,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         role: role as any,
         unit,
         status: 'Aktif',
-        avatarUrl
+        avatarUrl,
+        password
       };
       onAddUser(newUser);
     }
@@ -113,8 +132,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
   const filteredUsers = usersList.filter((u) => {
     const matchesQuery =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (u.unit && u.unit.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesRole = roleFilter === 'Semua' || u.role === roleFilter;
     return matchesQuery && matchesRole;
@@ -550,23 +569,41 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <label className="block font-bold text-slate-700 mb-1">
                   Foto Profile User
                 </label>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt="Preview"
                         referrerPolicy="no-referrer"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 shadow-xs shrink-0"
+                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-500 shadow-sm shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
                         {name ? name.substring(0, 2).toUpperCase() : 'US'}
                       </div>
                     )}
+                    <div className="flex-1 space-y-1">
+                      <label className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold cursor-pointer transition-all border border-blue-200">
+                        <span>📁 Pilih dari File...</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-[9px] text-slate-500">Pilih file foto langsung dari HP/Komputer Anda.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      Atau input URL Foto:
+                    </span>
                     <input
                       type="url"
-                      value={avatarUrl}
+                      value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
                       onChange={(e) => setAvatarUrl(e.target.value)}
                       placeholder="URL Foto (https://...)"
                       className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
@@ -578,7 +615,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                       Pilih Foto Preset:
                     </span>
-                    <div className="grid grid-cols-6 gap-1.5">
+                    <div className="grid grid-cols-5 gap-1.5">
                       {PRESET_AVATARS.map((p, idx) => (
                         <button
                           key={idx}
@@ -595,6 +632,21 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Password Akses */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Password Akses Baru
+                </label>
+                <input
+                  type="text"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Masukkan password rahasia untuk login..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
+                />
+                <p className="text-[10px] text-slate-500 mt-1 font-sans">Digunakan saat melakukan login ke dalam aplikasi Perang Padam.</p>
               </div>
 
               {/* Unit Kerja */}

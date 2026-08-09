@@ -74,10 +74,10 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   // Filtered Table List
   const filteredList = gangguanList.filter((g) => {
     return (
-      g.namaPenyulang.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.kodeGangguan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.penyebab.toLowerCase().includes(searchQuery.toLowerCase())
+      (g.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.section || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.kodeGangguan || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.penyebab || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 

@@ -54,10 +54,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
 
     // Match against registered users or fallback
     const matchedUser = usersList.find(
-      (u) => u.username.toLowerCase().trim() === username.toLowerCase().trim()
+      (u) => (u.username || '').toLowerCase().trim() === (username || '').toLowerCase().trim()
     );
 
     if (matchedUser) {
+      // Validate password if user has a password set
+      if (matchedUser.password && matchedUser.password.trim() !== '' && matchedUser.password !== password) {
+        setErrorMsg('Password salah! Periksa kembali password Anda.');
+        return;
+      }
       onLogin(matchedUser);
     } else {
       // Fallback user based on entered username

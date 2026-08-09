@@ -145,6 +145,7 @@ export interface User {
   unit?: string;
   status?: string;
   avatarUrl?: string;
+  password?: string;
 }
 
 export interface ActivityLog {

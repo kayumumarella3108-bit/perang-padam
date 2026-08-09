@@ -82,8 +82,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // KPI calculations
   const totalPenyulang = penyulangList.length;
   const totalGangguan = gangguanList.length;
-  const pendingROW = rowList.filter((r) => r.status === 'Perlu Pangkas');
-  const highRiskROW = rowList.filter((r) => r.prioritas === 'Tinggi' || r.status === 'Perlu Pangkas');
+  const pendingROW = rowList.filter((r) => {
+    const status = r.status || (Number(r.jumlahTemuanInspeksi) > Number(r.realisasiPangkas) ? 'Perlu Pangkas' : 'Selesai');
+    return status === 'Perlu Pangkas';
+  });
+  const highRiskROW = rowList.filter((r) => {
+    const status = r.status || (Number(r.jumlahTemuanInspeksi) > Number(r.realisasiPangkas) ? 'Perlu Pangkas' : 'Selesai');
+    const prioritas = r.prioritas || (Number(r.pohonBesar) > 0 ? 'Tinggi' : 'Sedang');
+    return prioritas === 'Tinggi' || status === 'Perlu Pangkas';
+  });
   const pendingInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat' || i.kondisi === 'Sedang' || !i.kondisi);
   const criticalInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat');
 
@@ -316,11 +323,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
             <div className="flex justify-between items-center text-slate-600 font-medium">
               <span>Total Pohon Dekat SUTM:</span>
-              <span className="font-bold text-amber-600">{rowList.reduce((acc, r) => acc + r.jumlahPohon, 0)} Pohon</span>
+              <span className="font-bold text-amber-600">{rowList.reduce((acc, r) => acc + (typeof r.jumlahPohon === 'number' ? r.jumlahPohon : Number(r.jumlahPohon) || typeof r.jumlahTemuanInspeksi === 'number' ? r.jumlahTemuanInspeksi : Number(r.jumlahTemuanInspeksi) || 0), 0)} Pohon</span>
             </div>
             <div className="flex justify-between items-center text-slate-600 font-medium">
               <span>Prioritas Tinggi:</span>
-              <span className="font-bold text-rose-600">{rowList.filter(r => r.prioritas === 'Tinggi').length} Titik Kritis</span>
+              <span className="font-bold text-rose-600">{rowList.filter(r => (r.prioritas === 'Tinggi' || Number(r.pohonBesar) > 0)).length} Titik Kritis</span>
             </div>
           </div>
 
@@ -839,43 +846,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* TAB 3: High Risk ROW Patrol */}
         {activeTab === 'row' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {rowList.map((item) => (
-              <div key={item.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                    Tiang {item.tiangId}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                    item.prioritas === 'Tinggi' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    Prioritas {item.prioritas}
-                  </span>
-                </div>
+            {rowList.map((item) => {
+              const tiangId = item.tiangId || `T-${item.id.substring(0, 4).toUpperCase()}`;
+              const prioritas = item.prioritas || (Number(item.pohonBesar) > 0 ? 'Tinggi' : 'Sedang');
+              const namaPenyulang = item.namaPenyulang || item.penyulang || 'UNKNOWN';
+              const lokasi = item.lokasi || item.section || 'General Section';
+              const jenisPohon = item.jenisPohon || item.luarTemuan || 'Pohon Rimbun';
+              const jumlahPohon = item.jumlahPohon ?? Number(item.jumlahTemuanInspeksi) ?? 0;
+              const status = item.status || (Number(item.jumlahTemuanInspeksi) > Number(item.realisasiPangkas) ? 'Perlu Pangkas' : 'Selesai');
 
-                <div>
-                  <h4 className="text-xs font-black text-slate-900">{item.namaPenyulang}</h4>
-                  <p className="text-xs text-slate-600 mt-0.5 font-medium">{item.lokasi}</p>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Pohon:</span>
-                    <span className="font-bold text-slate-900">{item.jenisPohon} ({item.jumlahPohon} Batang)</span>
+              return (
+                <div key={item.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                      Tiang {tiangId}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      prioritas === 'Tinggi' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      Prioritas {prioritas}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Status Pangkas:</span>
-                    <span className="font-bold text-amber-700">{item.status}</span>
-                  </div>
-                </div>
 
-                <button
-                  onClick={() => onSelectView('row')}
-                  className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Proses Pemangkasan ROW
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">{namaPenyulang}</h4>
+                    <p className="text-xs text-slate-600 mt-0.5 font-medium">{lokasi}</p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Pohon:</span>
+                      <span className="font-bold text-slate-900">{jenisPohon} ({jumlahPohon} Batang)</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Status Pangkas:</span>
+                      <span className="font-bold text-amber-700">{status}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onSelectView('row')}
+                    className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Proses Pemangkasan ROW
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 

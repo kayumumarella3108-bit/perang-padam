@@ -294,7 +294,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
        id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
        nama: feederName,
        tiangCount: finalCoords.length,
-       ruteLength: `${finalCoords.length} titik/tiang (${(finalCoords.length * 0.15).toFixed(1)} km)`,
+       ruteLength: `${finalCoords.length} titik`,
        tanggalImport: new Date().toLocaleDateString('id-ID'),
        kategori: 'Inspeksi',
        visible: true,
@@ -363,7 +363,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         id: `imported_${Date.now()}`,
         nama: randomName,
         tiangCount: Math.floor(Math.random() * 25) + 10,
-        ruteLength: `${Math.floor(Math.random() * 20) + 10} rute/tiang`,
+        ruteLength: `${Math.floor(Math.random() * 20) + 10} titik`,
         tanggalImport: new Date().toLocaleDateString('id-ID'),
         kategori: randomCat,
         visible: true,
@@ -383,7 +383,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   };
 
   const filteredLayers = layers.filter((layer) => {
-    const matchesSearch = layer.nama.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (layer.nama || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'Semua' || layer.kategori === selectedCategory;
     return matchesSearch && matchesCat;
   });
@@ -728,7 +728,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               {/* Detail Rute / Tiang */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Keterangan Panjang Rute / Jumlah Titik
+                  Keterangan Jumlah Titik
                 </label>
                 <input
                   type="text"

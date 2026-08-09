@@ -6,12 +6,14 @@ interface TambahPenyulangModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (penyulang: Penyulang) => void;
+  initialData?: Penyulang | null;
 }
 
 export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
   isOpen,
   onClose,
-  onSave
+  onSave,
+  initialData
 }) => {
   const [namaGi, setNamaGi] = useState('GI PASSO');
   const [namaPenyulang, setNamaPenyulang] = useState('BAGUALA');
@@ -19,24 +21,42 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
   const [kodeId, setKodeId] = useState('BGL');
   const [panjangJaringanKms, setPanjangJaringanKms] = useState(12.5);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setNamaGi(initialData.namaGi);
+        setNamaPenyulang(initialData.namaPenyulang);
+        setStatus(initialData.status);
+        setKodeId(initialData.kodeId);
+        setPanjangJaringanKms(initialData.panjangJaringanKms);
+      } else {
+        setNamaGi('GI PASSO');
+        setNamaPenyulang('BAGUALA');
+        setStatus('Utama');
+        setKodeId('BGL');
+        setPanjangJaringanKms(12.5);
+      }
+    }
+  }, [isOpen, initialData]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaPenyulang.trim()) return;
 
-    const newPenyulang: Penyulang = {
-      id: `p_${Date.now()}`,
+    const savedPenyulang: Penyulang = {
+      id: initialData ? initialData.id : `p_${Date.now()}`,
       namaGi,
       namaPenyulang,
       status,
       kodeId,
       panjangJaringanKms: Number(panjangJaringanKms) || 0,
-      frekuensiGangguan: 0,
-      healthIndexStatus: 'Sempurna'
+      frekuensiGangguan: initialData ? initialData.frekuensiGangguan : 0,
+      healthIndexStatus: initialData ? initialData.healthIndexStatus : 'Sempurna'
     };
 
-    onSave(newPenyulang);
+    onSave(savedPenyulang);
     onClose();
   };
 
