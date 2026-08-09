@@ -1,0 +1,281 @@
+{
+  "entities": {
+    "MaterialStokItem": {
+      "title": "MaterialStokItem",
+      "description": "Stock of material item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggalMasuk": { "type": "string" },
+        "namaMaterial": { "type": "string" },
+        "qty": { "type": "number" },
+        "satuan": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "noDokumen": { "type": "string" }
+      },
+      "required": ["id", "tanggalMasuk", "namaMaterial", "qty", "satuan"]
+    },
+    "MaterialPemakaianItem": {
+      "title": "MaterialPemakaianItem",
+      "description": "Usage of material item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "namaMaterial": { "type": "string" },
+        "qty": { "type": "number" },
+        "satuan": { "type": "string" },
+        "lokasi": { "type": "string" },
+        "jenisPekerjaan": { "type": "string" },
+        "petugas": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "namaMaterial", "qty", "satuan", "lokasi"]
+    },
+    "AlkerApdItem": {
+      "title": "AlkerApdItem",
+      "description": "Tools and APD equipment status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "namaAlat": { "type": "string" },
+        "kategori": { "type": "string" },
+        "stok": { "type": "number" },
+        "satuan": { "type": "string" },
+        "kondisiBaik": { "type": "number" },
+        "kondisiRusak": { "type": "number" },
+        "keterangan": { "type": "string" },
+        "lastChecked": { "type": "string" }
+      },
+      "required": ["id", "namaAlat", "kategori", "stok", "satuan", "kondisiBaik", "kondisiRusak"]
+    },
+    "GangguanLog": {
+      "title": "GangguanLog",
+      "description": "Power disturbance log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "namaPenyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "jamKeluar": { "type": "string" },
+        "jamMasuk": { "type": "string" },
+        "durasi": { "type": "string" },
+        "relayBekerja": { "type": "string" },
+        "kodeGangguan": { "type": "string" },
+        "arusR": { "type": "string" },
+        "arusS": { "type": "string" },
+        "arusT": { "type": "string" },
+        "arusIN": { "type": "string" },
+        "penyebab": { "type": "string" },
+        "detailLokasi": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "namaPenyulang", "section", "jamKeluar", "jamMasuk"]
+    },
+    "SaidiSaifiData": {
+      "title": "SaidiSaifiData",
+      "description": "SAIDI/SAIFI logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "pelangganPadam": { "type": "number" },
+        "durasiMenit": { "type": "number" },
+        "ensKwh": { "type": "number" },
+        "saidiContribution": { "type": "number" },
+        "saifiContribution": { "type": "number" }
+      },
+      "required": ["id", "tanggal", "penyulang", "pelangganPadam", "durasiMenit"]
+    },
+    "User": {
+      "title": "User",
+      "description": "App system user",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["username", "name", "role"]
+    },
+    "Penyulang": {
+      "title": "Penyulang",
+      "description": "Feeder penyulang item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "bebanAmperMax": { "type": "number" },
+        "panjangKms": { "type": "number" },
+        "jumlahGardu": { "type": "number" },
+        "healthIndexScore": { "type": "number" },
+        "healthIndexStatus": { "type": "string" },
+        "statusPenyulang": { "type": "string" }
+      },
+      "required": ["id", "name", "healthIndexStatus", "statusPenyulang"]
+    },
+    "SectionJaringan": {
+      "title": "SectionJaringan",
+      "description": "Section network detail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "penyulangId": { "type": "string" },
+        "namaSection": { "type": "string" },
+        "panjangKms": { "type": "number" },
+        "jumlahGardu": { "type": "number" },
+        "kondisiKritis": { "type": "boolean" }
+      },
+      "required": ["id", "penyulangId", "namaSection"]
+    },
+    "MapLayerItem": {
+      "title": "MapLayerItem",
+      "description": "GIS map overlay layer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "color": { "type": "string" },
+        "featuresCount": { "type": "number" }
+      },
+      "required": ["id", "name", "type", "visible"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "SCADA Operator activity audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "waktu": { "type": "string" },
+        "user": { "type": "string" },
+        "aktivitas": { "type": "string" },
+        "modul": { "type": "string" }
+      },
+      "required": ["id", "waktu", "user", "aktivitas", "modul"]
+    },
+    "ROWItem": {
+      "title": "ROWItem",
+      "description": "Pohon dan dahan tree trimming log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "jumlahTemuanInspeksi": { "type": "string" },
+        "realisasiPangkas": { "type": "string" },
+        "perluIzin": { "type": "string" },
+        "perluPadam": { "type": "string" },
+        "pohonBesar": { "type": "string" },
+        "luarTemuan": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "penyulang", "section"]
+    },
+    "Tier1Item": {
+      "title": "Tier1Item",
+      "description": "Visual inspection of ROW & construction details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "temuanRow": { "type": "string" },
+        "konstruksi": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "penyulang", "section"]
+    },
+    "Tier2Item": {
+      "title": "Tier2Item",
+      "description": "Thermovision and Ultrasound specialized inspections",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "jenisTier2": { "type": "string" },
+        "temuanThermoUltrasound": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "penyulang", "section", "jenisTier2"]
+    },
+    "MonitoringPemeliharaanItem": {
+      "title": "MonitoringPemeliharaanItem",
+      "description": "Maintenance work monitoring logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "jenisPemeliharaan": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "keterangan": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "penyulang", "section"]
+    }
+  },
+  "firestore": {
+    "material_stok": {
+      "schema": "MaterialStokItem",
+      "description": "Incoming material records"
+    },
+    "material_pemakaian": {
+      "schema": "MaterialPemakaianItem",
+      "description": "Material usage logs"
+    },
+    "alkerdan_apd": {
+      "schema": "AlkerApdItem",
+      "description": "Sistem monitoring APD and tools equipment conditions"
+    },
+    "gangguan_logs": {
+      "schema": "GangguanLog",
+      "description": "Live SCADA disturbance logs"
+    },
+    "saidi_saifi_logs": {
+      "schema": "SaidiSaifiData",
+      "description": "SAIDI, SAIFI, and ENS monthly tracking"
+    },
+    "app_users": {
+      "schema": "User",
+      "description": "Verified system user list"
+    },
+    "penyulang_list": {
+      "schema": "Penyulang",
+      "description": "Active feeder penyulang list"
+    },
+    "section_list": {
+      "schema": "SectionJaringan",
+      "description": "Active network section details"
+    },
+    "map_layers": {
+      "schema": "MapLayerItem",
+      "description": "GIS map feeder layers"
+    },
+    "activity_logs": {
+      "schema": "ActivityLog",
+      "description": "Real-time activity audit log"
+    },
+    "pemeliharaan_row": {
+      "schema": "ROWItem",
+      "description": "ROW tree trimming maintenance collection"
+    },
+    "pemeliharaan_tier1": {
+      "schema": "Tier1Item",
+      "description": "Tier 1 visual inspection records"
+    },
+    "pemeliharaan_tier2": {
+      "schema": "Tier2Item",
+      "description": "Tier 2 specialized thermovision and ultrasound records"
+    },
+    "pemeliharaan_monitoring": {
+      "schema": "MonitoringPemeliharaanItem",
+      "description": "20kV network repair and preventive maintenance monitoring records"
+    }
+  }
+}

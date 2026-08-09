@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all default deny rules for non-explicit collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper validation functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    match /material_stok/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /material_pemakaian/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /alkerdan_apd/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /gangguan_logs/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /saidi_saifi_logs/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /app_users/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /penyulang_list/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /section_list/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /map_layers/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /activity_logs/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /pemeliharaan_row/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /pemeliharaan_tier1/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /pemeliharaan_tier2/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /pemeliharaan_monitoring/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+  }
+}
