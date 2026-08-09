@@ -204,11 +204,30 @@ export default function App() {
     const unsubMapLayers = onSnapshot(collection(db, 'map_layers'), (snapshot) => {
       if (snapshot.empty) {
         INITIAL_MAP_LAYERS.forEach((item) => {
-          setDoc(doc(db, 'map_layers', item.id), item);
+          const firestoreDoc = {
+            ...item,
+            coordinates: item.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
+          };
+          setDoc(doc(db, 'map_layers', item.id), firestoreDoc);
         });
       } else {
         const items: MapLayerItem[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as MapLayerItem));
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const item: MapLayerItem = {
+            ...data,
+            id: data.id,
+            nama: data.nama,
+            tiangCount: data.tiangCount,
+            ruteLength: data.ruteLength,
+            tanggalImport: data.tanggalImport,
+            kategori: data.kategori,
+            visible: data.visible,
+            color: data.color,
+            coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number])
+          } as MapLayerItem;
+          items.push(item);
+        });
         setMapLayers(items);
       }
     }, (error) => {
@@ -337,25 +356,61 @@ export default function App() {
   };
 
   // Handlers for Map Layers
-  const handleToggleMapLayer = (id: string) => {
-    setMapLayers((prev) =>
-      prev.map((layer) => (layer.id === id ? { ...layer, visible: !layer.visible } : layer))
-    );
+  const handleToggleMapLayer = async (id: string) => {
+    const layer = mapLayers.find((l) => l.id === id);
+    if (layer) {
+      const updated = { ...layer, visible: !layer.visible };
+      setMapLayers((prev) =>
+        prev.map((l) => (l.id === id ? updated : l))
+      );
+      try {
+        const firestoreDoc = {
+          ...updated,
+          coordinates: updated.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
+        };
+        await setDoc(doc(db, 'map_layers', id), firestoreDoc);
+      } catch (err) {
+        console.error('Error toggling map layer in Firestore:', err);
+      }
+    }
   };
 
-  const handleDeleteMapLayer = (id: string) => {
+  const handleDeleteMapLayer = async (id: string) => {
     setMapLayers((prev) => prev.filter((l) => l.id !== id));
-    logActivity('Menghapus layer peta GIS feeder import', 'Peta Feeder');
+    try {
+      await deleteDoc(doc(db, 'map_layers', id));
+      logActivity('Menghapus layer peta GIS feeder import', 'Peta Feeder');
+    } catch (err) {
+      console.error('Error deleting map layer from Firestore:', err);
+    }
   };
 
-  const handleAddMapLayer = (layer: MapLayerItem) => {
+  const handleAddMapLayer = async (layer: MapLayerItem) => {
     setMapLayers((prev) => [layer, ...prev]);
-    logActivity(`Mengimpor peta feeder baru: ${layer.nama}`, 'Peta Feeder');
+    try {
+      const firestoreDoc = {
+        ...layer,
+        coordinates: layer.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
+      };
+      await setDoc(doc(db, 'map_layers', layer.id), firestoreDoc);
+      logActivity(`Mengimpor peta feeder baru: ${layer.nama}`, 'Peta Feeder');
+    } catch (err) {
+      console.error('Error adding map layer to Firestore:', err);
+    }
   };
 
-  const handleUpdateMapLayer = (updatedLayer: MapLayerItem) => {
+  const handleUpdateMapLayer = async (updatedLayer: MapLayerItem) => {
     setMapLayers((prev) => prev.map((l) => (l.id === updatedLayer.id ? updatedLayer : l)));
-    logActivity(`Mengubah file layer peta GIS: ${updatedLayer.nama}`, 'Peta Feeder');
+    try {
+      const firestoreDoc = {
+        ...updatedLayer,
+        coordinates: updatedLayer.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
+      };
+      await setDoc(doc(db, 'map_layers', updatedLayer.id), firestoreDoc);
+      logActivity(`Mengubah file layer peta GIS: ${updatedLayer.nama}`, 'Peta Feeder');
+    } catch (err) {
+      console.error('Error updating map layer in Firestore:', err);
+    }
   };
 
   // Handlers for Gangguan (Cloud Firestore synced)
