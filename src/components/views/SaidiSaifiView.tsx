@@ -24,12 +24,16 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { SaidiSaifiData, Penyulang } from '../../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { SaidiSaifiData, Penyulang, User } from '../../types';
 import { HealthIndexBanner } from '../HealthIndexBanner';
 import { InputSaidiModal } from '../modals/InputSaidiModal';
 import { exportToCSV } from '../../utils/exportCsv';
+import { canEditModule } from '../../utils/permissions';
 
 interface SaidiSaifiViewProps {
+  currentUser?: User;
   saidiList: SaidiSaifiData[];
   penyulangList: Penyulang[];
   onAddSaidi: (data: SaidiSaifiData) => void;
@@ -37,6 +41,7 @@ interface SaidiSaifiViewProps {
 }
 
 export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
+  currentUser,
   saidiList,
   penyulangList,
   onAddSaidi,
@@ -72,6 +77,55 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
     ]);
 
     exportToCSV(`Realisasi_SAIDI_SAIFI_${selectedYear}`, headers, rows);
+  };
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('PT PLN (PERSERO) - UL P BAGUALA / PLN NUSADAYA', 14, 15);
+    doc.setFontSize(12);
+    doc.text('LAPORAN REKAPITULASI SAIDI, SAIFI & ENS KUMULATIF (UP3 REPORTING)', 14, 22);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Tahun: ${selectedYear} | Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 28);
+    doc.text(`Total ENS: ${totalEnsKwh.toLocaleString('id-ID')} kWh | Estimasi Kerugian: Rp ${totalRupiah.toLocaleString('id-ID')}`, 14, 34);
+    doc.text(`Rata-rata SAIDI: ${avgSaidi} Jam/Plg | Rata-rata SAIFI: ${avgSaifi} Kali/Plg`, 14, 40);
+
+    const headers = [
+      ['Bulan', 'ENS (kWh)', 'Target SAIDI', 'Realisasi SAIDI', 'Target SAIFI', 'Realisasi SAIFI', 'Kerugian (Rp)', 'Catatan']
+    ];
+
+    const dataRows = saidiList.map(s => [
+      s.bulan,
+      s.ensKumulatifKwh.toLocaleString('id-ID'),
+      s.targetSaidi,
+      s.realisasiSaidi,
+      s.targetSaifi,
+      s.realisasiSaifi,
+      s.estimasiKerugianRp.toLocaleString('id-ID'),
+      s.catatan || '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 48,
+      head: headers,
+      body: dataRows,
+      theme: 'grid',
+      headStyles: { fillColor: [30, 41, 59] },
+      styles: { fontSize: 8, cellPadding: 2 }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.text('Mengetahui / Disetujui,', 14, finalY);
+    doc.text('Manager ULP Baguala', 14, finalY + 5);
+    doc.text('( ______________________ )', 14, finalY + 20);
+
+    doc.text('Dilaporkan Kepada,', 130, finalY);
+    doc.text('Pihak UP3 Ambon', 130, finalY + 5);
+    doc.text('( ______________________ )', 130, finalY + 20);
+
+    doc.save(`Laporan_SAIDI_SAIFI_UP3_${selectedYear}.pdf`);
   };
 
   // Sums
@@ -117,25 +171,37 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
               Monitoring SAIDI, SAIFI & ENS Kumulatif
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
-              PLN ULP Baguala
+              PLN ULP Baguala / PLN Nusadaya
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Kalkulasi kuantitatif energi tidak tersalurkan dan estimasi kerugian rupiah
+            Kalkulasi kuantitatif energi tidak tersalurkan dan estimasi kerugian rupiah untuk UP3
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleDownloadPDF}
+            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-rose-500/20"
+            title="Unduh laporan PDF untuk dilaporkan ke UP3"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Unduh PDF (UP3)</span>
+          </button>
           <button
             onClick={handleExportCSV}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-emerald-500/20"
             title="Ekspor ke format Excel/CSV"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Ekspor CSV / Excel</span>
+            <span>Ekspor CSV</span>
           </button>
           <button
             onClick={() => {
+              if (currentUser && !canEditModule(currentUser, 'saidi')) {
+                alert('Akses Dibatasi: Admin Teknik hanya dapat entri & edit data untuk modul ROW dan Inspeksi.');
+                return;
+              }
               setEditingSaidi(null);
               setIsModalOpen(true);
             }}

@@ -797,6 +797,7 @@ export default function App() {
 
           {(activeView === 'matriks_gangguan' || activeView === 'gangguan') && (
             <GangguanTripView
+              currentUser={user}
               gangguanList={gangguanList}
               penyulangList={penyulangList}
               sectionList={sectionList}
@@ -810,6 +811,7 @@ export default function App() {
             activeView === 'inspeksi_tier2' ||
             activeView === 'pemeliharaan_20kv') && (
             <PemeliharaanView
+              currentUser={user}
               currentSubView={activeView}
               rowList={rowList}
               tier1List={tier1List}
@@ -832,6 +834,7 @@ export default function App() {
 
           {activeView === 'saidi_saifi' && (
             <SaidiSaifiView
+              currentUser={user}
               saidiList={saidiList}
               penyulangList={penyulangList}
               onAddSaidi={handleAddSaidi}

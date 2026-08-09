@@ -21,12 +21,14 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
+import { GangguanLog, Penyulang, SectionJaringan, User } from '../../types';
 import { HealthIndexBanner } from '../HealthIndexBanner';
 import { InputGangguanModal } from '../modals/InputGangguanModal';
 import { exportToCSV } from '../../utils/exportCsv';
+import { canEditModule } from '../../utils/permissions';
 
 interface GangguanTripViewProps {
+  currentUser?: User;
   gangguanList: GangguanLog[];
   penyulangList: Penyulang[];
   sectionList: SectionJaringan[];
@@ -35,6 +37,7 @@ interface GangguanTripViewProps {
 }
 
 export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
+  currentUser,
   gangguanList,
   penyulangList,
   sectionList,
@@ -45,8 +48,16 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [editingGangguan, setEditingGangguan] = useState<GangguanLog | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
 
   const totalTrip = gangguanList.length;
+
+  const tripPangkalList = gangguanList.filter((g) => {
+    const p = penyulangList.find(
+      (item) => item.namaPenyulang.toLowerCase() === (g.namaPenyulang || '').toLowerCase()
+    );
+    return p?.status === 'Utama' || (g.namaPenyulang || '').toUpperCase().includes('UTAMA');
+  });
 
   // Chart 1 Data: Proportion by Code
   const codeCounts: Record<string, number> = {};
