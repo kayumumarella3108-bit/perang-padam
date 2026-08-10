@@ -7,6 +7,7 @@ export type ViewType =
   | 'inspeksi_tier1'
   | 'inspeksi_tier2'
   | 'pemeliharaan_20kv'
+  | 'perintah_kerja'
   | 'master_data'
   | 'saidi_saifi'
   | 'material'
@@ -208,4 +209,20 @@ export interface AlkerApdItem {
   tanggalInput: string;
   penanggungJawab?: string;
   catatan?: string;
+}
+
+export interface PerintahKerja {
+  id: string;
+  noSpk: string;
+  tanggal: string;
+  jenisPekerjaan: 'ROW' | 'Inspeksi' | 'Pemeliharaan';
+  penyulangId?: string;
+  namaPenyulang: string;
+  section: string;
+  target: string;
+  jumlahPersonil: number;
+  status: 'Terencana' | 'Dalam Proses' | 'Selesai' | 'Dibatalkan';
+  timAtauPetugas?: string;
+  catatan?: string;
+  createdAt?: string;
 }

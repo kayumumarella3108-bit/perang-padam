@@ -13,7 +13,8 @@ import {
   AlkerApdItem,
   Tier1Item,
   Tier2Item,
-  MonitoringPemeliharaanItem
+  MonitoringPemeliharaanItem,
+  PerintahKerja
 } from '../types';
 
 export const INITIAL_PENYULANG: Penyulang[] = [
@@ -342,5 +343,50 @@ export const INITIAL_MONITORING: MonitoringPemeliharaanItem[] = [
     section: 'LBS SMA 5 - LBS Tantui',
     jenisPemeliharaan: ['SUTR', 'Gardu', 'PHBTR', 'Protective Sleeve'],
     keterangan: 'Pembersihan PHBTR dan perbaikan grounding tiang gardu'
+  }
+];
+
+export const INITIAL_PERINTAH_KERJA: PerintahKerja[] = [
+  {
+    id: 'spk_1',
+    noSpk: 'SPK/ULP-BGL/2026/02/001',
+    tanggal: '2026-02-10',
+    jenisPekerjaan: 'ROW',
+    namaPenyulang: 'PASSO',
+    section: 'LBS Air Besar Passo - GH Passo',
+    target: 'Pangkas Pohon Bambu & Trambesi (25 Pohon / 1.5 kms)',
+    jumlahPersonil: 6,
+    status: 'Dalam Proses',
+    timAtauPetugas: 'Tim ROW Yantek Baguala 1',
+    catatan: 'Koordinasi dengan Kepala Desa Passo untuk izin pemangkasan',
+    createdAt: '2026-02-09T08:00:00Z'
+  },
+  {
+    id: 'spk_2',
+    noSpk: 'SPK/ULP-BGL/2026/02/002',
+    tanggal: '2026-02-11',
+    jenisPekerjaan: 'Inspeksi',
+    namaPenyulang: 'TULEHU',
+    section: 'GH Asten - Recloser Tulehu',
+    target: 'Inspeksi Tier 1 SUTM 30 Tiang & Visual Isolator',
+    jumlahPersonil: 4,
+    status: 'Terencana',
+    timAtauPetugas: 'Tim Inspeksi Teknik ULP',
+    catatan: 'Bawa thermovision & grounding set',
+    createdAt: '2026-02-09T09:30:00Z'
+  },
+  {
+    id: 'spk_3',
+    noSpk: 'SPK/ULP-BGL/2026/02/003',
+    tanggal: '2026-02-08',
+    jenisPekerjaan: 'Pemeliharaan',
+    namaPenyulang: 'LATERI 2',
+    section: 'GI Passo - IC Lateri 2 GH Hative',
+    target: 'Penggantian Isolator Tumpu Pecah & Tekep Trafo (3 titik)',
+    jumlahPersonil: 5,
+    status: 'Selesai',
+    timAtauPetugas: 'Tim Pemeliharaan 20kV Baguala',
+    catatan: 'Pekerjaan selesai 100%, sistem kembali normal tanpa gangguan',
+    createdAt: '2026-02-07T14:00:00Z'
   }
 ];

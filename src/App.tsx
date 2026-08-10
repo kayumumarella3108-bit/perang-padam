@@ -15,7 +15,8 @@ import {
   SaidiSaifiData,
   MaterialStokItem,
   MaterialPemakaianItem,
-  AlkerApdItem
+  AlkerApdItem,
+  PerintahKerja
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -32,7 +33,8 @@ import {
   INITIAL_SAIDI,
   INITIAL_MATERIAL_STOK,
   INITIAL_MATERIAL_PEMAKAIAN,
-  INITIAL_ALKER_APD
+  INITIAL_ALKER_APD,
+  INITIAL_PERINTAH_KERJA
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { Lock } from 'lucide-react';
@@ -51,6 +53,7 @@ import { SaidiSaifiView } from './components/views/SaidiSaifiView';
 import { MaterialView } from './components/views/MaterialView';
 import { AlkerApdView } from './components/views/AlkerApdView';
 import { UserManagementView } from './components/views/UserManagementView';
+import { PerintahKerjaView } from './components/views/PerintahKerjaView';
 
 export default function App() {
   // Authentication state
@@ -77,6 +80,9 @@ export default function App() {
   const [stokList, setStokList] = useState<MaterialStokItem[]>(() => filterDeleted(INITIAL_MATERIAL_STOK));
   const [pemakaianList, setPemakaianList] = useState<MaterialPemakaianItem[]>(() => filterDeleted(INITIAL_MATERIAL_PEMAKAIAN));
   const [alkerApdList, setAlkerApdList] = useState<AlkerApdItem[]>(() => filterDeleted(INITIAL_ALKER_APD));
+  
+  // Perintah Kerja Harian (SPK) State
+  const [spkList, setSpkList] = useState<PerintahKerja[]>(() => filterDeleted(INITIAL_PERINTAH_KERJA));
 
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
@@ -203,6 +209,11 @@ export default function App() {
         // Seed pemeliharaan monitoring
         for (const item of INITIAL_MONITORING) {
           await setDoc(doc(db, 'pemeliharaan_monitoring', item.id), item);
+        }
+
+        // Seed perintah kerja harian
+        for (const item of INITIAL_PERINTAH_KERJA) {
+          await setDoc(doc(db, 'perintah_kerja_harian', item.id), item);
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -356,6 +367,15 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'pemeliharaan_monitoring');
     });
 
+    // 15. Sync Perintah Kerja Harian (SPK)
+    const unsubSpk = onSnapshot(collection(db, 'perintah_kerja_harian'), (snapshot) => {
+      const items: PerintahKerja[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as PerintahKerja));
+      setSpkList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'perintah_kerja_harian');
+    });
+
     return () => {
       unsubStok();
       unsubPemakaian();
@@ -371,6 +391,7 @@ export default function App() {
       unsubTier1();
       unsubTier2();
       unsubMonitoring();
+      unsubSpk();
     };
   }, []);
 
@@ -827,6 +848,38 @@ export default function App() {
     logActivity('Menghapus user dari sistem', 'Kelola User');
   };
 
+  // Perintah Kerja Harian (SPK) Handlers
+  const handleAddSpk = async (newSpk: PerintahKerja) => {
+    setSpkList((prev) => [newSpk, ...prev]);
+    try {
+      await setDoc(doc(db, 'perintah_kerja_harian', newSpk.id), newSpk);
+    } catch (err) {
+      console.error('Error saving SPK to Firestore:', err);
+    }
+    logActivity(`Penerbitan SPK baru ${newSpk.noSpk} (${newSpk.jenisPekerjaan})`, newSpk.namaPenyulang);
+  };
+
+  const handleUpdateSpk = async (updatedSpk: PerintahKerja) => {
+    setSpkList((prev) => prev.map((s) => (s.id === updatedSpk.id ? updatedSpk : s)));
+    try {
+      await setDoc(doc(db, 'perintah_kerja_harian', updatedSpk.id), updatedSpk);
+    } catch (err) {
+      console.error('Error updating SPK in Firestore:', err);
+    }
+    logActivity(`Memperbarui SPK ${updatedSpk.noSpk} -> Status: ${updatedSpk.status}`, updatedSpk.namaPenyulang);
+  };
+
+  const handleDeleteSpk = async (id: string) => {
+    registerDeletedId(id);
+    setSpkList((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await deleteDoc(doc(db, 'perintah_kerja_harian', id));
+    } catch (err) {
+      console.error('Error deleting SPK from Firestore:', err);
+    }
+    logActivity('Menghapus data Surat Perintah Kerja (SPK)', 'Perintah Kerja');
+  };
+
   // If not logged in, display Login Screen
   if (!user) {
     return <LoginScreen onLogin={handleLogin} usersList={usersList} />;
@@ -951,6 +1004,18 @@ export default function App() {
               onAddAlkerApd={handleAddAlkerApd}
               onUpdateAlkerApd={handleUpdateAlkerApd}
               onDeleteAlkerApd={handleDeleteAlkerApd}
+            />
+          )}
+
+          {activeView === 'perintah_kerja' && (
+            <PerintahKerjaView
+              currentUser={user}
+              spkList={spkList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+              onAddSpk={handleAddSpk}
+              onUpdateSpk={handleUpdateSpk}
+              onDeleteSpk={handleDeleteSpk}
             />
           )}
 

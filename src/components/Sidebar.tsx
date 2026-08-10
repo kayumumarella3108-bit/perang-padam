@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ChevronRight,
   Leaf,
-  Lock
+  Lock,
+  FileText
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 
@@ -188,6 +189,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Perintah Kerja Harian (SPK) */}
+          <button
+            onClick={() => onSelectView('perintah_kerja')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+              activeView === 'perintah_kerja'
+                ? 'bg-blue-600/10 text-blue-400 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <FileText className={`w-4 h-4 shrink-0 ${activeView === 'perintah_kerja' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <span>Perintah Kerja Harian (SPK)</span>
+          </button>
 
           {/* Master Data */}
           <button
