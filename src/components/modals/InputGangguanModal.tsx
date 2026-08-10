@@ -326,7 +326,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
                 <option value="E-2" className="bg-white">E-2 (Bencana Alam)</option>
                 <option value="E-3" className="bg-white">E-3 (Pekerjaan Pihak III / Binatang)</option>
                 <option value="E-4" className="bg-white">E-4 (Layang-layang / Umbul-umbul, DLL)</option>
-                <option value="E-5" className="bg-white">E-5 (Tidak Ditemukan)</option>
+                <option value="E-5" className="bg-white">Tidak Ditemukan</option>
               </optgroup>
             </select>
           </div>

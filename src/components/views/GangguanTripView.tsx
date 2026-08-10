@@ -94,7 +94,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     'E-2': 'E-2 (Bencana Alam)',
     'E-3': 'E-3 (Pihak III/Binatang)',
     'E-4': 'E-4 (Layang-layang/Umbul-umbul)',
-    'E-5': 'E-5 (Tidak Ditemukan)'
+    'E-5': 'Tidak Ditemukan'
   };
 
   const pieData = Object.entries(codeCounts).map(([code, count]) => ({
@@ -536,7 +536,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             <tbody className="divide-y divide-slate-100 font-medium">
               {matrixRowsData.map((row) => (
                 <tr key={row.code} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-3 py-2.5 text-left font-bold text-rose-600">{row.code}</td>
+                  <td className="px-3 py-2.5 text-left font-bold text-rose-600">{row.code === 'E-5' ? '-' : row.code}</td>
                   <td className="px-3 py-2.5 text-left text-slate-700 text-[11px] font-semibold">{row.label}</td>
                   {row.monthlyCounts.map((val, idx) => (
                     <td
@@ -653,7 +653,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                     <td className="px-4 py-3.5">
                       <span className="text-slate-700 font-semibold">{g.relayBekerja}</span>
                       <span className="ml-1.5 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">
-                        {g.kodeGangguan}
+                        {g.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : g.kodeGangguan}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500">
