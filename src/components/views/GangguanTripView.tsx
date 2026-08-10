@@ -50,8 +50,6 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [selectedYear, setSelectedYear] = useState('2026');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
 
-  const totalTrip = gangguanList.length;
-
   const tripPangkalList = gangguanList.filter((g) => {
     const p = penyulangList.find(
       (item) => item.namaPenyulang.toLowerCase() === (g.namaPenyulang || '').toLowerCase()
@@ -59,31 +57,116 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     return p?.status === 'Utama' || (g.namaPenyulang || '').toUpperCase().includes('UTAMA');
   });
 
-  // Chart 1 Data: Proportion by Code
-  const codeCounts: Record<string, number> = {};
-  gangguanList.forEach((g) => {
-    codeCounts[g.kodeGangguan] = (codeCounts[g.kodeGangguan] || 0) + 1;
+  const rawActiveList = activeGangguanTab === 'trip_pangkal' ? tripPangkalList : gangguanList;
+
+  const activeList = rawActiveList.filter((g) => {
+    if (!selectedYear) return true;
+    return (g.tanggal || '').startsWith(selectedYear);
   });
 
+  const totalTrip = activeList.length;
+
+  // Chart 1 Data: Proportion by Code
+  const codeCounts: Record<string, number> = {};
+  activeList.forEach((g) => {
+    const code = (g.kodeGangguan || 'E-5').trim().toUpperCase();
+    codeCounts[code] = (codeCounts[code] || 0) + 1;
+  });
+
+  const CODE_LABELS: Record<string, string> = {
+    'I-1': 'I-1 (Komponen JTM)',
+    'I-2': 'I-2 (Peralatan JTM)',
+    'I-3': 'I-3 (Trafo/Lainnya)',
+    'I-4': 'I-4 (Tiang)',
+    'E-1': 'E-1 (Pohon)',
+    'E-2': 'E-2 (Bencana Alam)',
+    'E-3': 'E-3 (Pihak III/Binatang)',
+    'E-4': 'E-4 (Layang-layang/Umbul-umbul)',
+    'E-5': 'E-5 (Tidak Ditemukan)'
+  };
+
   const pieData = Object.entries(codeCounts).map(([code, count]) => ({
-    name: code === 'E-3' ? 'E-3 (Pihak III/Binatang)' : code,
+    name: CODE_LABELS[code] || code,
     value: count
   }));
 
-  const COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#a855f7'];
+  const COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#a855f7', '#8b5cf6', '#ec4899'];
+
+  // Dominant Code calculation
+  let dominantCode = '-';
+  let maxCodeCount = 0;
+  Object.entries(codeCounts).forEach(([code, count]) => {
+    if (count > maxCodeCount) {
+      maxCodeCount = count;
+      dominantCode = CODE_LABELS[code] || code;
+    }
+  });
+
+  // Penyulang Rawan calculation
+  const penyulangCounts: Record<string, number> = {};
+  activeList.forEach((g) => {
+    const pName = g.namaPenyulang || 'Unknown';
+    penyulangCounts[pName] = (penyulangCounts[pName] || 0) + 1;
+  });
+  let rawanPenyulang = '-';
+  let maxPenyulangCount = 0;
+  Object.entries(penyulangCounts).forEach(([pName, count]) => {
+    if (count > maxPenyulangCount) {
+      maxPenyulangCount = count;
+      rawanPenyulang = pName;
+    }
+  });
 
   // Chart 2 Data: Monthly Trend
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
   const monthlyData = months.map((m, idx) => {
-    const count = gangguanList.filter((g) => {
-      const monthNum = new Date(g.tanggal).getMonth();
-      return monthNum === idx;
+    const count = activeList.filter((g) => {
+      const parts = (g.tanggal || '').split('-');
+      if (parts.length >= 2) {
+        return parseInt(parts[1], 10) - 1 === idx;
+      }
+      return false;
     }).length;
     return { name: m, gangguan: count };
   });
 
-  // Filtered Table List
-  const filteredList = gangguanList.filter((g) => {
+  // Matrix calculation per Code & Month
+  const DEFAULT_MATRIX_CODES = [
+    { code: 'I-1', label: 'KOMPONEN JTM' },
+    { code: 'I-2', label: 'PERALATAN JTM' },
+    { code: 'I-3', label: 'TRAFO DAN LAINNYA' },
+    { code: 'I-4', label: 'TIANG' },
+    { code: 'E-1', label: 'POHON / ROW' },
+    { code: 'E-2', label: 'BENCANA ALAM' },
+    { code: 'E-3', label: 'PEKERJAAN PIHAK III / BINATANG' },
+    { code: 'E-4', label: 'LAYANG-LAYANG / UMBUL-UMBUL, DLL' },
+    { code: 'E-5', label: 'TIDAK DITEMUKAN' }
+  ];
+
+  const matrixRowsData = DEFAULT_MATRIX_CODES.map((rowDef) => {
+    const monthlyCounts = Array(12).fill(0);
+    activeList.forEach((g) => {
+      if ((g.kodeGangguan || '').trim().toUpperCase() === rowDef.code.toUpperCase()) {
+        const parts = (g.tanggal || '').split('-');
+        if (parts.length >= 2) {
+          const mIdx = parseInt(parts[1], 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            monthlyCounts[mIdx] += 1;
+          }
+        }
+      }
+    });
+    const totalRow = monthlyCounts.reduce((a, b) => a + b, 0);
+    return { ...rowDef, monthlyCounts, totalRow };
+  });
+
+  const monthlyTotalSums = months.map((_, idx) =>
+    matrixRowsData.reduce((acc, row) => acc + row.monthlyCounts[idx], 0)
+  );
+  const overallMatrixTotal = matrixRowsData.reduce((acc, row) => acc + row.totalRow, 0);
+
+  // Filtered Table List for search
+  const filteredList = activeList.filter((g) => {
     return (
       (g.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (g.section || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,7 +226,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
         kronisCount={penyulangList.filter((p) => p.healthIndexStatus === 'Kronis').length}
       />
 
-      {/* Header Bar */}
+      {/* Header & Filter Bar */}
       <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -159,7 +242,32 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tab Selector */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setActiveGangguanTab('semua')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeGangguanTab === 'semua'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({gangguanList.length})
+            </button>
+            <button
+              onClick={() => setActiveGangguanTab('trip_pangkal')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                activeGangguanTab === 'trip_pangkal'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Trip Pangkal ({tripPangkalList.length})</span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
             <span className="text-slate-500">Tahun:</span>
             <select
@@ -180,7 +288,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
           <div>
             <span className="text-[10px] font-bold uppercase text-rose-600 tracking-wider">TOTAL GANGGUAN</span>
             <div className="text-3xl font-extrabold text-slate-900 mt-1">{totalTrip} <span className="text-xs font-semibold text-rose-600">Kali Trip</span></div>
-            <span className="text-[11px] text-slate-400">Periode 1 Tahun {selectedYear}</span>
+            <span className="text-[11px] text-slate-400">Periode Tahun {selectedYear} ({activeGangguanTab === 'trip_pangkal' ? 'Trip Pangkal' : 'Semua'})</span>
           </div>
           <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
             <Zap className="w-6 h-6" />
@@ -190,16 +298,16 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
         <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl flex justify-between items-center">
           <div>
             <span className="text-[10px] font-bold uppercase text-amber-600 tracking-wider">KODE DOMINAN</span>
-            <div className="text-base font-extrabold text-slate-900 mt-1">E-3 (PIHAK III / BINATANG)</div>
-            <span className="text-[11px] text-slate-400">Frekuensi: {totalTrip} Kejadian</span>
+            <div className="text-base font-extrabold text-slate-900 mt-1 uppercase">{dominantCode}</div>
+            <span className="text-[11px] text-slate-400">Frekuensi: {maxCodeCount} Kejadian</span>
           </div>
         </div>
 
         <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl flex justify-between items-center">
           <div>
             <span className="text-[10px] font-bold uppercase text-blue-600 tracking-wider">PENYULANG RAWAN</span>
-            <div className="text-xl font-extrabold text-slate-900 mt-1">TULEHU</div>
-            <span className="text-[11px] text-slate-400">Total Trip: 1 Kali</span>
+            <div className="text-xl font-extrabold text-slate-900 mt-1 uppercase">{rawanPenyulang}</div>
+            <span className="text-[11px] text-slate-400">Total Trip: {maxPenyulangCount} Kali</span>
           </div>
         </div>
       </div>
@@ -274,7 +382,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             📊 MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN
           </h3>
           <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
-            TOTAL KESELURUHAN: {totalTrip} KEJADIAN
+            TOTAL KESELURUHAN: {overallMatrixTotal} KEJADIAN
           </span>
         </div>
 
@@ -291,24 +399,44 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              <tr className="hover:bg-slate-50">
-                <td className="px-3 py-2.5 text-left font-bold text-rose-600">E-3</td>
-                <td className="px-3 py-2.5 text-left text-slate-600 text-[11px]">PEKERJAAN PIHAK III / BINATANG</td>
-                <td className="px-2 py-2.5">1</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5 font-bold text-emerald-700 bg-emerald-50">1</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-2 py-2.5">-</td>
-                <td className="px-3 py-2.5 font-bold bg-blue-50 text-blue-700 text-xs">2</td>
-              </tr>
+              {matrixRowsData.map((row) => (
+                <tr key={row.code} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-2.5 text-left font-bold text-rose-600">{row.code}</td>
+                  <td className="px-3 py-2.5 text-left text-slate-700 text-[11px] font-semibold">{row.label}</td>
+                  {row.monthlyCounts.map((val, idx) => (
+                    <td
+                      key={idx}
+                      className={`px-2 py-2.5 ${
+                        val > 0 ? 'font-bold text-emerald-700 bg-emerald-50' : 'text-slate-400'
+                      }`}
+                    >
+                      {val > 0 ? val : '-'}
+                    </td>
+                  ))}
+                  <td className={`px-3 py-2.5 font-bold text-xs ${row.totalRow > 0 ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-400'}`}>
+                    {row.totalRow}
+                  </td>
+                </tr>
+              ))}
             </tbody>
+            <tfoot className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
+              <tr>
+                <td colSpan={2} className="px-3 py-2.5 text-left uppercase tracking-wider text-[11px]">
+                  JUMLAH TOTAL PER BULAN
+                </td>
+                {monthlyTotalSums.map((sum, idx) => (
+                  <td
+                    key={idx}
+                    className={`px-2 py-2.5 ${sum > 0 ? 'text-blue-700 bg-blue-100/50' : 'text-slate-400'}`}
+                  >
+                    {sum > 0 ? sum : '-'}
+                  </td>
+                ))}
+                <td className="px-3 py-2.5 bg-blue-600 text-white font-extrabold text-xs">
+                  {overallMatrixTotal}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

@@ -119,8 +119,8 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md font-sans">
-      <div className="relative w-full max-w-lg max-h-[90vh] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-800 flex flex-col my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-12 bg-slate-950/70 backdrop-blur-md font-sans overflow-y-auto">
+      <div className="relative w-full max-w-lg max-h-[85vh] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-800 flex flex-col my-auto">
         
         {/* Modal Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-100 shrink-0">
@@ -315,11 +315,19 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               onChange={(e) => setKodeGangguan(e.target.value)}
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer"
             >
-              <option value="E-1" className="bg-white">E-1 (Pohon / ROW Pohon Tumbang)</option>
-              <option value="E-2" className="bg-white">E-2 (Sambaran Petir / Overvoltage)</option>
-              <option value="E-3" className="bg-white">E-3 (Pekerjaan Pihak III / Binatang)</option>
-              <option value="E-4" className="bg-white">E-4 (Kerusakan Material / Isolator / Arrester)</option>
-              <option value="E-5" className="bg-white">E-5 (Lain-lain / Tidak Ditemukan)</option>
+              <optgroup label="Internal (I)">
+                <option value="I-1" className="bg-white">I-1 (Komponen JTM)</option>
+                <option value="I-2" className="bg-white">I-2 (Peralatan JTM)</option>
+                <option value="I-3" className="bg-white">I-3 (Trafo dan Lainnya)</option>
+                <option value="I-4" className="bg-white">I-4 (Tiang)</option>
+              </optgroup>
+              <optgroup label="Eksternal (E)">
+                <option value="E-1" className="bg-white">E-1 (Pohon)</option>
+                <option value="E-2" className="bg-white">E-2 (Bencana Alam)</option>
+                <option value="E-3" className="bg-white">E-3 (Pekerjaan Pihak III / Binatang)</option>
+                <option value="E-4" className="bg-white">E-4 (Layang-layang / Umbul-umbul, DLL)</option>
+                <option value="E-5" className="bg-white">E-5 (Tidak Ditemukan)</option>
+              </optgroup>
             </select>
           </div>
 

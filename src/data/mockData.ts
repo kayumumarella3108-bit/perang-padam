@@ -78,7 +78,7 @@ export const INITIAL_GANGGUAN: GangguanLog[] = [
     arusT: 510,
     arusIN: 72,
     penyebab: 'Tidak Ditemukan',
-    kodeGangguan: 'E-3',
+    kodeGangguan: 'E-5',
     detailLokasi: 'Tiang LTR2-45 s/d LTR2-52',
     catatan: 'Penelusuran jalur completed, penormalan bertahap.'
   },
@@ -97,7 +97,7 @@ export const INITIAL_GANGGUAN: GangguanLog[] = [
     arusT: 184,
     arusIN: 397,
     penyebab: 'Burung Pada SUTM / Pohon Tumbang',
-    kodeGangguan: 'E-3',
+    kodeGangguan: 'E-1',
     detailLokasi: 'Lokasi Tulehu Kampung Baru',
     catatan: 'Pembersihan bangkai burung dan pemangkasan dahan pohon.'
   }
