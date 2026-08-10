@@ -90,7 +90,7 @@ export default function App() {
         namaPenyulang: t1.penyulang || '-',
         lokasi: t1.section || '-',
         temuan: t1.konstruksi || t1.temuanRow || '-',
-        kondisi: (t1.konstruksi && t1.konstruksi.toLowerCase().includes('retak')) ? 'Berat' : 'Sedang',
+        kondisi: (t1.konstruksi && t1.konstruksi.toLowerCase().includes('retak')) ? 'Berat' : 'Ringan',
         tanggalInspeksi: t1.tanggal,
         petugas: 'Tim Tier 1'
       });
@@ -1083,6 +1083,8 @@ export default function App() {
               inspeksiList={inspeksiList}
               saidiList={saidiList}
               activities={activities}
+              stokList={stokList}
+              spkList={spkList}
               onSelectView={setActiveView}
             />
           )}

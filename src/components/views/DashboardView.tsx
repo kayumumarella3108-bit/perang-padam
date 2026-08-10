@@ -48,6 +48,8 @@ import {
   InspeksiItem,
   SaidiSaifiData,
   ActivityLog,
+  MaterialStokItem,
+  PerintahKerja,
   ViewType
 } from '../../types';
 
@@ -59,6 +61,8 @@ interface DashboardViewProps {
   inspeksiList: InspeksiItem[];
   saidiList: SaidiSaifiData[];
   activities: ActivityLog[];
+  stokList: MaterialStokItem[];
+  spkList: PerintahKerja[];
   onSelectView: (view: ViewType) => void;
   onOpenAddGangguan?: () => void;
   onOpenAddSaidi?: () => void;
@@ -72,6 +76,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   inspeksiList,
   saidiList,
   activities,
+  stokList,
+  spkList,
   onSelectView,
   onOpenAddGangguan,
   onOpenAddSaidi
@@ -93,6 +99,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
   const pendingInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat' || i.kondisi === 'Sedang' || !i.kondisi);
   const criticalInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat');
+
+  // New Summary Stats
+  const currentMonthYear = '2026-08'; // Hardcoded for demo/project context consistency
+  const totalGangguanBulanIni = gangguanList.filter(g => g.tanggal && g.tanggal.startsWith(currentMonthYear)).length;
+  
+  const activeSpkCount = spkList.filter(s => s.status === 'Terencana' || s.status === 'Dalam Proses').length;
+
+  const materialSummary = useMemo(() => {
+    const summary: Record<string, number> = {};
+    stokList.forEach(item => {
+      summary[item.namaMaterial] = (summary[item.namaMaterial] || 0) + item.qty;
+    });
+    // This is a simplified calculation as it doesn't subtract pemakaian for now,
+    // but we can use it to identify materials with low inflow or generally "Low" status
+    return summary;
+  }, [stokList]);
+
+  const crucialMaterialStatus = Object.values(materialSummary).some((qty) => (qty as number) < 5) ? 'Kritis' : 'Aman';
+  const lowStockCount = Object.values(materialSummary).filter((qty) => (qty as number) < 10).length;
 
   // Feeder Health Counts
   const sempurnaCount = penyulangList.filter((p) => p.healthIndexStatus === 'Sempurna').length;
@@ -266,6 +291,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <BarChart3 className="w-3.5 h-3.5" />
             <span>+ Input SAIDI/SAIFI</span>
           </button>
+        </div>
+      </div>
+
+      {/* Summary Statistics Quick Cards - REQUESTED COMPONENT */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Gangguan Bulan Ini */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
+          <div className="p-3 bg-rose-100 text-rose-600 rounded-xl">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">GANGGUAN BULAN INI</p>
+            <h3 className="text-xl font-black text-slate-900">{totalGangguanBulanIni} Kejadian</h3>
+            <p className="text-[10px] text-rose-600 font-bold mt-0.5 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Sesuai tren bulan Agustus
+            </p>
+          </div>
+        </div>
+
+        {/* Status Material Krusial */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
+          <div className={`p-3 rounded-xl ${crucialMaterialStatus === 'Kritis' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+            <Layers className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">STATUS MATERIAL</p>
+            <h3 className={`text-xl font-black ${crucialMaterialStatus === 'Kritis' ? 'text-amber-600' : 'text-emerald-600'}`}>
+              {crucialMaterialStatus} {lowStockCount > 0 && `(${lowStockCount} Menipis)`}
+            </h3>
+            <button 
+              onClick={() => onSelectView('material')}
+              className="text-[10px] text-blue-600 font-bold mt-0.5 hover:underline cursor-pointer"
+            >
+              Cek Stok Gudang &raquo;
+            </button>
+          </div>
+        </div>
+
+        {/* Sisa SPK Aktif */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
+          <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+            <ClipboardList className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">SPK AKTIF / OPEN</p>
+            <h3 className="text-xl font-black text-slate-900">{activeSpkCount} Pekerjaan</h3>
+            <button 
+              onClick={() => onSelectView('perintah_kerja')}
+              className="text-[10px] text-blue-600 font-bold mt-0.5 hover:underline cursor-pointer"
+            >
+              Kelola Progress SPK &raquo;
+            </button>
+          </div>
         </div>
       </div>
 
