@@ -173,6 +173,74 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({
 
   return (
     <div className="p-4 md:p-6 space-y-5 bg-slate-950 text-slate-100 font-sans min-h-screen">
+      {/* Filter Toolbar */}
+      <div className="p-4 bg-slate-900 border border-slate-800 shadow-sm rounded-2xl flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold">
+            <span className="text-slate-400">Tahun:</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="bg-transparent text-slate-200 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="Semua Tahun">Semua Tahun</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold">
+            <span className="text-slate-400">Bulan:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-slate-200 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="Semua Bulan">Semua Bulan</option>
+              <option value="Januari">Januari</option>
+              <option value="Februari">Februari</option>
+              <option value="Maret">Maret</option>
+              <option value="April">April</option>
+              <option value="Mei">Mei</option>
+              <option value="Juni">Juni</option>
+              <option value="Juli">Juli</option>
+              <option value="Agustus">Agustus</option>
+              <option value="September">September</option>
+              <option value="Oktober">Oktober</option>
+              <option value="November">November</option>
+              <option value="Desember">Desember</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold">
+            <span className="text-slate-400">Status:</span>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-transparent text-slate-200 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="Semua Status">Semua Status</option>
+              <option value="Sempurna">Sempurna</option>
+              <option value="Sehat">Sehat</option>
+              <option value="Sakit">Sakit</option>
+              <option value="Kronis">Kronis</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative min-w-[240px]">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nama penyulang..."
+            className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+          />
+        </div>
+      </div>
+
       {/* Top Banner */}
       <HealthIndexBanner
         totalCount={penyulangList.length}
@@ -233,74 +301,6 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({
           <span className="text-[10px] font-black uppercase text-rose-400">KRONIS</span>
           <div className="text-2xl font-black text-rose-400 mt-1">{kronisCount}</div>
           <span className="text-[10px] text-slate-500">&gt;= 7 Gangguan</span>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="p-4 bg-white border border-slate-200 shadow-sm rounded-2xl flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-            <span className="text-slate-500">Tahun:</span>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-              <option value="Semua Tahun">Semua Tahun</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-            <span className="text-slate-500">Bulan:</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="Semua Bulan">Semua Bulan</option>
-              <option value="Januari">Januari</option>
-              <option value="Februari">Februari</option>
-              <option value="Maret">Maret</option>
-              <option value="April">April</option>
-              <option value="Mei">Mei</option>
-              <option value="Juni">Juni</option>
-              <option value="Juli">Juli</option>
-              <option value="Agustus">Agustus</option>
-              <option value="September">September</option>
-              <option value="Oktober">Oktober</option>
-              <option value="November">November</option>
-              <option value="Desember">Desember</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-            <span className="text-slate-500">Status:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="Semua Status">Semua Status</option>
-              <option value="Sempurna">Sempurna</option>
-              <option value="Sehat">Sehat</option>
-              <option value="Sakit">Sakit</option>
-              <option value="Kronis">Kronis</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Search Input */}
-        <div className="relative min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama penyulang..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-          />
         </div>
       </div>
 
