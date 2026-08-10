@@ -195,15 +195,15 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
             </div>
           `;
         } else {
-          // Default / PENYULANG -> Biru
-          markerColor = '#3b82f6'; // Biru Penyulang
-          borderColor = '#dbeafe';
+          // Default / PENYULANG -> Menggunakan Warna Pilihan File Import / Layer Peta
+          markerColor = layer.color || '#3b82f6';
+          borderColor = '#ffffff';
           radius = 8;
           weight = 2;
           statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-              🔵 PENYULANG 20kV (BIRU)
+            <div class="mt-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-black text-[11px] flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${markerColor}"></span>
+              📍 WARNA LAYER IMPORT (${layer.nama})
             </div>
           `;
         }
@@ -238,15 +238,16 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 
             <div class="mt-2.5 pt-2 border-t border-slate-200 space-y-1">
               <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Pilihan Status Tiang:
+                Pilihan Status / Warna Tiang:
               </div>
               <div class="grid grid-cols-1 gap-1">
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PENYULANG')"
-                  class="w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  class="w-full py-1.5 px-2 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all hover:brightness-110"
+                  style="background-color: ${layer.color || '#3b82f6'}"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
-                  🔵 Penyulang 20kV (Biru)
+                  📍 Warna Layer File (${layer.nama})
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'POHON')"
@@ -276,12 +277,12 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                   <span class="w-2 h-2 rounded-full bg-white"></span>
                   🔧 Lokasi Pemeliharaan (Oranye)
                 </button>
-                ${manualStatus !== 'NORMAL' && manualStatus !== 'PENYULANG' ? `
+                ${manualStatus !== 'NORMAL' ? `
                   <button
                     onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'NORMAL')"
                     class="w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
                   >
-                    ✓ Reset Ke Default
+                    ✓ Reset Ke Default File
                   </button>
                 ` : ''}
               </div>
@@ -568,9 +569,11 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                   </button>
 
                   {/* Color Pill */}
-                  <div
-                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
-                    style={{ backgroundColor: layer.color }}
+                  <button
+                    onClick={() => setEditingLayer(layer)}
+                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 hover:scale-125 transition-transform cursor-pointer"
+                    style={{ backgroundColor: layer.color || '#3b82f6' }}
+                    title="Ubah warna marker file peta"
                   />
 
                   {/* Text Details */}
@@ -787,14 +790,14 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[
-                    { color: '#10b981', label: 'Emerald' },
-                    { color: '#3b82f6', label: 'Blue' },
-                    { color: '#a855f7', label: 'Purple' },
-                    { color: '#f59e0b', label: 'Amber' },
+                    { color: '#22c55e', label: 'Hijau (Pohon / ROW)' },
+                    { color: '#3b82f6', label: 'Biru (Penyulang Utama)' },
+                    { color: '#a855f7', label: 'Ungu (Temuan Konstruksi)' },
+                    { color: '#f59e0b', label: 'Kuning / Amber' },
                     { color: '#ec4899', label: 'Pink' },
                     { color: '#06b6d4', label: 'Cyan' },
-                    { color: '#f97316', label: 'Orange' },
-                    { color: '#e11d48', label: 'Rose' }
+                    { color: '#f97316', label: 'Oranye (Pemeliharaan)' },
+                    { color: '#ef4444', label: 'Merah (Lokasi Gangguan)' }
                   ].map((c) => (
                     <button
                       key={c.color}
