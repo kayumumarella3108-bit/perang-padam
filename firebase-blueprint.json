@@ -263,6 +263,20 @@
         "lastUpdate": { "type": "string" }
       },
       "required": ["id", "namaPenyulang"]
+    },
+    "JadwalPiket": {
+      "title": "JadwalPiket",
+      "description": "Officer shift schedule",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "namaPetugas": { "type": "string" },
+        "noHp": { "type": "string" },
+        "unit": { "type": "string" },
+        "jadwal": { "type": "object" },
+        "lastUpdate": { "type": "string" }
+      },
+      "required": ["id", "namaPetugas"]
     }
   },
   "firestore": {
@@ -329,6 +343,10 @@
     "aset_jaringan": {
       "schema": "AsetJaringan",
       "description": "Network asset inventory for JTM and JTR"
+    },
+    "jadwal_piket": {
+      "schema": "JadwalPiket",
+      "description": "Staff shift schedules"
     }
   }
 }

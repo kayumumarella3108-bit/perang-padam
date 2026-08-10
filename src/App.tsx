@@ -20,7 +20,8 @@ import {
   MasterGardu,
   PengukuranGardu,
   KendaraanOperasional,
-  AsetJaringan
+  AsetJaringan,
+  JadwalPiket
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -42,7 +43,8 @@ import {
   INITIAL_MASTER_GARDU,
   INITIAL_PENGUKURAN_GARDU,
   INITIAL_KENDARAAN_OPERASIONAL,
-  INITIAL_ASET_JARINGAN
+  INITIAL_ASET_JARINGAN,
+  INITIAL_JADWAL_PIKET
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { Lock } from 'lucide-react';
@@ -65,6 +67,7 @@ import { PerintahKerjaView } from './components/views/PerintahKerjaView';
 import { PengukuranGarduView } from './components/views/PengukuranGarduView';
 import { KendaraanOperasionalView } from './components/views/KendaraanOperasionalView';
 import { AsetJaringanView } from './components/views/AsetJaringanView';
+import { JadwalPiketView } from './components/views/JadwalPiketView';
 
 export default function App() {
   // Authentication state
@@ -134,6 +137,7 @@ export default function App() {
   // Monitoring Kendaraan Operasional State
   const [kendaraanList, setKendaraanList] = useState<KendaraanOperasional[]>(() => filterDeleted(INITIAL_KENDARAAN_OPERASIONAL));
   const [asetJaringanList, setAsetJaringanList] = useState<AsetJaringan[]>(() => filterDeleted(INITIAL_ASET_JARINGAN));
+  const [jadwalPiketList, setJadwalPiketList] = useState<JadwalPiket[]>(() => filterDeleted(INITIAL_JADWAL_PIKET));
 
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
@@ -270,6 +274,16 @@ export default function App() {
         // Seed kendaraan operasional
         for (const item of INITIAL_KENDARAAN_OPERASIONAL) {
           await setDoc(doc(db, 'kendaraan_operasional', item.id), item);
+        }
+
+        // Seed aset jaringan
+        for (const item of INITIAL_ASET_JARINGAN) {
+          await setDoc(doc(db, 'aset_jaringan', item.id), item);
+        }
+
+        // Seed jadwal piket
+        for (const item of INITIAL_JADWAL_PIKET) {
+          await setDoc(doc(db, 'jadwal_piket', item.id), item);
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -462,8 +476,14 @@ export default function App() {
     // Aset Jaringan Sync
     const unsubscribeAset = onSnapshot(collection(db, 'aset_jaringan'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsetJaringan));
-      if (list.length > 0) setAsetJaringanList(filterDeleted(list));
+      setAsetJaringanList(filterDeleted(list));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'aset_jaringan'));
+
+    // Jadwal Piket Sync
+    const unsubscribeJadwal = onSnapshot(collection(db, 'jadwal_piket'), (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JadwalPiket));
+      setJadwalPiketList(filterDeleted(list));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'jadwal_piket'));
 
     return () => {
       unsubStok();
@@ -485,6 +505,7 @@ export default function App() {
       unsubMasterGardu();
       unsubPengukuran();
       unsubscribeAset();
+      unsubscribeJadwal();
     };
   }, []);
 
@@ -1078,8 +1099,10 @@ export default function App() {
     setAsetJaringanList(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
     try {
       const docRef = doc(db, 'aset_jaringan', id);
-      const existing = asetJaringanList.find(a => a.id === id);
-      if (existing) await setDoc(docRef, { ...existing, ...data });
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        await setDoc(docRef, { ...snap.data(), ...data });
+      }
     } catch (err) {
       console.error('Error updating Aset Jaringan to Firestore:', err);
     }
@@ -1095,6 +1118,44 @@ export default function App() {
       console.error('Error deleting Aset Jaringan from Firestore:', err);
     }
     logActivity('Menghapus data Aset Jaringan', 'Aset Jaringan');
+  };
+
+  // Jadwal Piket Handlers
+  const handleAddJadwal = async (data: Omit<JadwalPiket, 'id'>) => {
+    const id = `jp-${Date.now()}`;
+    const newJadwal = { id, ...data };
+    setJadwalPiketList(prev => [newJadwal, ...prev]);
+    try {
+      await setDoc(doc(db, 'jadwal_piket', id), newJadwal);
+    } catch (err) {
+      console.error('Error saving Jadwal Piket to Firestore:', err);
+    }
+    logActivity(`Tambah Jadwal Piket: ${data.namaPetugas}`, 'Jadwal Piket');
+  };
+
+  const handleUpdateJadwal = async (id: string, data: Partial<JadwalPiket>) => {
+    setJadwalPiketList(prev => prev.map(j => j.id === id ? { ...j, ...data } : j));
+    try {
+      const docRef = doc(db, 'jadwal_piket', id);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        await setDoc(docRef, { ...snap.data(), ...data });
+      }
+    } catch (err) {
+      console.error('Error updating Jadwal Piket in Firestore:', err);
+    }
+    logActivity(`Update Jadwal Piket: ${data.namaPetugas || id}`, 'Jadwal Piket');
+  };
+
+  const handleDeleteJadwal = async (id: string) => {
+    registerDeletedId(id);
+    setJadwalPiketList(prev => prev.filter(j => j.id !== id));
+    try {
+      await deleteDoc(doc(db, 'jadwal_piket', id));
+    } catch (err) {
+      console.error('Error deleting Jadwal Piket from Firestore:', err);
+    }
+    logActivity('Menghapus data Jadwal Piket', 'Jadwal Piket');
   };
 
   // If not logged in, display Login Screen
@@ -1243,6 +1304,15 @@ export default function App() {
               onAdd={handleAddAset}
               onUpdate={handleUpdateAset}
               onDelete={handleDeleteAset}
+            />
+          )}
+
+          {activeView === 'jadwal_piket' && (
+            <JadwalPiketView
+              jadwalList={jadwalPiketList}
+              onAdd={handleAddJadwal}
+              onUpdate={handleUpdateJadwal}
+              onDelete={handleDeleteJadwal}
             />
           )}
 

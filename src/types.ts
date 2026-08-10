@@ -18,6 +18,7 @@ export type ViewType =
   | 'sld_visio'
   | 'peta'
   | 'aset_jaringan'
+  | 'jadwal_piket'
   | 'gangguan';
 
 export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'log_aktivitas';
@@ -349,5 +350,14 @@ export interface AsetJaringan {
   scada: number;
   nonScada: number;
   panjangJtr: number;
+  lastUpdate: string;
+}
+
+export interface JadwalPiket {
+  id: string;
+  namaPetugas: string;
+  noHp: string;
+  unit: string;
+  jadwal: { [key: string]: string }; // key: date (ISO string or day number), value: shift (P, S, M, L)
   lastUpdate: string;
 }

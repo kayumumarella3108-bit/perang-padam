@@ -18,7 +18,8 @@ import {
   MasterGardu,
   PengukuranGardu,
   KendaraanOperasional,
-  AsetJaringan
+  AsetJaringan,
+  JadwalPiket
 } from '../types';
 
 export const INITIAL_PENYULANG: Penyulang[] = [
@@ -752,5 +753,38 @@ export const INITIAL_ASET_JARINGAN: AsetJaringan[] = [
     nonScada: 2,
     panjangJtr: 18.2,
     lastUpdate: '2026-02-09T08:00:00Z'
+  }
+];
+
+export const INITIAL_JADWAL_PIKET: JadwalPiket[] = [
+  {
+    id: 'jp_1',
+    namaPetugas: 'AKRAMANTO RIDWAN',
+    noHp: '081234567890',
+    unit: 'ULC BAGUALA',
+    jadwal: {
+      '14': 'L', '15': 'L', '16': 'P', '17': 'P', '18': 'S', '19': 'S', '20': 'M', '21': 'M', '22': 'L', '23': 'L'
+    },
+    lastUpdate: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'jp_2',
+    namaPetugas: 'LA ODE DARMIN',
+    noHp: '081234567891',
+    unit: 'ULC BAGUALA',
+    jadwal: {
+      '14': 'P', '15': 'P', '16': 'S', '17': 'S', '18': 'M', '19': 'M', '20': 'L', '21': 'L', '22': 'P', '23': 'P'
+    },
+    lastUpdate: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'jp_3',
+    namaPetugas: 'DEDI WAEL',
+    noHp: '081234567892',
+    unit: 'KP POKA',
+    jadwal: {
+      '14': 'L', '15': 'L', '16': 'P', '17': 'P', '18': 'M', '19': 'M', '20': 'M', '21': 'L', '22': 'L', '23': 'P'
+    },
+    lastUpdate: '2026-08-01T08:00:00Z'
   }
 ];

@@ -110,5 +110,10 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /jadwal_piket/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

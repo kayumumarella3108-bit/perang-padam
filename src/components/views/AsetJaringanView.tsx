@@ -398,21 +398,25 @@ export const AsetJaringanView: React.FC<AsetJaringanViewProps> = ({
                     <td className="px-4 py-4 text-sm text-slate-600 text-center font-medium">{item.scada}</td>
                     <td className="px-4 py-4 text-sm text-slate-600 text-center font-medium">{item.nonScada}</td>
                     <td className="px-4 py-4 text-sm text-slate-600 text-center font-medium">{item.panjangJtr.toFixed(3)}</td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-4 py-4 text-center border-l border-slate-100">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleEdit(item)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Edit"
+                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all cursor-pointer"
+                          title="Edit Aset"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => onDelete(item.id)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                          title="Hapus"
+                          onClick={() => {
+                            if (window.confirm('Hapus data aset ini?')) {
+                              onDelete(item.id);
+                            }
+                          }}
+                          className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all cursor-pointer"
+                          title="Hapus Aset"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
