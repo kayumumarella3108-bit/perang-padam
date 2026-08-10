@@ -9,15 +9,17 @@ export type ViewType =
   | 'pemeliharaan_20kv'
   | 'perintah_kerja'
   | 'master_data'
+  | 'pengukuran_gardu'
   | 'saidi_saifi'
   | 'material'
   | 'alker_apd'
+  | 'kendaraan_operasional'
   | 'kelola_user'
   | 'sld_visio'
   | 'peta'
   | 'gangguan';
 
-export type MasterTab = 'penyulang' | 'section' | 'log_aktivitas';
+export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'log_aktivitas';
 
 export interface Penyulang {
   id: string;
@@ -207,6 +209,7 @@ export interface AlkerApdItem {
   jumlah: number;
   kondisi: 'Baik' | 'Perlu Perbaikan' | 'Rusak';
   tanggalInput: string;
+  unit?: string;
   penanggungJawab?: string;
   catatan?: string;
 }
@@ -225,4 +228,104 @@ export interface PerintahKerja {
   timAtauPetugas?: string;
   catatan?: string;
   createdAt?: string;
+}
+
+export interface MasterGardu {
+  id: string;
+  unit: string; // Unit (e.g. ULP Baguala)
+  noGarduLama: string; // No Gardu Lama
+  noGarduBaru: string; // No Gardu Baru
+  alamatGardu: string; // ALAMAT GARDU
+  latt: number | string; // LATT
+  long: number | string; // LONG
+  ssotNumber: string; // Ssotnumber
+  penyulang: string; // Penyulang
+  daya: number; // Daya (kVA) e.g. 100, 160, 250, 400
+  jumlahFasa: '1 Fasa' | '3 Fasa' | string; // Jumlah Fasa
+}
+
+export interface JurusanData {
+  nama: string; // JURUSAN 1, JURUSAN 2, etc.
+  iRTotal: number;
+  iSTotal: number;
+  iTTotal: number;
+  iNTotal: number;
+  vRN: number;
+  vSN: number;
+  vTN: number;
+  vRS: number;
+  vST: number;
+  vRT: number;
+  iPeakR: number;
+  iPeakS: number;
+  iPeakT: number;
+  tpfR: number;
+  tpfS: number;
+  tpfT: number;
+  titikUkur: string;
+}
+
+export interface PengukuranGardu {
+  id: string;
+  garduId?: string;
+  noGardu: string; // No Gardu Baru / Lama
+  unit?: string;
+  penyulang?: string;
+  dayaKva?: number;
+  alamat?: string;
+  tanggalUkur: string; // Tanggal Ukur YYYY-MM-DD
+  petugas: string; // Petugas
+  
+  // Total / Main Trafo Measurements
+  iRTotal: number;
+  iSTotal: number;
+  iTTotal: number;
+  iNTotal: number;
+  vRN: number;
+  vSN: number;
+  vTN: number;
+  vRS: number;
+  vST: number;
+  vRT: number;
+  thdR: number;
+  thdS: number;
+  thdT: number;
+  iPeakR: number;
+  iPeakS: number;
+  iPeakT: number;
+  tpfR: number;
+  tpfS: number;
+  tpfT: number;
+
+  // Jurusan 1 s/d 4
+  jurusan1: JurusanData;
+  jurusan2: JurusanData;
+  jurusan3: JurusanData;
+  jurusan4: JurusanData;
+
+  createdAt?: string;
+}
+
+export interface MaterialKendaraan {
+  id?: string;
+  namaMaterial: string;
+  jumlah: number;
+  satuan: string;
+}
+
+export interface KendaraanOperasional {
+  id: string;
+  jenisKendaraan: 'Mobil Operasional' | 'Motor Operasional';
+  namaKendaraan: string;
+  noPolisi: string;
+  unit: string;
+  penanggungJawab: string;
+  kondisiKendaraan: 'Baik' | 'Perlu Perbaikan' | 'Rusak';
+  kondisiBan: 'Baik - Tebal' | 'Cukup' | 'Aus / Perlu Ganti';
+  kondisiAki: 'Normal - Baik' | 'Lemah' | 'Perlu Stroom / Ganti';
+  kebersihan: 'Sangat Bersih' | 'Bersih' | 'Kotor';
+  kilometer?: number;
+  tanggalPengecekan: string;
+  catatan?: string;
+  materials: MaterialKendaraan[];
 }

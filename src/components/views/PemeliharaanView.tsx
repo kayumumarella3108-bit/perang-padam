@@ -11,6 +11,8 @@ import {
   Download,
   FileSpreadsheet
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { ROWItem, InspeksiItem, ViewType, Tier1Item, Tier2Item, MonitoringPemeliharaanItem } from '../../types';
 import { exportToCSV } from '../../utils/exportCsv';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
@@ -354,6 +356,59 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
     }
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF('landscape');
+    doc.setFontSize(14);
+    let title = 'Laporan Pemeliharaan - PT PLN (Persero)';
+    
+    let headers: string[][] = [];
+    let dataRows: any[][] = [];
+
+    if (currentSubView === 'row') {
+      title = 'Laporan Pemeliharaan ROW / Pohon - PT PLN (Persero)';
+      headers = [['Tanggal', 'Penyulang', 'Section', 'Jml Temuan', 'Realisasi', 'Perlu Izin', 'Perlu Padam', 'Phn Besar', 'Luar Temuan']];
+      dataRows = rowData.map((r) => [
+        r.tanggal, r.penyulang, r.section, r.jumlahTemuanInspeksi, r.realisasiPangkas, r.perluIzin, r.perluPadam, r.pohonBesar, r.luarTemuan
+      ]);
+    } else if (currentSubView === 'inspeksi_tier1') {
+      title = 'Laporan Inspeksi Tier 1 (Visual) - PT PLN (Persero)';
+      headers = [['Tanggal', 'Penyulang', 'Section', 'Temuan ROW', 'Temuan Konstruksi']];
+      dataRows = tier1Data.map((t) => [
+        t.tanggal, t.penyulang, t.section, t.temuanRow, t.konstruksi
+      ]);
+    } else if (currentSubView === 'inspeksi_tier2') {
+      title = 'Laporan Inspeksi Tier 2 - PT PLN (Persero)';
+      headers = [['Tanggal', 'Penyulang', 'Section', 'Jenis Tier 2', 'Temuan Thermo/Ultrasound']];
+      dataRows = tier2Data.map((t) => [
+        t.tanggal, t.penyulang, t.section, t.jenisTier2, t.temuanThermoUltrasound
+      ]);
+    } else {
+      title = 'Monitoring Eksekusi Pemeliharaan - PT PLN (Persero)';
+      headers = [['Tanggal', 'Penyulang', 'Section', 'Jenis Pemeliharaan', 'Keterangan']];
+      dataRows = monitoringData.map((m) => [
+        m.tanggal, m.penyulang, m.section, m.jenisPemeliharaan, m.keteranganPekerjaan
+      ]);
+    }
+
+    doc.text(title, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+
+    autoTable(doc, {
+      head: headers,
+      body: dataRows,
+      startY: 28,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    const filename = title.replace(/ /g, '_').replace(/[^a-zA-Z0-9_]/g, '') + `_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+  };
+
   // Export CSV handler for active subview
   const handleExportCurrentPemeliharaan = () => {
     if (currentSubView === 'row') {
@@ -421,6 +476,14 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-red-600/20"
+            title="Unduh data laporan pemeliharaan ke format PDF"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export PDF</span>
+          </button>
           <button
             onClick={handleExportCurrentPemeliharaan}
             className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-emerald-700/20"

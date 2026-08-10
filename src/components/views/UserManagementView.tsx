@@ -660,9 +660,6 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
                 >
                   <option value="ULP Baguala">ULP Baguala</option>
-                  <option value="PLN Nusadaya">PLN Nusadaya</option>
-                  <option value="UP3 Ambon">UP3 Ambon</option>
-                  <option value="UIW Maluku & Maluku Utara">UIW Maluku & Maluku Utara</option>
                 </select>
               </div>
 

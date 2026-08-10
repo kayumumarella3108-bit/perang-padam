@@ -11,8 +11,9 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
-import {
-  PieChart,
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import {  PieChart,
   Pie,
   Cell,
   BarChart,
@@ -203,6 +204,43 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       (g.penyebab || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF('landscape');
+    doc.setFontSize(14);
+    doc.text('Data Laporan Gangguan Penyulang / Trip - PT PLN (Persero)', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+
+    const headers = [
+      ['Tanggal', 'Penyulang', 'Section', 'Jam Keluar', 'Jam Masuk', 'Durasi', 'Relay', 'Penyebab', 'Detail Lokasi']
+    ];
+
+    const dataRows = filteredList.map((g) => [
+      g.tanggal,
+      g.namaPenyulang,
+      g.section,
+      g.jamKeluar,
+      g.jamMasuk,
+      g.durasi || '-',
+      g.relayBekerja,
+      g.penyebabGangguan,
+      g.detailLokasi
+    ]);
+
+    autoTable(doc, {
+      head: headers,
+      body: dataRows,
+      startY: 28,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`Gangguan_Penyulang_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   // Export to CSV/Excel handler
   const handleExportGangguan = () => {
@@ -596,6 +634,14 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200">
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span>Import Excel/CSV</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-red-600/20"
+              title="Unduh data laporan gangguan ke format PDF"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
             <button
               onClick={handleExportGangguan}

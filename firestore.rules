@@ -90,5 +90,20 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /kendaraan_operasional/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /master_gardu/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /pengukuran_gardu/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

@@ -20,7 +20,9 @@ import {
   ChevronRight,
   Leaf,
   Lock,
-  FileText
+  FileText,
+  Gauge,
+  Car
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 
@@ -203,6 +205,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Perintah Kerja Harian (SPK)</span>
           </button>
 
+          {/* Pengukuran & Beban Gardu */}
+          <button
+            onClick={() => onSelectView('pengukuran_gardu')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+              activeView === 'pengukuran_gardu'
+                ? 'bg-blue-600/10 text-blue-400 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Gauge className={`w-4 h-4 shrink-0 ${activeView === 'pengukuran_gardu' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <span>Pengukuran & Beban Gardu</span>
+          </button>
+
           {/* Master Data */}
           <button
             onClick={() => onSelectView('master_data')}
@@ -253,6 +268,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Shield className={`w-4 h-4 shrink-0 ${activeView === 'alker_apd' ? 'text-blue-400' : 'text-slate-400'}`} />
             <span>Alat Kerja & APD</span>
+          </button>
+
+          {/* Monitoring Kendaraan Operasional */}
+          <button
+            onClick={() => onSelectView('kendaraan_operasional')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+              activeView === 'kendaraan_operasional'
+                ? 'bg-blue-600/10 text-blue-400 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Car className={`w-4 h-4 shrink-0 ${activeView === 'kendaraan_operasional' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <span>Kendaraan Operasional</span>
           </button>
 
           {/* Kelola User & Hak Akses */}

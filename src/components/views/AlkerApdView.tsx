@@ -34,6 +34,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
 }) => {
   const canEdit = currentUser ? canEditData(currentUser) : true;
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState<string>('Semua');
   const [selectedTipe, setSelectedTipe] = useState<'Semua' | 'Alat Kerja' | 'APD' | 'Alat Ukur'>('Semua');
   const [selectedKondisi, setSelectedKondisi] = useState<'Semua' | 'Baik' | 'Perlu Perbaikan' | 'Rusak'>('Semua');
 
@@ -46,6 +47,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
     jumlah: 1,
     kondisi: 'Baik' as 'Baik' | 'Perlu Perbaikan' | 'Rusak',
     tanggalInput: new Date().toISOString().split('T')[0],
+    unit: 'ULP Baguala',
     penanggungJawab: 'Tim Yantek ULP Baguala',
     catatan: ''
   });
@@ -53,13 +55,15 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
   const filteredList = alkerApdList.filter((item) => {
     const matchesSearch =
       (item.namaAlker || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.unit && item.unit.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.penanggungJawab && item.penanggungJawab.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.catatan && item.catatan.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const matchesUnit = selectedUnit === 'Semua' || (item.unit || 'ULP Baguala') === selectedUnit;
     const matchesTipe = selectedTipe === 'Semua' || item.tipe === selectedTipe;
     const matchesKondisi = selectedKondisi === 'Semua' || item.kondisi === selectedKondisi;
 
-    return matchesSearch && matchesTipe && matchesKondisi;
+    return matchesSearch && matchesUnit && matchesTipe && matchesKondisi;
   });
 
   // Analytics
@@ -78,6 +82,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
         jumlah: Number(form.jumlah),
         kondisi: form.kondisi,
         tanggalInput: form.tanggalInput,
+        unit: form.unit,
         penanggungJawab: form.penanggungJawab,
         catatan: form.catatan
       });
@@ -89,6 +94,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
         jumlah: Number(form.jumlah),
         kondisi: form.kondisi,
         tanggalInput: form.tanggalInput,
+        unit: form.unit,
         penanggungJawab: form.penanggungJawab,
         catatan: form.catatan
       };
@@ -127,7 +133,8 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
                 jumlah: 1,
                 kondisi: 'Baik',
                 tanggalInput: new Date().toISOString().split('T')[0],
-                penanggungJawab: 'Tim Yantek Baguala',
+                unit: 'ULP Baguala',
+                penanggungJawab: 'Tim Yantek ULP Baguala',
                 catatan: 'Gudang Alat ULP Baguala'
               });
               setShowModal(true);
@@ -186,6 +193,16 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
       {/* Filters & Search */}
       <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Unit Filter */}
+          <select
+            value={selectedUnit}
+            onChange={(e) => setSelectedUnit(e.target.value)}
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-700 focus:outline-none focus:border-purple-500"
+          >
+            <option value="Semua">Semua Unit PLN</option>
+            <option value="ULP Baguala">ULP Baguala</option>
+          </select>
+
           {/* Tipe Filter */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
             {(['Semua', 'Alat Kerja', 'APD', 'Alat Ukur'] as const).map((t) => (
@@ -244,7 +261,8 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
                 <th className="py-3 px-4">Tipe / Kategori</th>
                 <th className="py-3 px-4 text-center">Jumlah (Qty)</th>
                 <th className="py-3 px-4 text-center">Kondisi Alat</th>
-                <th className="py-3 px-4">Tanggal Input / Pemeliharaan</th>
+                <th className="py-3 px-4">Unit PLN</th>
+                <th className="py-3 px-4">Tanggal Input</th>
                 <th className="py-3 px-4">Penanggung Jawab</th>
                 <th className="py-3 px-4">Catatan / Lokasi</th>
                 <th className="py-3 px-4 text-center">Aksi</th>
@@ -253,7 +271,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
                     Belum ada data Alat Kerja & APD. Silakan klik tombol "+ Input Data".
                   </td>
                 </tr>
@@ -298,6 +316,11 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
                         </span>
                       )}
                     </td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-extrabold border border-blue-200/60">
+                        {item.unit || 'ULP Baguala'}
+                      </span>
+                    </td>
                     <td className="py-3.5 px-4 text-slate-600 font-medium">{item.tanggalInput}</td>
                     <td className="py-3.5 px-4 text-slate-800 font-bold">{item.penanggungJawab || '-'}</td>
                     <td className="py-3.5 px-4 text-slate-600">{item.catatan || '-'}</td>
@@ -312,6 +335,7 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
                               jumlah: item.jumlah,
                               kondisi: item.kondisi,
                               tanggalInput: item.tanggalInput,
+                              unit: item.unit || 'ULP Baguala',
                               penanggungJawab: item.penanggungJawab || '',
                               catatan: item.catatan || ''
                             });
@@ -422,15 +446,29 @@ export const AlkerApdView: React.FC<AlkerApdViewProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Penanggung Jawab / Tim</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Tim Yantek Baguala / Petugas A"
-                  value={form.penanggungJawab}
-                  onChange={(e) => setForm({ ...form, penanggungJawab: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Unit PLN</label>
+                  <select
+                    value={form.unit}
+                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 focus:outline-none focus:border-purple-500"
+                    required
+                  >
+                    <option value="ULP Baguala">ULP Baguala</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Penanggung Jawab / Tim</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Tim Yantek Baguala / Petugas A"
+                    value={form.penanggungJawab}
+                    onChange={(e) => setForm({ ...form, penanggungJawab: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-500"
+                  />
+                </div>
               </div>
 
               <div>

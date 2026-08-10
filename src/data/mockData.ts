@@ -14,7 +14,10 @@ import {
   Tier1Item,
   Tier2Item,
   MonitoringPemeliharaanItem,
-  PerintahKerja
+  PerintahKerja,
+  MasterGardu,
+  PengukuranGardu,
+  KendaraanOperasional
 } from '../types';
 
 export const INITIAL_PENYULANG: Penyulang[] = [
@@ -252,14 +255,14 @@ export const INITIAL_MATERIAL_PEMAKAIAN: MaterialPemakaianItem[] = [
 ];
 
 export const INITIAL_ALKER_APD: AlkerApdItem[] = [
-  { id: 'alker1', namaAlker: 'Full Body Harness K3 20kV', tipe: 'APD', jumlah: 12, kondisi: 'Baik', tanggalInput: '2026-01-15', penanggungJawab: 'Tim Yantek Baguala', catatan: 'Inspeksi rutin K3' },
-  { id: 'alker2', namaAlker: 'Helm Safety PLN K3 Electrical', tipe: 'APD', jumlah: 20, kondisi: 'Baik', tanggalInput: '2026-01-15', penanggungJawab: 'Tim Yantek & Pemeliharaan', catatan: 'Siap pakai' },
-  { id: 'alker3', namaAlker: 'Sarung Tangan Isolari 20kV Class 3', tipe: 'APD', jumlah: 8, kondisi: 'Baik', tanggalInput: '2026-01-20', penanggungJawab: 'Petugas Pekerjaan Bertegangan', catatan: 'Terkalibrasi s/d 2027' },
-  { id: 'alker4', namaAlker: 'Stick 20kV Teleskopik (20m)', tipe: 'Alat Kerja', jumlah: 5, kondisi: 'Baik', tanggalInput: '2026-01-10', penanggungJawab: 'Tim Pemeliharaan', catatan: 'Tersimpan di Mobil Yantek' },
-  { id: 'alker5', namaAlker: 'Tang Press Hidrolik 16-300mm2', tipe: 'Alat Kerja', jumlah: 3, kondisi: 'Perlu Perbaikan', tanggalInput: '2026-01-22', penanggungJawab: 'Tim Konstruksi', catatan: 'Oli hidrolik merembes' },
-  { id: 'alker6', namaAlker: 'Insulation Tester Megger 5kV', tipe: 'Alat Ukur', jumlah: 2, kondisi: 'Baik', tanggalInput: '2026-01-25', penanggungJawab: 'Tim Inspeksi 20kV', catatan: 'Terkalibrasi KAN' },
-  { id: 'alker7', namaAlker: 'Earth Tester Kyoritsu 4105A', tipe: 'Alat Ukur', jumlah: 3, kondisi: 'Baik', tanggalInput: '2026-01-28', penanggungJawab: 'Tim Pemeliharaan Gardu', catatan: 'Pengujian pentahanan' },
-  { id: 'alker8', namaAlker: 'Sepatu Safety High Voltage Class 2', tipe: 'APD', jumlah: 15, kondisi: 'Baik', tanggalInput: '2026-01-15', penanggungJawab: 'Tim Yantek Baguala', catatan: 'Perlengkapan wajib' }
+  { id: 'alker1', namaAlker: 'Full Body Harness K3 20kV', tipe: 'APD', jumlah: 12, kondisi: 'Baik', tanggalInput: '2026-01-15', unit: 'ULP Baguala', penanggungJawab: 'Tim Yantek Baguala', catatan: 'Inspeksi rutin K3' },
+  { id: 'alker2', namaAlker: 'Helm Safety PLN K3 Electrical', tipe: 'APD', jumlah: 20, kondisi: 'Baik', tanggalInput: '2026-01-15', unit: 'ULP Baguala', penanggungJawab: 'Tim Yantek & Pemeliharaan', catatan: 'Siap pakai' },
+  { id: 'alker3', namaAlker: 'Sarung Tangan Isolari 20kV Class 3', tipe: 'APD', jumlah: 8, kondisi: 'Baik', tanggalInput: '2026-01-20', unit: 'ULP Baguala', penanggungJawab: 'Petugas Pekerjaan Bertegangan', catatan: 'Terkalibrasi s/d 2027' },
+  { id: 'alker4', namaAlker: 'Stick 20kV Teleskopik (20m)', tipe: 'Alat Kerja', jumlah: 5, kondisi: 'Baik', tanggalInput: '2026-01-10', unit: 'ULP Baguala', penanggungJawab: 'Tim Pemeliharaan', catatan: 'Tersimpan di Mobil Yantek' },
+  { id: 'alker5', namaAlker: 'Tang Press Hidrolik 16-300mm2', tipe: 'Alat Kerja', jumlah: 3, kondisi: 'Perlu Perbaikan', tanggalInput: '2026-01-22', unit: 'ULP Baguala', penanggungJawab: 'Tim Konstruksi', catatan: 'Oli hidrolik merembes' },
+  { id: 'alker6', namaAlker: 'Insulation Tester Megger 5kV', tipe: 'Alat Ukur', jumlah: 2, kondisi: 'Baik', tanggalInput: '2026-01-25', unit: 'ULP Baguala', penanggungJawab: 'Tim Inspeksi 20kV', catatan: 'Terkalibrasi KAN' },
+  { id: 'alker7', namaAlker: 'Earth Tester Kyoritsu 4105A', tipe: 'Alat Ukur', jumlah: 3, kondisi: 'Baik', tanggalInput: '2026-01-28', unit: 'ULP Baguala', penanggungJawab: 'Tim Pemeliharaan Gardu', catatan: 'Pengujian pentahanan' },
+  { id: 'alker8', namaAlker: 'Sepatu Safety High Voltage Class 2', tipe: 'APD', jumlah: 15, kondisi: 'Baik', tanggalInput: '2026-01-15', unit: 'ULP Baguala', penanggungJawab: 'Tim Yantek Baguala', catatan: 'Perlengkapan wajib' }
 ];
 
 export const INITIAL_ROW_DATA: ROWItem[] = [
@@ -388,5 +391,302 @@ export const INITIAL_PERINTAH_KERJA: PerintahKerja[] = [
     timAtauPetugas: 'Tim Pemeliharaan 20kV Baguala',
     catatan: 'Pekerjaan selesai 100%, sistem kembali normal tanpa gangguan',
     createdAt: '2026-02-07T14:00:00Z'
+  }
+];
+
+export const INITIAL_MASTER_GARDU: MasterGardu[] = [
+  {
+    id: 'gd_1',
+    unit: 'ULP Baguala',
+    noGarduLama: 'PSO-004',
+    noGarduBaru: 'GD-PSO-004',
+    alamatGardu: 'Jl. Syaranamual Passo No. 12',
+    latt: -3.6492,
+    long: 128.2312,
+    ssotNumber: 'SSOT-BGL-2026-001',
+    penyulang: 'PASSO',
+    daya: 160,
+    jumlahFasa: '3 Fasa'
+  },
+  {
+    id: 'gd_2',
+    unit: 'ULP Baguala',
+    noGarduLama: 'LTR2-015',
+    noGarduBaru: 'GD-LTR2-015',
+    alamatGardu: 'Jl. Laksdya Leo Wattimena Lateri',
+    latt: -3.6521,
+    long: 128.2145,
+    ssotNumber: 'SSOT-BGL-2026-002',
+    penyulang: 'LATERI 2',
+    daya: 250,
+    jumlahFasa: '3 Fasa'
+  },
+  {
+    id: 'gd_3',
+    unit: 'ULP Baguala',
+    noGarduLama: 'WH2-008',
+    noGarduBaru: 'GD-WH2-008',
+    alamatGardu: 'Jl. Laksda Yos Sudarso Waiheru',
+    latt: -3.6395,
+    long: 128.2011,
+    ssotNumber: 'SSOT-BGL-2026-003',
+    penyulang: 'WAIHERU 2',
+    daya: 100,
+    jumlahFasa: '3 Fasa'
+  },
+  {
+    id: 'gd_4',
+    unit: 'ULP Baguala',
+    noGarduLama: 'TLH-021',
+    noGarduBaru: 'GD-TLH-021',
+    alamatGardu: 'Jl. Raya Tulehu Pertigaan Pasar',
+    latt: -3.5871,
+    long: 128.3289,
+    ssotNumber: 'SSOT-BGL-2026-004',
+    penyulang: 'TULEHU',
+    daya: 400,
+    jumlahFasa: '3 Fasa'
+  }
+];
+
+export const INITIAL_PENGUKURAN_GARDU: PengukuranGardu[] = [
+  {
+    id: 'pkg_1',
+    garduId: 'gd_1',
+    noGardu: 'GD-PSO-004',
+    unit: 'ULP Baguala',
+    penyulang: 'PASSO',
+    dayaKva: 160,
+    alamat: 'Jl. Syaranamual Passo No. 12',
+    tanggalUkur: '2026-02-08',
+    petugas: 'Ahmad & Tim Yantek',
+    iRTotal: 145,
+    iSTotal: 140,
+    iTTotal: 138,
+    iNTotal: 12,
+    vRN: 228,
+    vSN: 226,
+    vTN: 227,
+    vRS: 395,
+    vST: 393,
+    vRT: 394,
+    thdR: 2.1,
+    thdS: 2.3,
+    thdT: 2.0,
+    iPeakR: 165,
+    iPeakS: 158,
+    iPeakT: 152,
+    tpfR: 0.92,
+    tpfS: 0.91,
+    tpfT: 0.93,
+    jurusan1: {
+      nama: 'JURUSAN 1 (Jl. Raya Passo)',
+      iRTotal: 45, iSTotal: 42, iTTotal: 40, iNTotal: 5,
+      vRN: 228, vSN: 226, vTN: 227, vRS: 395, vST: 393, vRT: 394,
+      iPeakR: 52, iPeakS: 48, iPeakT: 45,
+      tpfR: 0.92, tpfS: 0.91, tpfT: 0.93,
+      titikUkur: 'PHB-TR Rak 1'
+    },
+    jurusan2: {
+      nama: 'JURUSAN 2 (Komp. Perumahan)',
+      iRTotal: 50, iSTotal: 48, iTTotal: 49, iNTotal: 4,
+      vRN: 228, vSN: 226, vTN: 227, vRS: 395, vST: 393, vRT: 394,
+      iPeakR: 58, iPeakS: 54, iPeakT: 55,
+      tpfR: 0.92, tpfS: 0.91, tpfT: 0.93,
+      titikUkur: 'PHB-TR Rak 2'
+    },
+    jurusan3: {
+      nama: 'JURUSAN 3 (Pasar Passo)',
+      iRTotal: 50, iSTotal: 50, iTTotal: 49, iNTotal: 3,
+      vRN: 228, vSN: 226, vTN: 227, vRS: 395, vST: 393, vRT: 394,
+      iPeakR: 55, iPeakS: 56, iPeakT: 52,
+      tpfR: 0.92, tpfS: 0.91, tpfT: 0.93,
+      titikUkur: 'PHB-TR Rak 3'
+    },
+    jurusan4: {
+      nama: 'JURUSAN 4 (Cadangan)',
+      iRTotal: 0, iSTotal: 0, iTTotal: 0, iNTotal: 0,
+      vRN: 228, vSN: 226, vTN: 227, vRS: 395, vST: 393, vRT: 394,
+      iPeakR: 0, iPeakS: 0, iPeakT: 0,
+      tpfR: 0.92, tpfS: 0.91, tpfT: 0.93,
+      titikUkur: 'PHB-TR Rak 4'
+    },
+    createdAt: '2026-02-08T10:00:00Z'
+  },
+  {
+    id: 'pkg_2',
+    garduId: 'gd_2',
+    noGardu: 'GD-LTR2-015',
+    unit: 'ULP Baguala',
+    penyulang: 'LATERI 2',
+    dayaKva: 250,
+    alamat: 'Jl. Laksdya Leo Wattimena Lateri',
+    tanggalUkur: '2026-02-09',
+    petugas: 'Rizky & Tim Teknik',
+    iRTotal: 320,
+    iSTotal: 280,
+    iTTotal: 210,
+    iNTotal: 65,
+    vRN: 215,
+    vSN: 218,
+    vTN: 222,
+    vRS: 375,
+    vST: 380,
+    vRT: 382,
+    thdR: 4.2,
+    thdS: 3.8,
+    thdT: 3.5,
+    iPeakR: 360,
+    iPeakS: 310,
+    iPeakT: 240,
+    tpfR: 0.88,
+    tpfS: 0.89,
+    tpfT: 0.90,
+    jurusan1: {
+      nama: 'JURUSAN 1 (Lateri Dalam)',
+      iRTotal: 110, iSTotal: 90, iTTotal: 70, iNTotal: 25,
+      vRN: 215, vSN: 218, vTN: 222, vRS: 375, vST: 380, vRT: 382,
+      iPeakR: 125, iPeakS: 100, iPeakT: 80,
+      tpfR: 0.88, tpfS: 0.89, tpfT: 0.90,
+      titikUkur: 'PHB-TR Jurusan 1'
+    },
+    jurusan2: {
+      nama: 'JURUSAN 2 (Jl. Utama Lateri)',
+      iRTotal: 120, iSTotal: 100, iTTotal: 80, iNTotal: 22,
+      vRN: 215, vSN: 218, vTN: 222, vRS: 375, vST: 380, vRT: 382,
+      iPeakR: 135, iPeakS: 110, iPeakT: 90,
+      tpfR: 0.88, tpfS: 0.89, tpfT: 0.90,
+      titikUkur: 'PHB-TR Jurusan 2'
+    },
+    jurusan3: {
+      nama: 'JURUSAN 3 (Pesisir Lateri)',
+      iRTotal: 90, iSTotal: 90, iTTotal: 60, iNTotal: 18,
+      vRN: 215, vSN: 218, vTN: 222, vRS: 375, vST: 380, vRT: 382,
+      iPeakR: 100, iPeakS: 100, iPeakT: 70,
+      tpfR: 0.88, tpfS: 0.89, tpfT: 0.90,
+      titikUkur: 'PHB-TR Jurusan 3'
+    },
+    jurusan4: {
+      nama: 'JURUSAN 4 (Kawasan Industri)',
+      iRTotal: 0, iSTotal: 0, iTTotal: 0, iNTotal: 0,
+      vRN: 215, vSN: 218, vTN: 222, vRS: 375, vST: 380, vRT: 382,
+      iPeakR: 0, iPeakS: 0, iPeakT: 0,
+      tpfR: 0.88, tpfS: 0.89, tpfT: 0.90,
+      titikUkur: 'PHB-TR Jurusan 4'
+    },
+    createdAt: '2026-02-09T09:00:00Z'
+  }
+];
+
+export const INITIAL_KENDARAAN_OPERASIONAL: KendaraanOperasional[] = [
+  {
+    id: 'knd-01',
+    jenisKendaraan: 'Mobil Operasional',
+    namaKendaraan: 'Mobil Hilux Yantek Baguala 01',
+    noPolisi: 'DE 8192 AB',
+    unit: 'ULP Baguala',
+    penanggungJawab: 'Tim Yantek Regu A (Samuel & Budi)',
+    kondisiKendaraan: 'Baik',
+    kondisiBan: 'Baik - Tebal',
+    kondisiAki: 'Normal - Baik',
+    kebersihan: 'Sangat Bersih',
+    kilometer: 45280,
+    tanggalPengecekan: '2026-02-09',
+    catatan: 'Siap tempur gangguan 24 jam. Oli mesin baru diganti.',
+    materials: [
+      { id: 'm1', namaMaterial: 'Tap Connector 70-150 mm2', jumlah: 25, satuan: 'Pcs' },
+      { id: 'm2', namaMaterial: 'Kabel Twisted 3x70 + 1x50 mm2', jumlah: 100, satuan: 'Meter' },
+      { id: 'm3', namaMaterial: 'Fuse Cut Out (FCO) 20kV', jumlah: 6, satuan: 'Set' },
+      { id: 'm4', namaMaterial: 'Fuse Link 10A / 15A / 20A', jumlah: 18, satuan: 'Pcs' },
+      { id: 'm5', namaMaterial: 'Jointing Cable XLPE 20kV 3x240', jumlah: 2, satuan: 'Set' },
+      { id: 'm6', namaMaterial: 'Isolasi 3M Heavy Duty & Electrical Tape', jumlah: 12, satuan: 'Roll' },
+      { id: 'm7', namaMaterial: 'Grounding Set Portable 20kV', jumlah: 2, satuan: 'Set' }
+    ]
+  },
+  {
+    id: 'knd-02',
+    jenisKendaraan: 'Mobil Operasional',
+    namaKendaraan: 'Mobil Isuzu D-Max Yantek Passo 02',
+    noPolisi: 'DE 8421 BC',
+    unit: 'ULP Baguala',
+    penanggungJawab: 'Tim Pemeliharaan (Hendra & Tim)',
+    kondisiKendaraan: 'Perlu Perbaikan',
+    kondisiBan: 'Cukup',
+    kondisiAki: 'Lemah',
+    kebersihan: 'Bersih',
+    kilometer: 88400,
+    tanggalPengecekan: '2026-02-08',
+    catatan: 'Aki lemah saat starter pagi, perlu di-stroom/ganti. Rem belakang agak dalam.',
+    materials: [
+      { id: 'm1', namaMaterial: 'NH Fuse 160A / 250A', jumlah: 10, satuan: 'Pcs' },
+      { id: 'm2', namaMaterial: 'Isolator Tumpu 20kV Porcelain', jumlah: 4, satuan: 'Pcs' },
+      { id: 'm3', namaMaterial: 'Kabel SR 2x10 mm2', jumlah: 75, satuan: 'Meter' },
+      { id: 'm4', namaMaterial: 'Konektor Piercing Insulated', jumlah: 30, satuan: 'Pcs' },
+      { id: 'm5', namaMaterial: 'Cabel Ties Heavy Duty 40cm', jumlah: 2, satuan: 'Pack' }
+    ]
+  },
+  {
+    id: 'knd-03',
+    jenisKendaraan: 'Motor Operasional',
+    namaKendaraan: 'Motor Trail KLX Yantek Lapangan 01',
+    noPolisi: 'DE 3341 XY',
+    unit: 'ULP Baguala',
+    penanggungJawab: 'Petugas Inspeksi (Rizky Ramadhan)',
+    kondisiKendaraan: 'Baik',
+    kondisiBan: 'Baik - Tebal',
+    kondisiAki: 'Normal - Baik',
+    kebersihan: 'Bersih',
+    kilometer: 18230,
+    tanggalPengecekan: '2026-02-09',
+    catatan: 'Siap untuk medan sulit & gang sulit diakses mobil.',
+    materials: [
+      { id: 'm1', namaMaterial: 'Fuse Link 6A / 10A', jumlah: 10, satuan: 'Pcs' },
+      { id: 'm2', namaMaterial: 'Tap Connector 25-70 mm2', jumlah: 12, satuan: 'Pcs' },
+      { id: 'm3', namaMaterial: 'Isolasi Listrik Vinyl', jumlah: 5, satuan: 'Roll' },
+      { id: 'm4', namaMaterial: 'Tang Kombinasi & Tang Potong 1000V', jumlah: 1, satuan: 'Set' },
+      { id: 'm5', namaMaterial: 'Multitester Digital Portable', jumlah: 1, satuan: 'Unit' }
+    ]
+  },
+  {
+    id: 'knd-04',
+    jenisKendaraan: 'Motor Operasional',
+    namaKendaraan: 'Motor Matik Supra/Revo Patroli ROW 02',
+    noPolisi: 'DE 2190 YZ',
+    unit: 'ULP Baguala',
+    penanggungJawab: 'Petugas ROW (Faisal)',
+    kondisiKendaraan: 'Baik',
+    kondisiBan: 'Baik - Tebal',
+    kondisiAki: 'Normal - Baik',
+    kebersihan: 'Bersih',
+    kilometer: 24100,
+    tanggalPengecekan: '2026-02-07',
+    catatan: 'Dilengkapi bracket gergaji & alat pemangkas dahan teleskopik.',
+    materials: [
+      { id: 'm1', namaMaterial: 'Tali Tambang Manila 12mm', jumlah: 30, satuan: 'Meter' },
+      { id: 'm2', namaMaterial: 'Sarung Tangan K3 1000V', jumlah: 2, satuan: 'Pasang' },
+      { id: 'm3', namaMaterial: 'Kabel Ties Heavy Duty', jumlah: 1, satuan: 'Pack' }
+    ]
+  },
+  {
+    id: 'knd-05',
+    jenisKendaraan: 'Mobil Operasional',
+    namaKendaraan: 'Mobil Crane / Skylift Yantek UP3 03',
+    noPolisi: 'DE 9012 AA',
+    unit: 'ULP Baguala',
+    penanggungJawab: 'Tim Khusus PDKB / Skylift',
+    kondisiKendaraan: 'Baik',
+    kondisiBan: 'Baik - Tebal',
+    kondisiAki: 'Normal - Baik',
+    kebersihan: 'Sangat Bersih',
+    kilometer: 31200,
+    tanggalPengecekan: '2026-02-09',
+    catatan: 'Hidrolik boom dan bucket telah diinspeksi & sertifikasi terkalibrasi.',
+    materials: [
+      { id: 'm1', namaMaterial: 'Lightning Arrester 20kV 10kA', jumlah: 6, satuan: 'Pcs' },
+      { id: 'm2', namaMaterial: 'Pin Isolator 20kV + Pin', jumlah: 6, satuan: 'Pcs' },
+      { id: 'm3', namaMaterial: 'Conductor AAAC-S 150 mm2', jumlah: 200, satuan: 'Meter' },
+      { id: 'm4', namaMaterial: 'Strain Clamp 70-150 mm2', jumlah: 12, satuan: 'Pcs' },
+      { id: 'm5', namaMaterial: 'Suspension Clamp AAAC-S', jumlah: 8, satuan: 'Pcs' }
+    ]
   }
 ];

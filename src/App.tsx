@@ -16,7 +16,10 @@ import {
   MaterialStokItem,
   MaterialPemakaianItem,
   AlkerApdItem,
-  PerintahKerja
+  PerintahKerja,
+  MasterGardu,
+  PengukuranGardu,
+  KendaraanOperasional
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -34,7 +37,10 @@ import {
   INITIAL_MATERIAL_STOK,
   INITIAL_MATERIAL_PEMAKAIAN,
   INITIAL_ALKER_APD,
-  INITIAL_PERINTAH_KERJA
+  INITIAL_PERINTAH_KERJA,
+  INITIAL_MASTER_GARDU,
+  INITIAL_PENGUKURAN_GARDU,
+  INITIAL_KENDARAAN_OPERASIONAL
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { Lock } from 'lucide-react';
@@ -54,6 +60,8 @@ import { MaterialView } from './components/views/MaterialView';
 import { AlkerApdView } from './components/views/AlkerApdView';
 import { UserManagementView } from './components/views/UserManagementView';
 import { PerintahKerjaView } from './components/views/PerintahKerjaView';
+import { PengukuranGarduView } from './components/views/PengukuranGarduView';
+import { KendaraanOperasionalView } from './components/views/KendaraanOperasionalView';
 
 export default function App() {
   // Authentication state
@@ -83,6 +91,13 @@ export default function App() {
   
   // Perintah Kerja Harian (SPK) State
   const [spkList, setSpkList] = useState<PerintahKerja[]>(() => filterDeleted(INITIAL_PERINTAH_KERJA));
+
+  // Master Gardu & Pengukuran Gardu States
+  const [masterGarduList, setMasterGarduList] = useState<MasterGardu[]>(() => filterDeleted(INITIAL_MASTER_GARDU));
+  const [pengukuranList, setPengukuranList] = useState<PengukuranGardu[]>(() => filterDeleted(INITIAL_PENGUKURAN_GARDU));
+
+  // Monitoring Kendaraan Operasional State
+  const [kendaraanList, setKendaraanList] = useState<KendaraanOperasional[]>(() => filterDeleted(INITIAL_KENDARAAN_OPERASIONAL));
 
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
@@ -214,6 +229,11 @@ export default function App() {
         // Seed perintah kerja harian
         for (const item of INITIAL_PERINTAH_KERJA) {
           await setDoc(doc(db, 'perintah_kerja_harian', item.id), item);
+        }
+
+        // Seed kendaraan operasional
+        for (const item of INITIAL_KENDARAAN_OPERASIONAL) {
+          await setDoc(doc(db, 'kendaraan_operasional', item.id), item);
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -376,6 +396,33 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'perintah_kerja_harian');
     });
 
+    // 16. Sync Kendaraan Operasional
+    const unsubKendaraan = onSnapshot(collection(db, 'kendaraan_operasional'), (snapshot) => {
+      const items: KendaraanOperasional[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as KendaraanOperasional));
+      setKendaraanList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'kendaraan_operasional');
+    });
+
+    // 17. Sync Master Gardu
+    const unsubMasterGardu = onSnapshot(collection(db, 'master_gardu'), (snapshot) => {
+      const items: MasterGardu[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as MasterGardu));
+      setMasterGarduList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'master_gardu');
+    });
+
+    // 18. Sync Pengukuran Gardu
+    const unsubPengukuran = onSnapshot(collection(db, 'pengukuran_gardu'), (snapshot) => {
+      const items: PengukuranGardu[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as PengukuranGardu));
+      setPengukuranList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'pengukuran_gardu');
+    });
+
     return () => {
       unsubStok();
       unsubPemakaian();
@@ -392,6 +439,9 @@ export default function App() {
       unsubTier2();
       unsubMonitoring();
       unsubSpk();
+      unsubKendaraan();
+      unsubMasterGardu();
+      unsubPengukuran();
     };
   }, []);
 
@@ -880,6 +930,94 @@ export default function App() {
     logActivity('Menghapus data Surat Perintah Kerja (SPK)', 'Perintah Kerja');
   };
 
+  // Master Gardu Handlers
+  const handleAddMasterGardu = async (gardu: MasterGardu) => {
+    setMasterGarduList((prev) => {
+      const exists = prev.some((g) => g.id === gardu.id);
+      if (exists) {
+        return prev.map((g) => (g.id === gardu.id ? gardu : g));
+      }
+      return [gardu, ...prev];
+    });
+    try {
+      await setDoc(doc(db, 'master_gardu', gardu.id), gardu);
+    } catch (err) {
+      console.error('Error saving Master Gardu to Firestore:', err);
+    }
+    logActivity(`Memperbarui/Tambah Master Gardu: ${gardu.noGarduBaru} (${gardu.penyulang})`, gardu.penyulang);
+  };
+
+  const handleDeleteMasterGardu = async (id: string) => {
+    registerDeletedId(id);
+    setMasterGarduList((prev) => prev.filter((g) => g.id !== id));
+    try {
+      await deleteDoc(doc(db, 'master_gardu', id));
+    } catch (err) {
+      console.error('Error deleting Master Gardu from Firestore:', err);
+    }
+    logActivity('Menghapus Master Gardu', 'Master Data');
+  };
+
+  // Pengukuran Gardu Handlers
+  const handleAddPengukuranGardu = async (pkg: PengukuranGardu) => {
+    setPengukuranList((prev) => {
+      const exists = prev.some((p) => p.id === pkg.id);
+      if (exists) {
+        return prev.map((p) => (p.id === pkg.id ? pkg : p));
+      }
+      return [pkg, ...prev];
+    });
+    try {
+      await setDoc(doc(db, 'pengukuran_gardu', pkg.id), pkg);
+    } catch (err) {
+      console.error('Error saving Pengukuran Gardu to Firestore:', err);
+    }
+    logActivity(`Input/Edit Pengukuran Gardu: ${pkg.noGardu} (${pkg.tanggalUkur})`, pkg.penyulang);
+  };
+
+  const handleDeletePengukuranGardu = async (id: string) => {
+    registerDeletedId(id);
+    setPengukuranList((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await deleteDoc(doc(db, 'pengukuran_gardu', id));
+    } catch (err) {
+      console.error('Error deleting Pengukuran Gardu from Firestore:', err);
+    }
+    logActivity('Menghapus data pengukuran beban gardu', 'Pengukuran Gardu');
+  };
+
+  // Kendaraan Operasional Handlers
+  const handleAddKendaraan = async (kendaraan: KendaraanOperasional) => {
+    setKendaraanList((prev) => [kendaraan, ...prev]);
+    try {
+      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), kendaraan);
+    } catch (err) {
+      console.error('Error saving Kendaraan Operasional to Firestore:', err);
+    }
+    logActivity(`Tambah Kendaraan Operasional: ${kendaraan.namaKendaraan} (${kendaraan.noPolisi})`, 'Kendaraan Operasional');
+  };
+
+  const handleUpdateKendaraan = async (kendaraan: KendaraanOperasional) => {
+    setKendaraanList((prev) => prev.map((k) => (k.id === kendaraan.id ? kendaraan : k)));
+    try {
+      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), kendaraan);
+    } catch (err) {
+      console.error('Error updating Kendaraan Operasional to Firestore:', err);
+    }
+    logActivity(`Update Kendaraan Operasional: ${kendaraan.namaKendaraan} (${kendaraan.noPolisi})`, 'Kendaraan Operasional');
+  };
+
+  const handleDeleteKendaraan = async (id: string) => {
+    registerDeletedId(id);
+    setKendaraanList((prev) => prev.filter((k) => k.id !== id));
+    try {
+      await deleteDoc(doc(db, 'kendaraan_operasional', id));
+    } catch (err) {
+      console.error('Error deleting Kendaraan Operasional from Firestore:', err);
+    }
+    logActivity('Menghapus data Kendaraan Operasional', 'Kendaraan Operasional');
+  };
+
   // If not logged in, display Login Screen
   if (!user) {
     return <LoginScreen onLogin={handleLogin} usersList={usersList} />;
@@ -1007,6 +1145,16 @@ export default function App() {
             />
           )}
 
+          {activeView === 'kendaraan_operasional' && (
+            <KendaraanOperasionalView
+              currentUser={user}
+              kendaraanList={kendaraanList}
+              onAddKendaraan={handleAddKendaraan}
+              onUpdateKendaraan={handleUpdateKendaraan}
+              onDeleteKendaraan={handleDeleteKendaraan}
+            />
+          )}
+
           {activeView === 'perintah_kerja' && (
             <PerintahKerjaView
               currentUser={user}
@@ -1016,6 +1164,19 @@ export default function App() {
               onAddSpk={handleAddSpk}
               onUpdateSpk={handleUpdateSpk}
               onDeleteSpk={handleDeleteSpk}
+            />
+          )}
+
+          {activeView === 'pengukuran_gardu' && (
+            <PengukuranGarduView
+              currentUser={user}
+              pengukuranList={pengukuranList}
+              masterGarduList={masterGarduList}
+              penyulangList={syncedPenyulangList}
+              onAddPengukuran={handleAddPengukuranGardu}
+              onDeletePengukuran={handleDeletePengukuranGardu}
+              onAddGardu={handleAddMasterGardu}
+              onDeleteGardu={handleDeleteMasterGardu}
             />
           )}
 
