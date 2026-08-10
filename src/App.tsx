@@ -19,7 +19,8 @@ import {
   PerintahKerja,
   MasterGardu,
   PengukuranGardu,
-  KendaraanOperasional
+  KendaraanOperasional,
+  AsetJaringan
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -40,7 +41,8 @@ import {
   INITIAL_PERINTAH_KERJA,
   INITIAL_MASTER_GARDU,
   INITIAL_PENGUKURAN_GARDU,
-  INITIAL_KENDARAAN_OPERASIONAL
+  INITIAL_KENDARAAN_OPERASIONAL,
+  INITIAL_ASET_JARINGAN
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { Lock } from 'lucide-react';
@@ -62,6 +64,7 @@ import { UserManagementView } from './components/views/UserManagementView';
 import { PerintahKerjaView } from './components/views/PerintahKerjaView';
 import { PengukuranGarduView } from './components/views/PengukuranGarduView';
 import { KendaraanOperasionalView } from './components/views/KendaraanOperasionalView';
+import { AsetJaringanView } from './components/views/AsetJaringanView';
 
 export default function App() {
   // Authentication state
@@ -130,6 +133,7 @@ export default function App() {
 
   // Monitoring Kendaraan Operasional State
   const [kendaraanList, setKendaraanList] = useState<KendaraanOperasional[]>(() => filterDeleted(INITIAL_KENDARAAN_OPERASIONAL));
+  const [asetJaringanList, setAsetJaringanList] = useState<AsetJaringan[]>(() => filterDeleted(INITIAL_ASET_JARINGAN));
 
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
@@ -455,6 +459,12 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'pengukuran_gardu');
     });
 
+    // Aset Jaringan Sync
+    const unsubscribeAset = onSnapshot(collection(db, 'aset_jaringan'), (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsetJaringan));
+      if (list.length > 0) setAsetJaringanList(filterDeleted(list));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'aset_jaringan'));
+
     return () => {
       unsubStok();
       unsubPemakaian();
@@ -474,6 +484,7 @@ export default function App() {
       unsubKendaraan();
       unsubMasterGardu();
       unsubPengukuran();
+      unsubscribeAset();
     };
   }, []);
 
@@ -1050,6 +1061,42 @@ export default function App() {
     logActivity('Menghapus data Kendaraan Operasional', 'Kendaraan Operasional');
   };
 
+  // Aset Jaringan Handlers
+  const handleAddAset = async (data: Omit<AsetJaringan, 'id'>) => {
+    const id = `aset-${Date.now()}`;
+    const newAset = { id, ...data };
+    setAsetJaringanList(prev => [newAset, ...prev]);
+    try {
+      await setDoc(doc(db, 'aset_jaringan', id), newAset);
+    } catch (err) {
+      console.error('Error saving Aset Jaringan to Firestore:', err);
+    }
+    logActivity(`Tambah Aset Jaringan: ${data.namaPenyulang}`, 'Aset Jaringan');
+  };
+
+  const handleUpdateAset = async (id: string, data: Partial<AsetJaringan>) => {
+    setAsetJaringanList(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+    try {
+      const docRef = doc(db, 'aset_jaringan', id);
+      const existing = asetJaringanList.find(a => a.id === id);
+      if (existing) await setDoc(docRef, { ...existing, ...data });
+    } catch (err) {
+      console.error('Error updating Aset Jaringan to Firestore:', err);
+    }
+    logActivity(`Update Aset Jaringan: ${data.namaPenyulang || id}`, 'Aset Jaringan');
+  };
+
+  const handleDeleteAset = async (id: string) => {
+    registerDeletedId(id);
+    setAsetJaringanList(prev => prev.filter(a => a.id !== id));
+    try {
+      await deleteDoc(doc(db, 'aset_jaringan', id));
+    } catch (err) {
+      console.error('Error deleting Aset Jaringan from Firestore:', err);
+    }
+    logActivity('Menghapus data Aset Jaringan', 'Aset Jaringan');
+  };
+
   // If not logged in, display Login Screen
   if (!user) {
     return <LoginScreen onLogin={handleLogin} usersList={usersList} />;
@@ -1186,6 +1233,16 @@ export default function App() {
               onAddKendaraan={handleAddKendaraan}
               onUpdateKendaraan={handleUpdateKendaraan}
               onDeleteKendaraan={handleDeleteKendaraan}
+            />
+          )}
+
+          {activeView === 'aset_jaringan' && (
+            <AsetJaringanView
+              asetList={asetJaringanList}
+              penyulangList={penyulangList}
+              onAdd={handleAddAset}
+              onUpdate={handleUpdateAset}
+              onDelete={handleDeleteAset}
             />
           )}
 

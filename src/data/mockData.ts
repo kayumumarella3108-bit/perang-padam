@@ -17,7 +17,8 @@ import {
   PerintahKerja,
   MasterGardu,
   PengukuranGardu,
-  KendaraanOperasional
+  KendaraanOperasional,
+  AsetJaringan
 } from '../types';
 
 export const INITIAL_PENYULANG: Penyulang[] = [
@@ -688,5 +689,68 @@ export const INITIAL_KENDARAAN_OPERASIONAL: KendaraanOperasional[] = [
       { id: 'm4', namaMaterial: 'Strain Clamp 70-150 mm2', jumlah: 12, satuan: 'Pcs' },
       { id: 'm5', namaMaterial: 'Suspension Clamp AAAC-S', jumlah: 8, satuan: 'Pcs' }
     ]
+  }
+];
+
+export const INITIAL_ASET_JARINGAN: AsetJaringan[] = [
+  {
+    id: 'aset_1',
+    namaPenyulang: 'PASSO',
+    panjangJtmSutm: 4.4,
+    panjangJtmSktm: 0,
+    panjangJtmMvtic: 0,
+    panjangJtmTotal: 4.4,
+    lbsManual: 2,
+    lbsMotorized: 1,
+    lbsThreeWay: 0,
+    recloser: 1,
+    garduHubung: 0,
+    pmcb: 0,
+    autoLink: 2,
+    fco: 5,
+    scada: 1,
+    nonScada: 4,
+    panjangJtr: 12.5,
+    lastUpdate: '2026-02-09T08:00:00Z'
+  },
+  {
+    id: 'aset_2',
+    namaPenyulang: 'TULEHU',
+    panjangJtmSutm: 52.4,
+    panjangJtmSktm: 3.5,
+    panjangJtmMvtic: 0,
+    panjangJtmTotal: 55.9,
+    lbsManual: 5,
+    lbsMotorized: 2,
+    lbsThreeWay: 1,
+    recloser: 2,
+    garduHubung: 1,
+    pmcb: 1,
+    autoLink: 4,
+    fco: 15,
+    scada: 3,
+    nonScada: 12,
+    panjangJtr: 45.8,
+    lastUpdate: '2026-02-09T08:00:00Z'
+  },
+  {
+    id: 'aset_3',
+    namaPenyulang: 'LATERI 2',
+    panjangJtmSutm: 9.95,
+    panjangJtmSktm: 0,
+    panjangJtmMvtic: 0,
+    panjangJtmTotal: 9.95,
+    lbsManual: 1,
+    lbsMotorized: 1,
+    lbsThreeWay: 0,
+    recloser: 1,
+    garduHubung: 1,
+    pmcb: 0,
+    autoLink: 1,
+    fco: 3,
+    scada: 1,
+    nonScada: 2,
+    panjangJtr: 18.2,
+    lastUpdate: '2026-02-09T08:00:00Z'
   }
 ];

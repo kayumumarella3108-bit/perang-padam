@@ -237,6 +237,32 @@
         "catatan": { "type": "string" }
       },
       "required": ["id", "noSpk", "tanggal", "jenisPekerjaan", "namaPenyulang", "section", "target", "jumlahPersonil"]
+    },
+    "AsetJaringan": {
+      "title": "AsetJaringan",
+      "description": "Network asset inventory (JTM/JTR)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "namaPenyulang": { "type": "string" },
+        "panjangJtmSutm": { "type": "number" },
+        "panjangJtmSktm": { "type": "number" },
+        "panjangJtmMvtic": { "type": "number" },
+        "panjangJtmTotal": { "type": "number" },
+        "lbsManual": { "type": "number" },
+        "lbsMotorized": { "type": "number" },
+        "lbsThreeWay": { "type": "number" },
+        "recloser": { "type": "number" },
+        "garduHubung": { "type": "number" },
+        "pmcb": { "type": "number" },
+        "autoLink": { "type": "number" },
+        "fco": { "type": "number" },
+        "scada": { "type": "number" },
+        "nonScada": { "type": "number" },
+        "panjangJtr": { "type": "number" },
+        "lastUpdate": { "type": "string" }
+      },
+      "required": ["id", "namaPenyulang"]
     }
   },
   "firestore": {
@@ -299,6 +325,10 @@
     "perintah_kerja_harian": {
       "schema": "PerintahKerja",
       "description": "Daily work order (SPK) records"
+    },
+    "aset_jaringan": {
+      "schema": "AsetJaringan",
+      "description": "Network asset inventory for JTM and JTR"
     }
   }
 }

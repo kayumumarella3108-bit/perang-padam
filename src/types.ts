@@ -17,6 +17,7 @@ export type ViewType =
   | 'kelola_user'
   | 'sld_visio'
   | 'peta'
+  | 'aset_jaringan'
   | 'gangguan';
 
 export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'log_aktivitas';
@@ -328,4 +329,25 @@ export interface KendaraanOperasional {
   tanggalPengecekan: string;
   catatan?: string;
   materials: MaterialKendaraan[];
+}
+
+export interface AsetJaringan {
+  id: string;
+  namaPenyulang: string;
+  panjangJtmSutm: number;
+  panjangJtmSktm: number;
+  panjangJtmMvtic: number;
+  panjangJtmTotal: number;
+  lbsManual: number;
+  lbsMotorized: number;
+  lbsThreeWay: number;
+  recloser: number;
+  garduHubung: number;
+  pmcb: number;
+  autoLink: number;
+  fco: number;
+  scada: number;
+  nonScada: number;
+  panjangJtr: number;
+  lastUpdate: string;
 }

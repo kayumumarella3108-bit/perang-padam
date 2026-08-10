@@ -22,7 +22,8 @@ import {
   Lock,
   FileText,
   Gauge,
-  Car
+  Car,
+  Network
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 
@@ -229,6 +230,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Database className={`w-4 h-4 shrink-0 ${activeView === 'master_data' ? 'text-blue-400' : 'text-slate-400'}`} />
             <span>Master Data Penyulang</span>
+          </button>
+
+          {/* Aset Jaringan */}
+          <button
+            onClick={() => onSelectView('aset_jaringan')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+              activeView === 'aset_jaringan'
+                ? 'bg-blue-600/10 text-blue-400 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Network className={`w-4 h-4 shrink-0 ${activeView === 'aset_jaringan' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <span>Aset Jaringan JTM/JTR</span>
           </button>
 
           {/* SAIDI / SAIFI */}
