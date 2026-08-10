@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ViewType,
   User,
@@ -76,9 +76,41 @@ export default function App() {
   const [sectionList, setSectionList] = useState<SectionJaringan[]>(() => filterDeleted(INITIAL_SECTIONS));
   const [gangguanList, setGangguanList] = useState<GangguanLog[]>(() => filterDeleted(INITIAL_GANGGUAN));
   const [rowList, setRowList] = useState<ROWItem[]>(() => filterDeleted(INITIAL_ROW));
-  const [inspeksiList, setInspeksiList] = useState<InspeksiItem[]>(() => filterDeleted(INITIAL_INSPEKSI));
   const [tier1List, setTier1List] = useState<Tier1Item[]>(() => filterDeleted(INITIAL_TIER1));
   const [tier2List, setTier2List] = useState<Tier2Item[]>(() => filterDeleted(INITIAL_TIER2));
+  
+  // Dynamically compute inspeksiList from tier1 and tier2 data
+  const inspeksiList = useMemo(() => {
+    const combined: InspeksiItem[] = [];
+    tier1List.forEach(t1 => {
+      combined.push({
+        id: t1.id,
+        tiangOrGarduId: t1.section || '-',
+        tipe: 'Tier 1',
+        namaPenyulang: t1.penyulang || '-',
+        lokasi: t1.section || '-',
+        temuan: t1.konstruksi || t1.temuanRow || '-',
+        kondisi: (t1.konstruksi && t1.konstruksi.toLowerCase().includes('retak')) ? 'Berat' : 'Sedang',
+        tanggalInspeksi: t1.tanggal,
+        petugas: 'Tim Tier 1'
+      });
+    });
+    tier2List.forEach(t2 => {
+      combined.push({
+        id: t2.id,
+        tiangOrGarduId: t2.section || '-',
+        tipe: 'Tier 2',
+        namaPenyulang: t2.penyulang || '-',
+        lokasi: t2.section || '-',
+        temuan: t2.temuanThermoUltrasound || t2.jenisTier2 || '-',
+        kondisi: 'Berat',
+        tanggalInspeksi: t2.tanggal,
+        petugas: 'Tim Tier 2'
+      });
+    });
+    return combined.length > 0 ? combined : filterDeleted(INITIAL_INSPEKSI);
+  }, [tier1List, tier2List]);
+
   const [monitoringList, setMonitoringList] = useState<MonitoringPemeliharaanItem[]>(() => filterDeleted(INITIAL_MONITORING));
   const [mapLayers, setMapLayers] = useState<MapLayerItem[]>(() => filterDeleted(INITIAL_MAP_LAYERS));
   const [activities, setActivities] = useState<ActivityLog[]>(() => filterDeleted(INITIAL_ACTIVITIES));
