@@ -20,10 +20,21 @@ import {
   UserCheck,
   MapPin,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import { PengukuranGardu, MasterGardu, Penyulang, User } from '../../types';
 import { canEditData } from '../../utils/permissions';
 import { MasterGarduModal } from '../modals/MasterGarduModal';
@@ -50,7 +61,7 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
   onAddGardu,
   onDeleteGardu
 }) => {
-  const [activeTab, setActiveTab] = useState<'pengukuran' | 'monitoring' | 'master_gardu'>('pengukuran');
+  const [activeTab, setActiveTab] = useState<'pengukuran' | 'monitoring' | 'master_gardu' | 'tren_beban'>('pengukuran');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterUnit, setFilterUnit] = useState<string>('ALL');
   const [filterPenyulang, setFilterPenyulang] = useState<string>('ALL');
@@ -63,6 +74,9 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
 
   const [isGarduModalOpen, setIsGarduModalOpen] = useState(false);
   const [editingGardu, setEditingGardu] = useState<MasterGardu | null>(null);
+
+  // Chart state
+  const [selectedGarduChart, setSelectedGarduChart] = useState<string>('ALL');
 
   const canEdit = currentUser ? canEditData(currentUser) : true;
 
@@ -280,6 +294,23 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
     document.body.removeChild(link);
   };
 
+  // List of unique gardu numbers for the chart dropdown
+  const uniqueGarduList = Array.from(new Set(pengukuranList.map(p => p.noGardu))).sort();
+
+  // Selected gardu data for chart
+  const chartData = selectedGarduChart !== 'ALL'
+    ? pengukuranList
+        .filter(p => p.noGardu === selectedGarduChart)
+        .sort((a, b) => new Date(a.tanggalUkur).getTime() - new Date(b.tanggalUkur).getTime())
+        .map(p => ({
+          tanggal: p.tanggalUkur,
+          'Arus R (A)': p.iRTotal || 0,
+          'Arus S (A)': p.iSTotal || 0,
+          'Arus T (A)': p.iTTotal || 0,
+          'Arus N (A)': p.iNTotal || 0
+        }))
+    : [];
+
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
       
@@ -382,6 +413,18 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
           >
             <Building2 className="w-4 h-4" />
             <span>Master Data Gardu ({masterGarduList.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tren_beban')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'tren_beban'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <LineChartIcon className="w-4 h-4" />
+            <span>Tren Beban Gardu</span>
           </button>
         </div>
 
@@ -788,6 +831,79 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: TREN BEBAN CHART */}
+      {activeTab === 'tren_beban' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+            <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+              <LineChartIcon className="w-4 h-4 text-blue-600" />
+              <span>Visualisasi Tren Beban (Ampere) per Gardu</span>
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600">Pilih Gardu:</span>
+              <select
+                value={selectedGarduChart}
+                onChange={(e) => setSelectedGarduChart(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">-- Pilih Gardu --</option>
+                {uniqueGarduList.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="p-4 md:p-6 bg-white min-h-[400px]">
+            {selectedGarduChart === 'ALL' ? (
+              <div className="h-[400px] flex items-center justify-center flex-col text-slate-500 gap-3 border-2 border-dashed border-slate-200 rounded-xl">
+                <LineChartIcon className="w-12 h-12 text-slate-300" />
+                <p className="text-sm font-semibold">Silakan pilih Gardu untuk melihat tren beban</p>
+              </div>
+            ) : chartData.length > 0 ? (
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="tanggal" 
+                      tick={{fontSize: 11, fill: '#64748b'}} 
+                      tickMargin={10} 
+                      axisLine={{stroke: '#cbd5e1'}}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{fontSize: 11, fill: '#64748b'}} 
+                      axisLine={false}
+                      tickLine={false}
+                      tickMargin={10}
+                      label={{ value: 'Ampere (A)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 12, fill: '#64748b' } }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '8px' }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="Arus R (A)" stroke="#ef4444" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="Arus S (A)" stroke="#eab308" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="Arus T (A)" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="Arus N (A)" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={{r: 4, strokeWidth: 2}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[400px] flex items-center justify-center flex-col text-slate-500 gap-3 border-2 border-dashed border-slate-200 rounded-xl">
+                <AlertTriangle className="w-12 h-12 text-amber-400" />
+                <p className="text-sm font-semibold">Data pengukuran tidak tersedia untuk gardu ini</p>
+              </div>
+            )}
           </div>
         </div>
       )}
