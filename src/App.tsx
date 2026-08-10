@@ -462,27 +462,99 @@ export default function App() {
     }
   };
 
+  // Synchronized Penyulang List computed directly from gangguan_logs
+  const syncedPenyulangList = React.useMemo(() => {
+    return penyulangList.map((p) => {
+      const feederLogs = gangguanList.filter(
+        (g) =>
+          g.penyulangId === p.id ||
+          (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase())
+      );
+
+      const frekuensiGangguan = feederLogs.length;
+
+      let healthIndexStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
+      if (frekuensiGangguan === 0) healthIndexStatus = 'Sempurna';
+      else if (frekuensiGangguan <= 3) healthIndexStatus = 'Sehat';
+      else if (frekuensiGangguan <= 6) healthIndexStatus = 'Sakit';
+      else healthIndexStatus = 'Kronis';
+
+      const sortedLogs = [...feederLogs].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+      const latestLog = sortedLogs[0];
+      let gangguanTerakhir = '';
+      if (latestLog) {
+        const kodeDisplay = latestLog.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : (latestLog.kodeGangguan || '-');
+        gangguanTerakhir = `${latestLog.tanggal} (${kodeDisplay})`;
+      }
+
+      let sectionTerlama = p.sectionTerlama || '';
+      if (sortedLogs.length > 0) {
+        const secCounts: Record<string, number> = {};
+        sortedLogs.forEach((g) => {
+          if (g.section && g.section.trim()) {
+            secCounts[g.section.trim()] = (secCounts[g.section.trim()] || 0) + 1;
+          }
+        });
+        let maxSec = '';
+        let maxCnt = 0;
+        Object.entries(secCounts).forEach(([sec, cnt]) => {
+          if (cnt > maxCnt) {
+            maxCnt = cnt;
+            maxSec = sec;
+          }
+        });
+        sectionTerlama = maxSec || sortedLogs[0].section || p.sectionTerlama || '';
+      }
+
+      return {
+        ...p,
+        frekuensiGangguan,
+        healthIndexStatus,
+        sectionTerlama,
+        gangguanTerakhir
+      };
+    });
+  }, [penyulangList, gangguanList]);
+
   // Handlers for Gangguan (Cloud Firestore synced)
   const handleAddGangguan = async (log: GangguanLog) => {
+    setGangguanList((prev) => {
+      const exists = prev.some((g) => g.id === log.id);
+      if (exists) {
+        return prev.map((g) => (g.id === log.id ? log : g));
+      }
+      return [log, ...prev];
+    });
+
     try {
       await setDoc(doc(db, 'gangguan_logs', log.id), log);
       
       // Recalculate health index for the affected feeder and save to Firestore
-      const affectedPenyulang = penyulangList.find((p) => p.id === log.penyulangId);
+      const affectedPenyulang = penyulangList.find(
+        (p) => p.id === log.penyulangId || (log.namaPenyulang && p.namaPenyulang.toUpperCase() === log.namaPenyulang.toUpperCase())
+      );
       if (affectedPenyulang) {
-        const newFreq = affectedPenyulang.frekuensiGangguan + 1;
+        const updatedLogs = [...gangguanList.filter((g) => g.id !== log.id), log].filter(
+          (g) => g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase())
+        );
+        const newFreq = updatedLogs.length;
         let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
         if (newFreq === 0) newStatus = 'Sempurna';
         else if (newFreq <= 3) newStatus = 'Sehat';
         else if (newFreq <= 6) newStatus = 'Sakit';
         else newStatus = 'Kronis';
 
+        const sortedLogs = [...updatedLogs].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+        const latestLog = sortedLogs[0];
+        const kodeDisplay = latestLog ? (latestLog.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : latestLog.kodeGangguan) : '';
+        const gangguanTerakhir = latestLog ? `${latestLog.tanggal} (${kodeDisplay})` : '';
+
         const updatedPenyulang = {
           ...affectedPenyulang,
           frekuensiGangguan: newFreq,
           healthIndexStatus: newStatus,
-          sectionTerlama: log.section,
-          gangguanTerakhir: `${log.tanggal} (${log.kodeGangguan})`
+          sectionTerlama: log.section || affectedPenyulang.sectionTerlama,
+          gangguanTerakhir
         };
 
         await setDoc(doc(db, 'penyulang_list', updatedPenyulang.id), updatedPenyulang);
@@ -491,30 +563,41 @@ export default function App() {
       console.error('Error saving Gangguan to Firestore:', err);
     }
 
-    logActivity(`Menambah log gangguan trip penyulang ${log.namaPenyulang} (${log.kodeGangguan})`, 'Matriks Gangguan');
+    logActivity(`Menyimpan log gangguan trip penyulang ${log.namaPenyulang} (${log.kodeGangguan})`, 'Matriks Gangguan');
   };
 
   const handleDeleteGangguan = async (id: string) => {
     registerDeletedId(id);
-    setGangguanList((prev) => prev.filter((g) => g.id !== id));
     const logToDelete = gangguanList.find((g) => g.id === id);
+    setGangguanList((prev) => prev.filter((g) => g.id !== id));
     try {
       await deleteDoc(doc(db, 'gangguan_logs', id));
       
       if (logToDelete) {
-        const affectedPenyulang = penyulangList.find((p) => p.id === logToDelete.penyulangId);
-        if (affectedPenyulang && affectedPenyulang.frekuensiGangguan > 0) {
-          const newFreq = affectedPenyulang.frekuensiGangguan - 1;
+        const affectedPenyulang = penyulangList.find(
+          (p) => p.id === logToDelete.penyulangId || (logToDelete.namaPenyulang && p.namaPenyulang.toUpperCase() === logToDelete.namaPenyulang.toUpperCase())
+        );
+        if (affectedPenyulang) {
+          const remainingLogs = gangguanList.filter(
+            (g) => g.id !== id && (g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase()))
+          );
+          const newFreq = remainingLogs.length;
           let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
           if (newFreq === 0) newStatus = 'Sempurna';
           else if (newFreq <= 3) newStatus = 'Sehat';
           else if (newFreq <= 6) newStatus = 'Sakit';
           else newStatus = 'Kronis';
 
+          const sortedLogs = [...remainingLogs].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+          const latestLog = sortedLogs[0];
+          const kodeDisplay = latestLog ? (latestLog.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : latestLog.kodeGangguan) : '';
+          const gangguanTerakhir = latestLog ? `${latestLog.tanggal} (${kodeDisplay})` : '';
+
           const updatedPenyulang = {
             ...affectedPenyulang,
             frekuensiGangguan: newFreq,
-            healthIndexStatus: newStatus
+            healthIndexStatus: newStatus,
+            gangguanTerakhir
           };
           await setDoc(doc(db, 'penyulang_list', updatedPenyulang.id), updatedPenyulang);
         }
@@ -770,7 +853,7 @@ export default function App() {
         <main className="flex-1 overflow-y-auto bg-slate-50 relative">
           {(activeView === 'dashboard' || !activeView) && (
             <DashboardView
-              penyulangList={penyulangList}
+              penyulangList={syncedPenyulangList}
               sectionList={sectionList}
               gangguanList={gangguanList}
               rowList={rowList}
@@ -792,14 +875,19 @@ export default function App() {
           )}
 
           {activeView === 'health_index' && (
-            <HealthIndexView penyulangList={penyulangList} />
+            <HealthIndexView
+              penyulangList={syncedPenyulangList}
+              gangguanList={gangguanList}
+              sectionList={sectionList}
+              onAddGangguan={handleAddGangguan}
+            />
           )}
 
           {(activeView === 'matriks_gangguan' || activeView === 'gangguan') && (
             <GangguanTripView
               currentUser={user}
               gangguanList={gangguanList}
-              penyulangList={penyulangList}
+              penyulangList={syncedPenyulangList}
               sectionList={sectionList}
               onAddGangguan={handleAddGangguan}
               onDeleteGangguan={handleDeleteGangguan}
@@ -822,7 +910,7 @@ export default function App() {
 
           {activeView === 'master_data' && (
             <MasterDataView
-              penyulangList={penyulangList}
+              penyulangList={syncedPenyulangList}
               sectionList={sectionList}
               activities={activities}
               onAddPenyulang={handleAddPenyulang}
@@ -836,7 +924,7 @@ export default function App() {
             <SaidiSaifiView
               currentUser={user}
               saidiList={saidiList}
-              penyulangList={penyulangList}
+              penyulangList={syncedPenyulangList}
               onAddSaidi={handleAddSaidi}
               onDeleteSaidi={handleDeleteSaidi}
             />

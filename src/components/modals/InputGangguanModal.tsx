@@ -9,6 +9,7 @@ interface InputGangguanModalProps {
   penyulangList: Penyulang[];
   sectionList: SectionJaringan[];
   editItem?: GangguanLog | null;
+  initialPenyulangId?: string;
 }
 
 export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
@@ -17,10 +18,11 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   onSave,
   penyulangList,
   sectionList,
-  editItem
+  editItem,
+  initialPenyulangId
 }) => {
   const [tanggal, setTanggal] = useState('2026-08-08');
-  const [penyulangId, setPenyulangId] = useState(penyulangList[0]?.id || '17');
+  const [penyulangId, setPenyulangId] = useState(initialPenyulangId || penyulangList[0]?.id || '17');
   const [section, setSection] = useState('');
   const [jamKeluar, setJamKeluar] = useState('08:00');
   const [jamMasuk, setJamMasuk] = useState('09:30');
@@ -52,7 +54,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setCatatan(editItem.catatan || '');
     } else {
       setTanggal('2026-08-08');
-      setPenyulangId(penyulangList[0]?.id || '17');
+      setPenyulangId(initialPenyulangId || penyulangList[0]?.id || '17');
       setSection('');
       setJamKeluar('08:00');
       setJamMasuk('09:30');
@@ -66,7 +68,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setDetailLokasi('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
       setCatatan('Keterangan tindakan penanganan gangguan...');
     }
-  }, [editItem, isOpen]);
+  }, [editItem, isOpen, initialPenyulangId]);
 
   if (!isOpen) return null;
 

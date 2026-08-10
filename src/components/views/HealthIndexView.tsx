@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -22,37 +22,141 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { Penyulang } from '../../types';
+import { Penyulang, GangguanLog, SectionJaringan } from '../../types';
 import { HealthIndexBanner } from '../HealthIndexBanner';
+import { InputGangguanModal } from '../modals/InputGangguanModal';
 
 interface HealthIndexViewProps {
   penyulangList: Penyulang[];
+  gangguanList?: GangguanLog[];
+  sectionList?: SectionJaringan[];
+  onAddGangguan?: (log: GangguanLog) => void;
 }
 
-export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList }) => {
+const MONTH_MAP: Record<string, string> = {
+  'Januari': '01',
+  'Februari': '02',
+  'Maret': '03',
+  'April': '04',
+  'Mei': '05',
+  'Juni': '06',
+  'Juli': '07',
+  'Agustus': '08',
+  'September': '09',
+  'Oktober': '10',
+  'November': '11',
+  'Desember': '12',
+};
+
+export const HealthIndexView: React.FC<HealthIndexViewProps> = ({
+  penyulangList,
+  gangguanList = [],
+  sectionList = [],
+  onAddGangguan
+}) => {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('Semua Bulan');
   const [selectedStatus, setSelectedStatus] = useState('Semua Status');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const sempurnaCount = penyulangList.filter((p) => p.healthIndexStatus === 'Sempurna').length;
-  const sehatCount = penyulangList.filter((p) => p.healthIndexStatus === 'Sehat').length;
-  const sakitCount = penyulangList.filter((p) => p.healthIndexStatus === 'Sakit').length;
-  const kronisCount = penyulangList.filter((p) => p.healthIndexStatus === 'Kronis').length;
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPenyulangIdForModal, setSelectedPenyulangIdForModal] = useState<string>('');
 
-  // Filtered List
-  const filteredList = penyulangList.filter((p) => {
-    const matchesSearch = (p.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (p.kodeId || '').toLowerCase().includes(searchQuery.toLowerCase());
+  // Dynamically compute synced penyulang list based on gangguanList and active filters
+  const syncedPenyulangList = useMemo(() => {
+    return penyulangList.map((p) => {
+      // Find logs belonging to this feeder
+      const feederLogs = gangguanList.filter((g) => {
+        const matchesPenyulang =
+          g.penyulangId === p.id ||
+          (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase());
+        
+        if (!matchesPenyulang) return false;
+
+        const tgl = g.tanggal || '';
+        if (selectedYear && selectedYear !== 'Semua Tahun' && !tgl.startsWith(selectedYear)) {
+          return false;
+        }
+        if (selectedMonth && selectedMonth !== 'Semua Bulan') {
+          const monthCode = MONTH_MAP[selectedMonth];
+          if (monthCode && tgl.slice(5, 7) !== monthCode) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const frekuensiGangguan = feederLogs.length;
+
+      let healthIndexStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
+      if (frekuensiGangguan === 0) healthIndexStatus = 'Sempurna';
+      else if (frekuensiGangguan <= 3) healthIndexStatus = 'Sehat';
+      else if (frekuensiGangguan <= 6) healthIndexStatus = 'Sakit';
+      else healthIndexStatus = 'Kronis';
+
+      // Sort by date descending
+      const sortedLogs = [...feederLogs].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+      const latestLog = sortedLogs[0];
+      let gangguanTerakhir = '';
+      if (latestLog) {
+        const kodeDisplay = latestLog.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : (latestLog.kodeGangguan || '-');
+        gangguanTerakhir = `${latestLog.tanggal} (${kodeDisplay})`;
+      }
+
+      // Most frequent section or latest log's section
+      let sectionTerlama = p.sectionTerlama || '';
+      if (sortedLogs.length > 0) {
+        const secCounts: Record<string, number> = {};
+        sortedLogs.forEach((g) => {
+          if (g.section && g.section.trim()) {
+            secCounts[g.section.trim()] = (secCounts[g.section.trim()] || 0) + 1;
+          }
+        });
+        let maxSec = '';
+        let maxCnt = 0;
+        Object.entries(secCounts).forEach(([sec, cnt]) => {
+          if (cnt > maxCnt) {
+            maxCnt = cnt;
+            maxSec = sec;
+          }
+        });
+        sectionTerlama = maxSec || sortedLogs[0].section || p.sectionTerlama || '';
+      }
+
+      return {
+        ...p,
+        frekuensiGangguan,
+        healthIndexStatus,
+        sectionTerlama,
+        gangguanTerakhir
+      };
+    });
+  }, [penyulangList, gangguanList, selectedYear, selectedMonth]);
+
+  const sempurnaCount = syncedPenyulangList.filter((p) => p.healthIndexStatus === 'Sempurna').length;
+  const sehatCount = syncedPenyulangList.filter((p) => p.healthIndexStatus === 'Sehat').length;
+  const sakitCount = syncedPenyulangList.filter((p) => p.healthIndexStatus === 'Sakit').length;
+  const kronisCount = syncedPenyulangList.filter((p) => p.healthIndexStatus === 'Kronis').length;
+
+  // Filtered List based on Search & Status Filter
+  const filteredList = syncedPenyulangList.filter((p) => {
+    const matchesSearch =
+      (p.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.kodeId || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedStatus === 'Semua Status' || p.healthIndexStatus === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
-  // Prepare Bar Chart Data (Top Feeders by Outage Frequency)
-  const barChartData = penyulangList.map((p) => ({
-    name: p.namaPenyulang,
-    gangguan: p.frekuensiGangguan
-  }));
+  // Prepare Bar Chart Data (Top Feeders sorted by Outage Frequency)
+  const barChartData = useMemo(() => {
+    return [...filteredList]
+      .sort((a, b) => b.frekuensiGangguan - a.frekuensiGangguan)
+      .map((p) => ({
+        name: p.namaPenyulang,
+        gangguan: p.frekuensiGangguan
+      }));
+  }, [filteredList]);
 
   // Prepare Pie Chart Data
   const pieChartData = [
@@ -61,6 +165,11 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
     { name: 'Sakit (4-6)', value: sakitCount, color: '#f59e0b' },
     { name: 'Kronis (>=7)', value: kronisCount, color: '#ef4444' }
   ].filter((item) => item.value > 0);
+
+  const handleOpenAddGangguanForPenyulang = (pId: string) => {
+    setSelectedPenyulangIdForModal(pId);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-5 bg-slate-950 text-slate-100 font-sans min-h-screen">
@@ -139,6 +248,7 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
             >
               <option value="2026">2026</option>
               <option value="2025">2025</option>
+              <option value="Semua Tahun">Semua Tahun</option>
             </select>
           </div>
 
@@ -152,6 +262,16 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
               <option value="Semua Bulan">Semua Bulan</option>
               <option value="Januari">Januari</option>
               <option value="Februari">Februari</option>
+              <option value="Maret">Maret</option>
+              <option value="April">April</option>
+              <option value="Mei">Mei</option>
+              <option value="Juni">Juni</option>
+              <option value="Juli">Juli</option>
+              <option value="Agustus">Agustus</option>
+              <option value="September">September</option>
+              <option value="Oktober">Oktober</option>
+              <option value="November">November</option>
+              <option value="Desember">Desember</option>
             </select>
           </div>
 
@@ -328,7 +448,10 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
                       {p.gangguanTerakhir ? `${p.gangguanTerakhir} (Gangguan)` : 'Sempurna / Nihil Padam'}
                     </td>
                     <td className="px-5 py-4 text-center">
-                      <button className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold cursor-pointer transition-colors">
+                      <button
+                        onClick={() => handleOpenAddGangguanForPenyulang(p.id)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold cursor-pointer transition-colors"
+                      >
                         + Gangguan
                       </button>
                     </td>
@@ -339,6 +462,21 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({ penyulangList 
           </table>
         </div>
       </div>
+
+      {/* Input Gangguan Modal from Health Index */}
+      {onAddGangguan && (
+        <InputGangguanModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={(log) => {
+            onAddGangguan(log);
+            setIsModalOpen(false);
+          }}
+          penyulangList={penyulangList}
+          sectionList={sectionList}
+          initialPenyulangId={selectedPenyulangIdForModal}
+        />
+      )}
     </div>
   );
 };
