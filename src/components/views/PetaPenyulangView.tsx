@@ -44,7 +44,15 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
 
-  const [manualStatuses, setManualStatuses] = useState<Record<string, 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'>>({});
+  const [manualStatuses, setManualStatuses] = useState<Record<string, 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'>>({
+    'ml1_0': 'PENYULANG',
+    'ml1_1': 'POHON',
+    'ml1_2': 'KONSTRUKSI',
+    'ml2_0': 'PENYULANG',
+    'ml2_1': 'POHON',
+    'ml3_0': 'KONSTRUKSI',
+    'ml4_1': 'PENYULANG'
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -54,7 +62,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 
   // Attach global window handler for manual tiang status selection
   useEffect(() => {
-    (window as any).setTiangManualStatus = (layerId: string, nodeIdx: number, status: 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL') => {
+    (window as any).setTiangManualStatus = (layerId: string, nodeIdx: number, status: 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL') => {
       const key = `${layerId}_${nodeIdx}`;
       setManualStatuses((prev) => {
         const next = { ...prev };
@@ -142,32 +150,60 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         let borderColor = '#ffffff';
         let statusBadgeHtml = '';
 
-        if (manualStatus === 'GANGGUAN') {
-          markerColor = '#ef4444'; // Red
+        if (manualStatus === 'POHON') {
+          markerColor = '#22c55e'; // Hijau Pohon
+          borderColor = '#dcfce7';
+          radius = 11;
+          weight = 3;
+          statusBadgeHtml = `
+            <div class="mt-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+              🌳 TEMUAN POHON (HIJAU)
+            </div>
+          `;
+        } else if (manualStatus === 'KONSTRUKSI') {
+          markerColor = '#a855f7'; // Ungu Temuan Konstruksi
+          borderColor = '#f3e8ff';
+          radius = 11;
+          weight = 3;
+          statusBadgeHtml = `
+            <div class="mt-2 p-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-black text-[11px] flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+              🏗️ TEMUAN KONSTRUKSI (UNGU)
+            </div>
+          `;
+        } else if (manualStatus === 'GANGGUAN') {
+          markerColor = '#ef4444'; // Red Merah
           borderColor = '#fee2e2';
           radius = 11;
           weight = 3;
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-black text-[11px] flex items-center gap-1.5 animate-pulse">
-              <span class="w-2 h-2 rounded-full bg-rose-600"></span>
-              ⚡ LOKASI GANGGUAN
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+              ⚡ LOKASI GANGGUAN (MERAH)
             </div>
           `;
         } else if (manualStatus === 'PEMELIHARAAN') {
-          markerColor = '#f97316'; // Orange
+          markerColor = '#f97316'; // Orange Oranye
           borderColor = '#ffedd5';
           radius = 11;
           weight = 3;
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-amber-600"></span>
-              🔧 LOKASI PEMELIHARAAN
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+              🔧 LOKASI PEMELIHARAAN (ORANYE)
             </div>
           `;
         } else {
+          // Default / PENYULANG -> Biru
+          markerColor = '#3b82f6'; // Biru Penyulang
+          borderColor = '#dbeafe';
+          radius = 8;
+          weight = 2;
           statusBadgeHtml = `
-            <div class="mt-2 text-[10px] text-slate-500 font-medium">
-              Status: <span class="font-bold text-emerald-600">✓ Normal 20kV</span>
+            <div class="mt-2 p-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-black text-[11px] flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              🔵 PENYULANG 20kV (BIRU)
             </div>
           `;
         }
@@ -182,7 +218,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         });
 
         const popupContent = `
-          <div class="p-2 text-slate-900 font-sans min-w-[210px]">
+          <div class="p-2 text-slate-900 font-sans min-w-[220px]">
             <div class="font-black text-xs text-blue-800 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
               <span class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full inline-block shadow-xs" style="background-color: ${markerColor}"></span>
@@ -206,23 +242,46 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               </div>
               <div class="grid grid-cols-1 gap-1">
                 <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'GANGGUAN')"
-                  class="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PENYULANG')"
+                  class="w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
-                  ⚡ Set Lokasi Gangguan
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  🔵 Penyulang 20kV (Biru)
+                </button>
+                <button
+                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'POHON')"
+                  class="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                >
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  🌳 Pohon / ROW (Hijau)
+                </button>
+                <button
+                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'KONSTRUKSI')"
+                  class="w-full py-1.5 px-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                >
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  🏗️ Temuan Konstruksi (Ungu)
+                </button>
+                <button
+                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'GANGGUAN')"
+                  class="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                >
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  ⚡ Lokasi Gangguan (Merah)
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PEMELIHARAAN')"
-                  class="w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  class="w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
-                  🔧 Set Lokasi Pemeliharaan
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  🔧 Lokasi Pemeliharaan (Oranye)
                 </button>
-                ${manualStatus !== 'NORMAL' ? `
+                ${manualStatus !== 'NORMAL' && manualStatus !== 'PENYULANG' ? `
                   <button
                     onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'NORMAL')"
                     class="w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
                   >
-                    ✓ Reset Ke Normal
+                    ✓ Reset Ke Default
                   </button>
                 ` : ''}
               </div>
@@ -561,36 +620,64 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
         {/* Top Floating Status Indicator Overlay */}
-        <div className="absolute top-4 left-4 z-10 hidden sm:flex items-center gap-2 p-1.5 bg-slate-900/90 text-white backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-xl font-sans text-xs">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-400" />
-            <span className="font-bold">Klik Tiang di Peta untuk Pilihan Status</span>
+        <div className="absolute top-4 left-4 z-10 hidden md:flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/90 text-white backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-xl font-sans text-xs">
+          <div className="px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-1.5 text-[11px]">
+            <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="font-bold">Klik Tiang di Peta:</span>
           </div>
 
-          <div className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold ${
+          {/* Biru: Penyulang */}
+          <div className="px-2.5 py-1 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 font-bold text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+            <span>Penyulang</span>
+          </div>
+
+          {/* Hijau: Pohon */}
+          <div className={`px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-bold text-[11px] ${
+            Object.values(manualStatuses).filter(s => s === 'POHON').length > 0
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+              : 'bg-slate-800 text-slate-400'
+          }`}>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span>Pohon</span>
+          </div>
+
+          {/* Ungu: Temuan Konstruksi */}
+          <div className={`px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-bold text-[11px] ${
+            Object.values(manualStatuses).filter(s => s === 'KONSTRUKSI').length > 0
+              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+              : 'bg-slate-800 text-slate-400'
+          }`}>
+            <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
+            <span>Konstruksi</span>
+          </div>
+
+          {/* Merah: Gangguan */}
+          <div className={`px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-bold text-[11px] ${
             Object.values(manualStatuses).filter(s => s === 'GANGGUAN').length > 0
               ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
               : 'bg-slate-800 text-slate-400'
           }`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <span>Gangguan: {Object.values(manualStatuses).filter(s => s === 'GANGGUAN').length}</span>
+            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+            <span>Gangguan</span>
           </div>
 
-          <div className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold ${
+          {/* Oranye: Pemeliharaan */}
+          <div className={`px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-bold text-[11px] ${
             Object.values(manualStatuses).filter(s => s === 'PEMELIHARAAN').length > 0
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
               : 'bg-slate-800 text-slate-400'
           }`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            <span>Pemeliharaan: {Object.values(manualStatuses).filter(s => s === 'PEMELIHARAAN').length}</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+            <span>Pemeliharaan</span>
           </div>
 
           {Object.keys(manualStatuses).length > 0 && (
             <button
               onClick={() => setManualStatuses({})}
-              className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all text-[11px] font-bold cursor-pointer"
+              className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all text-[10px] font-bold cursor-pointer"
             >
-              Reset Status
+              Reset
             </button>
           )}
         </div>

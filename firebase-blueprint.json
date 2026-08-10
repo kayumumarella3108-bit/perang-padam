@@ -218,6 +218,25 @@
         "keterangan": { "type": "string" }
       },
       "required": ["id", "tanggal", "penyulang", "section"]
+    },
+    "PerintahKerja": {
+      "title": "PerintahKerja",
+      "description": "Daily work order (SPK) document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "noSpk": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "jenisPekerjaan": { "type": "string" },
+        "namaPenyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "target": { "type": "string" },
+        "jumlahPersonil": { "type": "number" },
+        "status": { "type": "string" },
+        "timAtauPetugas": { "type": "string" },
+        "catatan": { "type": "string" }
+      },
+      "required": ["id", "noSpk", "tanggal", "jenisPekerjaan", "namaPenyulang", "section", "target", "jumlahPersonil"]
     }
   },
   "firestore": {
@@ -276,6 +295,10 @@
     "pemeliharaan_monitoring": {
       "schema": "MonitoringPemeliharaanItem",
       "description": "20kV network repair and preventive maintenance monitoring records"
+    },
+    "perintah_kerja_harian": {
+      "schema": "PerintahKerja",
+      "description": "Daily work order (SPK) records"
     }
   }
 }
