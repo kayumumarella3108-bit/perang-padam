@@ -17,6 +17,9 @@ import {
   Cell,
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
@@ -52,6 +55,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
+  const [penyulangChartType, setPenyulangChartType] = useState<'bar' | 'line'>('bar');
 
   const tripPangkalList = gangguanList.filter((g) => {
     const p = penyulangList.find(
@@ -137,6 +141,23 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     }).length;
     return { name: m, gangguan: count };
   });
+
+  // Chart 3 Data: Frequency per Feeder (Penyulang)
+  const feederMap: Record<string, number> = {};
+  penyulangList.forEach((p) => {
+    feederMap[p.namaPenyulang] = 0;
+  });
+  activeList.forEach((g) => {
+    const pName = g.namaPenyulang || 'Lainnya';
+    feederMap[pName] = (feederMap[pName] || 0) + 1;
+  });
+
+  const penyulangChartData = Object.entries(feederMap)
+    .map(([name, count]) => ({
+      name,
+      gangguan: count
+    }))
+    .sort((a, b) => b.gangguan - a.gangguan);
 
   // Matrix calculation per Code & Month
   const DEFAULT_MATRIX_CODES = [
@@ -362,7 +383,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       </div>
 
       {/* Analytics Visuals Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Donut Chart */}
         <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -400,11 +421,11 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
           </div>
         </div>
 
-        {/* Bar Chart */}
+        {/* Bar Chart - Per Bulan */}
         <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-900">
-              📈 Tren Frekuensi Gangguan Per Bulan ({startDate || endDate ? `${startDate || 'Awal'} s/d ${endDate || 'Akhir'}` : selectedYear})
+              📈 Tren Gangguan Per Bulan
             </h3>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
               Bar Chart
@@ -417,9 +438,67 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                 <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
                 <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
                 <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <Bar dataKey="gangguan" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="gangguan" fill="#0284c7" radius={[4, 4, 0, 0]} name="Kejadian" />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Bar/Line Chart - Per Penyulang */}
+        <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-xs font-bold text-slate-900">
+              ⚡ Frekuensi Gangguan Per Penyulang
+            </h3>
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
+              <button
+                onClick={() => setPenyulangChartType('bar')}
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  penyulangChartType === 'bar'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Bar
+              </button>
+              <button
+                onClick={() => setPenyulangChartType('line')}
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  penyulangChartType === 'line'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Line
+              </button>
+            </div>
+          </div>
+
+          <div className="h-52 w-full">
+            {penyulangChartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                Belum ada data gangguan
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                {penyulangChartType === 'bar' ? (
+                  <BarChart data={penyulangChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={9} interval={0} angle={-15} textAnchor="end" height={30} />
+                    <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="gangguan" fill="#e11d48" radius={[4, 4, 0, 0]} name="Kejadian" />
+                  </BarChart>
+                ) : (
+                  <LineChart data={penyulangChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={9} interval={0} angle={-15} textAnchor="end" height={30} />
+                    <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Line type="monotone" dataKey="gangguan" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4, fill: '#e11d48' }} activeDot={{ r: 6 }} name="Kejadian" />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
