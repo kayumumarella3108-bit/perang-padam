@@ -128,28 +128,63 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
     doc.save(`Laporan_SAIDI_SAIFI_UP3_${selectedYear}.pdf`);
   };
 
-  // Sums
-  const totalEnsKwh = saidiList.reduce((acc, curr) => acc + curr.ensKumulatifKwh, 0);
-  const totalRupiah = saidiList.reduce((acc, curr) => acc + curr.estimasiKerugianRp, 0);
-  const avgSaidi = saidiList.length > 0 ? (saidiList.reduce((acc, curr) => acc + curr.realisasiSaidi, 0) / saidiList.length).toFixed(3) : '0.000';
-  const avgSaifi = saidiList.length > 0 ? (saidiList.reduce((acc, curr) => acc + curr.realisasiSaifi, 0) / saidiList.length).toFixed(3) : '0.000';
+  // Sums for selectedYear
+  const saidiFiltered = saidiList.filter((s) => String(s.tahun) === selectedYear);
+  const totalEnsKwh = saidiFiltered.reduce((acc, curr) => acc + (curr.ensKumulatifKwh || 0), 0);
+  const totalRupiah = saidiFiltered.reduce((acc, curr) => acc + (curr.estimasiKerugianRp || 0), 0);
+  const avgSaidi =
+    saidiFiltered.length > 0
+      ? (saidiFiltered.reduce((acc, curr) => acc + (curr.realisasiSaidi || 0), 0) / saidiFiltered.length).toFixed(3)
+      : '0.000';
+  const avgSaifi =
+    saidiFiltered.length > 0
+      ? (saidiFiltered.reduce((acc, curr) => acc + (curr.realisasiSaifi || 0), 0) / saidiFiltered.length).toFixed(3)
+      : '0.000';
 
-  // Chart Data
-  const chartData = [
-    { name: 'Januari', ens: 0, rupiah: 0 },
-    { name: 'Februari', ens: 0, rupiah: 0 },
-    { name: 'Maret', ens: 0, rupiah: 0 },
-    { name: 'April', ens: 0, rupiah: 0 },
-    { name: 'Mei', ens: 0, rupiah: 0 },
-    { name: 'Juni', ens: 0, rupiah: 0 },
-    { name: 'Juli', ens: totalEnsKwh, rupiah: totalRupiah / 1000000 }
+  // Dynamic Chart Data per month
+  const monthsList = [
+    { name: 'Jan', key: 1, full: 'Januari' },
+    { name: 'Feb', key: 2, full: 'Februari' },
+    { name: 'Mar', key: 3, full: 'Maret' },
+    { name: 'Apr', key: 4, full: 'April' },
+    { name: 'Mei', key: 5, full: 'Mei' },
+    { name: 'Jun', key: 6, full: 'Juni' },
+    { name: 'Jul', key: 7, full: 'Juli' },
+    { name: 'Ags', key: 8, full: 'Agustus' },
+    { name: 'Sep', key: 9, full: 'September' },
+    { name: 'Okt', key: 10, full: 'Oktober' },
+    { name: 'Nov', key: 11, full: 'November' },
+    { name: 'Des', key: 12, full: 'Desember' }
   ];
 
-  const pieData = [
-    { name: 'Passo (40%)', value: 40, color: '#3b82f6' },
-    { name: 'Tulehu (35%)', value: 35, color: '#10b981' },
-    { name: 'Karpan (25%)', value: 25, color: '#f59e0b' }
-  ];
+  const chartData = monthsList.map((m) => {
+    const matched = saidiFiltered.find((s) => {
+      const b = String(s.bulan || '').toLowerCase().trim();
+      return (
+        b.includes(m.full.toLowerCase()) ||
+        b.includes(m.name.toLowerCase()) ||
+        b === String(m.key) ||
+        b === `0${m.key}`
+      );
+    });
+    return {
+      name: m.full,
+      ens: matched ? matched.ensKumulatifKwh : 0,
+      rupiah: matched ? parseFloat((matched.estimasiKerugianRp / 1000000).toFixed(2)) : 0
+    };
+  });
+
+  // Pie Data - ENS contribution per month
+  const piePalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#f43f5e', '#06b6d4'];
+  const nonZeroMonths = chartData.filter((d) => d.ens > 0);
+  const pieData =
+    nonZeroMonths.length > 0
+      ? nonZeroMonths.map((d, i) => ({
+          name: `${d.name} (${totalEnsKwh ? Math.round((d.ens / totalEnsKwh) * 100) : 0}%)`,
+          value: d.ens,
+          color: piePalette[i % piePalette.length]
+        }))
+      : [{ name: 'Belum Ada ENS', value: 1, color: '#cbd5e1' }];
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">

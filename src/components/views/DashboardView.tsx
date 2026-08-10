@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Zap,
   ClipboardList,
@@ -81,7 +81,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // KPI calculations
   const totalPenyulang = penyulangList.length;
-  const totalGangguan = gangguanList.length;
+  const totalGangguan = gangguanList.filter((g) => !g.tanggal || g.tanggal.startsWith(selectedTimeframe)).length;
   const pendingROW = rowList.filter((r) => {
     const status = r.status || (Number(r.jumlahTemuanInspeksi) > Number(r.realisasiPangkas) ? 'Perlu Pangkas' : 'Selesai');
     return status === 'Perlu Pangkas';
@@ -100,84 +100,127 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const sakitCount = penyulangList.filter((p) => p.healthIndexStatus === 'Sakit').length;
   const kronisCount = penyulangList.filter((p) => p.healthIndexStatus === 'Kronis').length;
 
-  // SAIDI & SAIFI Aggregations
-  const totalEnsKwh = saidiList.reduce((acc, curr) => acc + (curr.ensKumulatifKwh || 0), 0);
-  const totalRupiahLoss = saidiList.reduce((acc, curr) => acc + (curr.estimasiKerugianRp || 0), 0);
-  
-  const avgSaidiRealisasi = saidiList.length > 0
-    ? (saidiList.reduce((acc, curr) => acc + curr.realisasiSaidi, 0) / saidiList.length).toFixed(3)
-    : '0.085';
-  const avgSaidiTarget = saidiList.length > 0
-    ? (saidiList.reduce((acc, curr) => acc + curr.targetSaidi, 0) / saidiList.length).toFixed(3)
-    : '0.200';
+  // SAIDI & SAIFI Aggregations for selected timeframe
+  const saidiListForYear = useMemo(() => {
+    return saidiList.filter((s) => String(s.tahun) === selectedTimeframe);
+  }, [saidiList, selectedTimeframe]);
 
-  const avgSaifiRealisasi = saidiList.length > 0
-    ? (saidiList.reduce((acc, curr) => acc + curr.realisasiSaifi, 0) / saidiList.length).toFixed(3)
-    : '0.022';
-  const avgSaifiTarget = saidiList.length > 0
-    ? (saidiList.reduce((acc, curr) => acc + curr.targetSaifi, 0) / saidiList.length).toFixed(3)
-    : '0.050';
+  const totalEnsKwh = useMemo(() => {
+    return saidiListForYear.reduce((acc, curr) => acc + (curr.ensKumulatifKwh || 0), 0);
+  }, [saidiListForYear]);
 
-  // Monthly SAIDI / SAIFI Chart Data (incorporates real data + historical breakdown)
-  const monthlySaidiData = [
-    { bulan: 'Jan', targetSaidi: 0.20, realisasiSaidi: 0.085, targetSaifi: 0.05, realisasiSaifi: 0.022, ensKwh: 1240, kerugianRp: 1.79 },
-    { bulan: 'Feb', targetSaidi: 0.20, realisasiSaidi: 0.062, targetSaifi: 0.05, realisasiSaifi: 0.018, ensKwh: 980, kerugianRp: 1.41 },
-    { bulan: 'Mar', targetSaidi: 0.20, realisasiSaidi: 0.075, targetSaifi: 0.05, realisasiSaifi: 0.021, ensKwh: 1120, kerugianRp: 1.62 },
-    { bulan: 'Apr', targetSaidi: 0.20, realisasiSaidi: 0.091, targetSaifi: 0.05, realisasiSaifi: 0.025, ensKwh: 1350, kerugianRp: 1.95 },
-    { bulan: 'Mei', targetSaidi: 0.20, realisasiSaidi: 0.054, targetSaifi: 0.05, realisasiSaifi: 0.015, ensKwh: 820, kerugianRp: 1.18 },
-    { bulan: 'Jun', targetSaidi: 0.20, realisasiSaidi: 0.048, targetSaifi: 0.05, realisasiSaifi: 0.012, ensKwh: 750, kerugianRp: 1.08 },
-    { bulan: 'Jul', targetSaidi: 0.20, realisasiSaidi: Number(avgSaidiRealisasi), targetSaifi: 0.05, realisasiSaifi: Number(avgSaifiRealisasi), ensKwh: totalEnsKwh || 1240, kerugianRp: (totalRupiahLoss / 1000000) || 1.79 }
-  ];
+  const totalRupiahLoss = useMemo(() => {
+    return saidiListForYear.reduce((acc, curr) => acc + (curr.estimasiKerugianRp || 0), 0);
+  }, [saidiListForYear]);
 
-  // Dynamic monthly disturbance count calculation
+  const avgSaidiRealisasi = useMemo(() => {
+    if (saidiListForYear.length === 0) return '0.000';
+    const sum = saidiListForYear.reduce((acc, curr) => acc + (curr.realisasiSaidi || 0), 0);
+    return (sum / saidiListForYear.length).toFixed(3);
+  }, [saidiListForYear]);
+
+  const avgSaidiTarget = useMemo(() => {
+    if (saidiListForYear.length === 0) return '0.200';
+    const sum = saidiListForYear.reduce((acc, curr) => acc + (curr.targetSaidi || 0), 0);
+    return (sum / saidiListForYear.length).toFixed(3);
+  }, [saidiListForYear]);
+
+  const avgSaifiRealisasi = useMemo(() => {
+    if (saidiListForYear.length === 0) return '0.000';
+    const sum = saidiListForYear.reduce((acc, curr) => acc + (curr.realisasiSaifi || 0), 0);
+    return (sum / saidiListForYear.length).toFixed(3);
+  }, [saidiListForYear]);
+
+  const avgSaifiTarget = useMemo(() => {
+    if (saidiListForYear.length === 0) return '0.050';
+    const sum = saidiListForYear.reduce((acc, curr) => acc + (curr.targetSaifi || 0), 0);
+    return (sum / saidiListForYear.length).toFixed(3);
+  }, [saidiListForYear]);
+
+  // Dynamic monthly SAIDI / SAIFI Chart Data (strictly based on input saidiList)
   const monthsAbbr = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-  
-  const monthlyGangguanData = monthsAbbr.map((month, idx) => {
-    // Baseline for selected timeframe
-    let baseline = 0;
-    if (selectedTimeframe === '2026') {
-      const baselines2026 = [2, 1, 3, 1, 2, 2, 1, 0, 0, 0, 0, 0];
-      baseline = baselines2026[idx];
-    } else {
-      const baselines2025 = [4, 3, 5, 2, 4, 3, 5, 2, 3, 4, 2, 3];
-      baseline = baselines2025[idx];
-    }
 
-    // Count user-added logs for this month and year
-    const userAddedCount = gangguanList.filter((g) => {
-      if (g.id === 'g1' || g.id === 'g2') return false; // exclude initial mock logs
-      if (!g.tanggal) return false;
-      const dateParts = g.tanggal.split('-');
-      if (dateParts.length < 2) return false;
-      const year = dateParts[0];
-      const monthNum = parseInt(dateParts[1], 10);
-      return year === selectedTimeframe && monthNum === (idx + 1);
-    }).length;
-
-    // Handle if g1 or g2 were deleted from the database
-    const g1Exists = gangguanList.some(g => g.id === 'g1');
-    const g2Exists = gangguanList.some(g => g.id === 'g2');
-    let initialAdjustment = 0;
-    if (selectedTimeframe === '2026') {
-      if (idx === 0) { // Jan
-        if (!g1Exists) initialAdjustment--;
-        if (!g2Exists) initialAdjustment--;
-      }
-    }
-
-    return {
-      bulan: month,
-      'Jumlah Trip': baseline + userAddedCount + initialAdjustment
+  const monthlySaidiData = useMemo(() => {
+    const MONTH_VARIANTS: Record<number, string[]> = {
+      1: ['januari', 'jan', '01', '1'],
+      2: ['februari', 'feb', '02', '2'],
+      3: ['maret', 'mar', '03', '3'],
+      4: ['april', 'apr', '04', '4'],
+      5: ['mei', 'may', '05', '5'],
+      6: ['juni', 'jun', '06', '6'],
+      7: ['juli', 'jul', '07', '7'],
+      8: ['agustus', 'ags', 'aug', '08', '8'],
+      9: ['september', 'sep', '09', '9'],
+      10: ['oktober', 'okt', 'oct', '10'],
+      11: ['november', 'nov', '11'],
+      12: ['desember', 'des', 'dec', '12'],
     };
-  });
 
-  // Feeder Outage Contribution Data
-  const feederOutagePieData = [
-    { name: 'Tulehu', value: 42, color: '#2563eb' },
-    { name: 'Lateri 2', value: 28, color: '#0284c7' },
-    { name: 'Waiheru 2', value: 18, color: '#0d9488' },
-    { name: 'Passo', value: 12, color: '#f59e0b' }
-  ];
+    return monthsAbbr.map((month, idx) => {
+      const monthIndex = idx + 1;
+      const variants = MONTH_VARIANTS[monthIndex] || [];
+      const item = saidiListForYear.find((s) => {
+        const b = String(s.bulan || '').toLowerCase().trim();
+        return variants.includes(b);
+      });
+
+      return {
+        bulan: month,
+        targetSaidi: item?.targetSaidi ?? 0.20,
+        realisasiSaidi: item?.realisasiSaidi ?? 0,
+        targetSaifi: item?.targetSaifi ?? 0.05,
+        realisasiSaifi: item?.realisasiSaifi ?? 0,
+        ensKwh: item?.ensKumulatifKwh ?? 0,
+        kerugianRp: item?.estimasiKerugianRp ? parseFloat((item.estimasiKerugianRp / 1000000).toFixed(2)) : 0
+      };
+    });
+  }, [monthsAbbr, saidiListForYear]);
+
+  // Dynamic monthly disturbance count calculation (strictly based on input gangguanList)
+  const monthlyGangguanData = useMemo(() => {
+    return monthsAbbr.map((month, idx) => {
+      const monthNum = idx + 1;
+      const count = gangguanList.filter((g) => {
+        if (!g.tanggal) return false;
+        const dateParts = g.tanggal.split('-');
+        if (dateParts.length < 2) return false;
+        const year = dateParts[0];
+        const m = parseInt(dateParts[1], 10);
+        return year === selectedTimeframe && m === monthNum;
+      }).length;
+
+      return {
+        bulan: month,
+        'Jumlah Trip': count
+      };
+    });
+  }, [monthsAbbr, gangguanList, selectedTimeframe]);
+
+  // Feeder Outage Contribution Data (strictly based on input gangguanList)
+  const feederOutagePieData = useMemo(() => {
+    const yearLogs = gangguanList.filter((g) => {
+      if (!g.tanggal) return false;
+      return g.tanggal.startsWith(selectedTimeframe);
+    });
+    const total = yearLogs.length;
+    if (total === 0) return [];
+
+    const counts: Record<string, number> = {};
+    yearLogs.forEach((g) => {
+      const name = (g.namaPenyulang || 'Lainnya').trim();
+      counts[name] = (counts[name] || 0) + 1;
+    });
+
+    const palette = ['#2563eb', '#0284c7', '#0d9488', '#f59e0b', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981'];
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count], index) => ({
+        name,
+        value: Math.round((count / total) * 100),
+        count,
+        color: palette[index % palette.length]
+      }));
+  }, [gangguanList, selectedTimeframe]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
