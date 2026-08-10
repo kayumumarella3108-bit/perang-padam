@@ -8,7 +8,8 @@ import {
   Edit2,
   Zap,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import {
   PieChart,
@@ -48,6 +49,8 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [editingGangguan, setEditingGangguan] = useState<GangguanLog | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
 
   const tripPangkalList = gangguanList.filter((g) => {
@@ -60,8 +63,13 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const rawActiveList = activeGangguanTab === 'trip_pangkal' ? tripPangkalList : gangguanList;
 
   const activeList = rawActiveList.filter((g) => {
-    if (!selectedYear) return true;
-    return (g.tanggal || '').startsWith(selectedYear);
+    const tgl = g.tanggal || '';
+    if (startDate && tgl < startDate) return false;
+    if (endDate && tgl > endDate) return false;
+    if (!startDate && !endDate && selectedYear) {
+      return tgl.startsWith(selectedYear);
+    }
+    return true;
   });
 
   const totalTrip = activeList.length;
@@ -268,12 +276,49 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             </button>
           </div>
 
+          {/* Date Range Filter */}
+          <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="text-slate-500 font-medium hidden sm:inline">Periode:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+              title="Tanggal Mulai"
+            />
+            <span className="text-slate-400 font-bold">s/d</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+              title="Tanggal Selesai"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="p-1 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                title="Reset Filter Tanggal"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Reset</span>
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
             <span className="text-slate-500">Tahun:</span>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
+              disabled={!!(startDate || endDate)}
+              className={`bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer ${
+                startDate || endDate ? 'opacity-40 cursor-not-allowed' : ''
+              }`}
             >
               <option value="2026">2026</option>
               <option value="2025">2025</option>
@@ -288,7 +333,11 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
           <div>
             <span className="text-[10px] font-bold uppercase text-rose-600 tracking-wider">TOTAL GANGGUAN</span>
             <div className="text-3xl font-extrabold text-slate-900 mt-1">{totalTrip} <span className="text-xs font-semibold text-rose-600">Kali Trip</span></div>
-            <span className="text-[11px] text-slate-400">Periode Tahun {selectedYear} ({activeGangguanTab === 'trip_pangkal' ? 'Trip Pangkal' : 'Semua'})</span>
+            <span className="text-[11px] text-slate-400">
+              {startDate || endDate
+                ? `Rentang: ${startDate || 'Awal'} s/d ${endDate || 'Akhir'}`
+                : `Periode Tahun ${selectedYear}`} ({activeGangguanTab === 'trip_pangkal' ? 'Trip Pangkal' : 'Semua'})
+            </span>
           </div>
           <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
             <Zap className="w-6 h-6" />
@@ -355,7 +404,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
         <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-900">
-              📈 Tren Frekuensi Gangguan Per Bulan ({selectedYear})
+              📈 Tren Frekuensi Gangguan Per Bulan ({startDate || endDate ? `${startDate || 'Awal'} s/d ${endDate || 'Akhir'}` : selectedYear})
             </h3>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
               Bar Chart
@@ -381,9 +430,16 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             📊 MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN
           </h3>
-          <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
-            TOTAL KESELURUHAN: {overallMatrixTotal} KEJADIAN
-          </span>
+          <div className="flex items-center gap-2">
+            {(startDate || endDate) && (
+              <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                PERIODE: {startDate || 'Awal'} s/d {endDate || 'Akhir'}
+              </span>
+            )}
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
+              TOTAL KESELURUHAN: {overallMatrixTotal} KEJADIAN
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
