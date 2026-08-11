@@ -50,6 +50,7 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSaidi, setEditingSaidi] = useState<SaidiSaifiData | null>(null);
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleExportCSV = () => {
     const headers = [
@@ -130,6 +131,13 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
 
   // Sums for selectedYear
   const saidiFiltered = saidiList.filter((s) => String(s.tahun) === selectedYear);
+
+  const filteredList = saidiFiltered.filter((s) =>
+    (s.bulan || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (String(s.tahun) || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.catatan || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const totalEnsKwh = saidiFiltered.reduce((acc, curr) => acc + (curr.ensKumulatifKwh || 0), 0);
   const totalRupiah = saidiFiltered.reduce((acc, curr) => acc + (curr.estimasiKerugianRp || 0), 0);
   const avgSaidi =
@@ -322,11 +330,24 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
 
       {/* Data Table */}
       <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-            TABEL REALISASI SAIDI, SAIFI & ESTIMASI KERUGIAN ENS
-          </h3>
-          <span className="text-xs text-slate-400 font-medium">Tahun 2026</span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+              TABEL REALISASI SAIDI, SAIFI & ESTIMASI KERUGIAN ENS
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">Tahun {selectedYear}</span>
+          </div>
+
+          <div className="relative w-full md:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari berdasarkan bulan atau catatan..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -344,14 +365,15 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {saidiList.length === 0 ? (
+              {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                    Belum ada rekapan SAIDI / SAIFI.
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400 font-medium">
+                    <Search className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                    Belum ada rekapan SAIDI / SAIFI yang sesuai filter.
                   </td>
                 </tr>
               ) : (
-                saidiList.map((s) => (
+                filteredList.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3.5 font-bold text-slate-900">{s.bulan} {s.tahun}</td>
                     <td className="px-4 py-3.5 text-right font-mono font-bold text-amber-700">

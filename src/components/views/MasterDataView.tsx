@@ -55,6 +55,13 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
     (s.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Filtered Activities
+  const filteredActivities = activities.filter((act) =>
+    (act.user || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (act.aktivitas || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (act.modul || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
       
@@ -323,18 +330,31 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
       {/* TAB 3: LOG AKTIVITAS */}
       {activeTab === 'log_aktivitas' && (
         <div className="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden p-5 space-y-4">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600">
-              <History className="w-5 h-5" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600">
+                <History className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Log Aktivitas System Operational
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Audit trail histori perubahan data pengguna dan sistem
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Log Aktivitas System Operational
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Audit trail histori perubahan data pengguna dan sistem
-              </p>
-            </div>
+          </div>
+
+          <div className="relative max-w-sm">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari berdasarkan user, aktivitas, modul..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+            />
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -348,18 +368,26 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {activities.map((act) => (
-                  <tr key={act.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3.5 font-mono text-slate-500 text-[11px]">{act.waktu}</td>
-                    <td className="px-4 py-3.5 font-bold text-amber-700">{act.user}</td>
-                    <td className="px-4 py-3.5 text-slate-900">{act.aktivitas}</td>
-                    <td className="px-4 py-3.5">
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">
-                        {act.modul}
-                      </span>
+                {filteredActivities.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                      Belum ada data aktivitas yang sesuai filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredActivities.map((act) => (
+                    <tr key={act.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3.5 font-mono text-slate-500 text-[11px]">{act.waktu}</td>
+                      <td className="px-4 py-3.5 font-bold text-amber-700">{act.user}</td>
+                      <td className="px-4 py-3.5 text-slate-900">{act.aktivitas}</td>
+                      <td className="px-4 py-3.5">
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                          {act.modul}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
