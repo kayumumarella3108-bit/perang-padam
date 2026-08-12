@@ -225,11 +225,12 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 Penyulang ${layer.nama}
               </span>
               <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px]">
-                Titik #${idx + 1}
+                No. Urut: ${idx + 1}
               </span>
             </div>
 
             <div class="text-[11px] text-slate-600 space-y-0.5 mt-1">
+              <div class="font-bold text-blue-600">ID Tiang: ${layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`}</div>
               <div><span class="font-semibold">Koordinat:</span> ${coord[0].toFixed(5)}, ${coord[1].toFixed(5)}</div>
               <div><span class="font-semibold">Kategori Feeder:</span> <span class="font-bold text-amber-600">${layer.kategori}</span></div>
             </div>
@@ -291,6 +292,11 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         `;
 
         circle.bindPopup(popupContent);
+        circle.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
+          permanent: false, 
+          direction: 'top',
+          className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
+        });
         fg.addLayer(circle);
       });
     });
@@ -313,32 +319,63 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
 
     // Extract name
-    const nameNode = xmlDoc.querySelector('Placemark > name') || xmlDoc.querySelector('Document > name');
-    const feederName = nameNode?.textContent?.trim() || fileName.replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
+    const docNameNode = xmlDoc.querySelector('Document > name');
+    const feederName = docNameNode?.textContent?.trim() || fileName.replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
 
-    const coordNodes = xmlDoc.getElementsByTagName('coordinates');
+    const placemarks = xmlDoc.getElementsByTagName('Placemark');
     const parsedCoords: [number, number][] = [];
+    const poleNames: string[] = [];
 
-    for (let i = 0; i < coordNodes.length; i++) {
-      const text = coordNodes[i].textContent || '';
-      const rawTokens = text.trim().split(/\s+/);
-      rawTokens.forEach((token) => {
-        const parts = token.split(',').map(Number);
-        if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-          // KML format: longitude, latitude, altitude
-          const lng = parts[0];
-          const lat = parts[1];
-          if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-            parsedCoords.push([lat, lng]);
-          }
+    if (placemarks.length > 0) {
+      for (let i = 0; i < placemarks.length; i++) {
+        const pm = placemarks[i];
+        const coordNode = pm.getElementsByTagName('coordinates')[0];
+        if (coordNode) {
+          const text = coordNode.textContent || '';
+          const rawTokens = text.trim().split(/\s+/);
+          rawTokens.forEach((token) => {
+            const parts = token.split(',').map(Number);
+            if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              const lng = parts[0];
+              const lat = parts[1];
+              if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                parsedCoords.push([lat, lng]);
+                const pmName = pm.querySelector('name')?.textContent?.trim();
+                const sequenceNum = parsedCoords.length;
+                poleNames.push(pmName || `${feederName}-${sequenceNum}`);
+              }
+            }
+          });
         }
-      });
+      }
+    }
+
+    // Fallback if no placemarks with coordinates were found
+    if (parsedCoords.length === 0) {
+      const coordNodes = xmlDoc.getElementsByTagName('coordinates');
+      for (let i = 0; i < coordNodes.length; i++) {
+        const text = coordNodes[i].textContent || '';
+        const rawTokens = text.trim().split(/\s+/);
+        rawTokens.forEach((token) => {
+          const parts = token.split(',').map(Number);
+          if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            const lng = parts[0];
+            const lat = parts[1];
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              parsedCoords.push([lat, lng]);
+              poleNames.push(`${feederName}-${parsedCoords.length}`);
+            }
+          }
+        });
+      }
     }
 
     const colors = ['#10b981', '#3b82f6', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4', '#f97316'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
     let finalCoords = parsedCoords;
+    let finalPoleNames = poleNames;
+
     if (finalCoords.length === 0) {
       const baseLat = -3.63 + (Math.random() - 0.5) * 0.04;
       const baseLng = 128.23 + (Math.random() - 0.5) * 0.04;
@@ -348,18 +385,20 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         [baseLat + 0.013, baseLng + 0.016],
         [baseLat + 0.019, baseLng + 0.024]
       ];
+      finalPoleNames = finalCoords.map((_, i) => `${feederName}-${i + 1}`);
     }
 
     return {
        id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
        nama: feederName,
        tiangCount: finalCoords.length,
-       ruteLength: `${finalCoords.length} titik`,
+       ruteLength: `${finalCoords.length} Titik Tiang`,
        tanggalImport: new Date().toLocaleDateString('id-ID'),
        kategori: 'Inspeksi',
        visible: true,
        color: randomColor,
-       coordinates: finalCoords
+       coordinates: finalCoords,
+       poleNames: finalPoleNames
      };
   };
 
@@ -419,11 +458,12 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
       const baseLat = -3.63 + (Math.random() - 0.5) * 0.05;
       const baseLng = 128.23 + (Math.random() - 0.5) * 0.05;
 
+      const tiangCount = Math.floor(Math.random() * 25) + 10;
       const newLayer: MapLayerItem = {
         id: `imported_${Date.now()}`,
         nama: randomName,
-        tiangCount: Math.floor(Math.random() * 25) + 10,
-        ruteLength: `${Math.floor(Math.random() * 20) + 10} titik`,
+        tiangCount: tiangCount,
+        ruteLength: `${tiangCount} Titik Tiang`,
         tanggalImport: new Date().toLocaleDateString('id-ID'),
         kategori: randomCat,
         visible: true,
@@ -433,7 +473,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           [baseLat + 0.005, baseLng + 0.008],
           [baseLat + 0.012, baseLng + 0.015],
           [baseLat + 0.018, baseLng + 0.022]
-        ]
+        ],
+        poleNames: Array.from({ length: 4 }).map((_, i) => `${randomName}-${i + 1}`)
       };
 
       onAddLayer(newLayer);

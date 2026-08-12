@@ -21,7 +21,12 @@ import {
   PengukuranGardu,
   KendaraanOperasional,
   AsetJaringan,
-  JadwalPiket
+  JadwalPiket,
+  InspeksiTier1JTM,
+  InspeksiTier1GTT,
+  InspeksiTier1Switching,
+  InspeksiTier2Thermovision,
+  InspeksiTier2Ultrasound
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -68,6 +73,11 @@ import { PengukuranGarduView } from './components/views/PengukuranGarduView';
 import { KendaraanOperasionalView } from './components/views/KendaraanOperasionalView';
 import { AsetJaringanView } from './components/views/AsetJaringanView';
 import { JadwalPiketView } from './components/views/JadwalPiketView';
+import { InspeksiTier1JTMView } from './components/views/InspeksiTier1JTMView';
+import { InspeksiTier1GTTView } from './components/views/InspeksiTier1GTTView';
+import { InspeksiTier1SwitchingView } from './components/views/InspeksiTier1SwitchingView';
+import { InspeksiTier2ThermovisionView } from './components/views/InspeksiTier2ThermovisionView';
+import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2UltrasoundView';
 
 export default function App() {
   // Authentication state
@@ -84,6 +94,11 @@ export default function App() {
   const [rowList, setRowList] = useState<ROWItem[]>(() => filterDeleted(INITIAL_ROW));
   const [tier1List, setTier1List] = useState<Tier1Item[]>(() => filterDeleted(INITIAL_TIER1));
   const [tier2List, setTier2List] = useState<Tier2Item[]>(() => filterDeleted(INITIAL_TIER2));
+  const [tier1JtmList, setTier1JtmList] = useState<InspeksiTier1JTM[]>([]);
+  const [tier1GttList, setTier1GttList] = useState<InspeksiTier1GTT[]>([]);
+  const [tier1SwitchingList, setTier1SwitchingList] = useState<InspeksiTier1Switching[]>([]);
+  const [thermovisionList, setThermovisionList] = useState<InspeksiTier2Thermovision[]>([]);
+  const [ultrasoundList, setUltrasoundList] = useState<InspeksiTier2Ultrasound[]>([]);
   
   // Dynamically compute inspeksiList from tier1 and tier2 data
   const inspeksiList = useMemo(() => {
@@ -99,6 +114,71 @@ export default function App() {
         kondisi: (t1.konstruksi && t1.konstruksi.toLowerCase().includes('retak')) ? 'Berat' : 'Ringan',
         tanggalInspeksi: t1.tanggal,
         petugas: 'Tim Tier 1'
+      });
+    });
+    tier1JtmList.forEach(jtm => {
+      combined.push({
+        id: jtm.id,
+        tiangOrGarduId: jtm.noTiang || '-',
+        tipe: 'Tier 1',
+        namaPenyulang: jtm.penyulang || '-',
+        lokasi: jtm.section || '-',
+        temuan: jtm.kondisiTemuanLain || 'Inspeksi JTM Checklist',
+        kondisi: 'Baik',
+        tanggalInspeksi: jtm.tglPelaksanaan,
+        petugas: jtm.pelaksana || 'Tim JTM'
+      });
+    });
+    tier1GttList.forEach(gtt => {
+      combined.push({
+        id: gtt.id,
+        tiangOrGarduId: gtt.noGtt || '-',
+        tipe: 'Gardu',
+        namaPenyulang: gtt.penyulang || '-',
+        lokasi: gtt.alamat || '-',
+        temuan: gtt.kondisiTemuanLain || 'Inspeksi GTT Checklist',
+        kondisi: 'Baik',
+        tanggalInspeksi: gtt.tglPelaksanaan,
+        petugas: gtt.pelaksana || 'Tim GTT'
+      });
+    });
+    tier1SwitchingList.forEach(sw => {
+      combined.push({
+        id: sw.id,
+        tiangOrGarduId: sw.noTiang || '-',
+        tipe: 'Tier 1',
+        namaPenyulang: sw.penyulang || '-',
+        lokasi: sw.section || '-',
+        temuan: sw.namaSwitching || 'Switching Checklist',
+        kondisi: 'Baik',
+        tanggalInspeksi: sw.tglPelaksanaan,
+        petugas: sw.pelaksana || 'Tim Switching'
+      });
+    });
+    thermovisionList.forEach(tv => {
+      combined.push({
+        id: tv.id,
+        tiangOrGarduId: tv.noTiang || '-',
+        tipe: 'Thermovision',
+        namaPenyulang: tv.penyulang || '-',
+        lokasi: tv.section || '-',
+        temuan: tv.kondisiTemuanLain || 'Inspeksi Thermovision',
+        kondisi: 'Selesai',
+        tanggalInspeksi: tv.tglPelaksanaan,
+        petugas: tv.pelaksana || 'Tim Thermovision'
+      });
+    });
+    ultrasoundList.forEach(us => {
+      combined.push({
+        id: us.id,
+        tiangOrGarduId: us.noTiang || '-',
+        tipe: 'Ultrasound',
+        namaPenyulang: us.penyulang || '-',
+        lokasi: us.section || '-',
+        temuan: us.kondisiTemuanLain || 'Inspeksi Ultrasound',
+        kondisi: 'Baik',
+        tanggalInspeksi: us.tglPelaksanaan,
+        petugas: us.pelaksana || 'Tim Ultrasound'
       });
     });
     tier2List.forEach(t2 => {
@@ -383,7 +463,8 @@ export default function App() {
           kategori: data.kategori,
           visible: data.visible,
           color: data.color,
-          coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number])
+          coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number]),
+          poleNames: data.poleNames || []
         } as MapLayerItem;
         items.push(item);
       });
@@ -473,6 +554,51 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'pengukuran_gardu');
     });
 
+    // 19. Sync Inspeksi Tier 1 JTM
+    const unsubTier1Jtm = onSnapshot(collection(db, 'inspeksi_tier1_jtm'), (snapshot) => {
+      const items: InspeksiTier1JTM[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as InspeksiTier1JTM));
+      setTier1JtmList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inspeksi_tier1_jtm');
+    });
+
+    // 20. Sync Inspeksi Tier 1 GTT
+    const unsubTier1Gtt = onSnapshot(collection(db, 'inspeksi_tier1_gtt'), (snapshot) => {
+      const items: InspeksiTier1GTT[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as InspeksiTier1GTT));
+      setTier1GttList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inspeksi_tier1_gtt');
+    });
+
+    // 21. Sync Inspeksi Tier 1 Switching
+    const unsubTier1Switching = onSnapshot(collection(db, 'inspeksi_tier1_switching'), (snapshot) => {
+      const items: InspeksiTier1Switching[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as InspeksiTier1Switching));
+      setTier1SwitchingList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inspeksi_tier1_switching');
+    });
+
+    // 22. Sync Inspeksi Tier 2 Thermovision
+    const unsubThermovision = onSnapshot(collection(db, 'inspeksi_tier2_thermovision'), (snapshot) => {
+      const items: InspeksiTier2Thermovision[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as InspeksiTier2Thermovision));
+      setThermovisionList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inspeksi_tier2_thermovision');
+    });
+
+    // 23. Sync Inspeksi Tier 2 Ultrasound
+    const unsubUltrasound = onSnapshot(collection(db, 'inspeksi_tier2_ultrasound'), (snapshot) => {
+      const items: InspeksiTier2Ultrasound[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as InspeksiTier2Ultrasound));
+      setUltrasoundList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inspeksi_tier2_ultrasound');
+    });
+
     // Aset Jaringan Sync
     const unsubscribeAset = onSnapshot(collection(db, 'aset_jaringan'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsetJaringan));
@@ -504,6 +630,11 @@ export default function App() {
       unsubKendaraan();
       unsubMasterGardu();
       unsubPengukuran();
+      unsubTier1Jtm();
+      unsubTier1Gtt();
+      unsubTier1Switching();
+      unsubThermovision();
+      unsubUltrasound();
       unsubscribeAset();
       unsubscribeJadwal();
     };
@@ -1338,6 +1469,52 @@ export default function App() {
               onDeletePengukuran={handleDeletePengukuranGardu}
               onAddGardu={handleAddMasterGardu}
               onDeleteGardu={handleDeleteMasterGardu}
+            />
+          )}
+
+          {activeView === 'inspeksi_tier1_jtm' && (
+            <InspeksiTier1JTMView
+              currentUser={user}
+              tier1JtmList={tier1JtmList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+            />
+          )}
+
+          {activeView === 'inspeksi_tier1_gtt' && (
+            <InspeksiTier1GTTView
+              currentUser={user}
+              tier1GttList={tier1GttList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+              masterGarduList={masterGarduList}
+            />
+          )}
+
+          {activeView === 'inspeksi_tier1_switching' && (
+            <InspeksiTier1SwitchingView
+              currentUser={user}
+              tier1SwitchingList={tier1SwitchingList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+            />
+          )}
+
+          {activeView === 'inspeksi_tier2_thermovision' && (
+            <InspeksiTier2ThermovisionView
+              currentUser={user}
+              thermovisionList={thermovisionList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+            />
+          )}
+
+          {activeView === 'inspeksi_tier2_ultrasound' && (
+            <InspeksiTier2UltrasoundView
+              currentUser={user}
+              ultrasoundList={ultrasoundList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
             />
           )}
 

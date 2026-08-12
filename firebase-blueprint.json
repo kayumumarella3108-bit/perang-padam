@@ -277,6 +277,74 @@
         "lastUpdate": { "type": "string" }
       },
       "required": ["id", "namaPetugas"]
+    },
+    "InspeksiTier1JTM": {
+      "title": "InspeksiTier1JTM",
+      "description": "Detailed JTM Checklist inspection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tglPelaksanaan": { "type": "string" },
+        "noTiang": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "section": { "type": "string" },
+        "pelaksana": { "type": "string" }
+      },
+      "required": ["id", "tglPelaksanaan", "noTiang", "penyulang", "section"]
+    },
+    "InspeksiTier1GTT": {
+      "title": "InspeksiTier1GTT",
+      "description": "Detailed GTT Checklist inspection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tglPelaksanaan": { "type": "string" },
+        "noGtt": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "alamat": { "type": "string" },
+        "pelaksana": { "type": "string" }
+      },
+      "required": ["id", "tglPelaksanaan", "noGtt", "penyulang"]
+    },
+    "InspeksiTier1Switching": {
+      "title": "InspeksiTier1Switching",
+      "description": "Detailed Switching Equipment Checklist inspection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tglPelaksanaan": { "type": "string" },
+        "noTiang": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "namaSwitching": { "type": "string" },
+        "pelaksana": { "type": "string" }
+      },
+      "required": ["id", "tglPelaksanaan", "namaSwitching", "penyulang"]
+    },
+    "InspeksiTier2Thermovision": {
+      "title": "InspeksiTier2Thermovision",
+      "description": "Thermovision inspection data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tglPelaksanaan": { "type": "string" },
+        "noTiang": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "pelaksana": { "type": "string" }
+      },
+      "required": ["id", "tglPelaksanaan", "noTiang", "penyulang"]
+    },
+    "InspeksiTier2Ultrasound": {
+      "title": "InspeksiTier2Ultrasound",
+      "description": "Ultrasound inspection data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tglPelaksanaan": { "type": "string" },
+        "noTiang": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "pelaksana": { "type": "string" }
+      },
+      "required": ["id", "tglPelaksanaan", "noTiang", "penyulang"]
     }
   },
   "firestore": {
@@ -347,6 +415,26 @@
     "jadwal_piket": {
       "schema": "JadwalPiket",
       "description": "Staff shift schedules"
+    },
+    "inspeksi_tier1_jtm": {
+      "schema": "InspeksiTier1JTM",
+      "description": "Detailed JTM checklist records"
+    },
+    "inspeksi_tier1_gtt": {
+      "schema": "InspeksiTier1GTT",
+      "description": "Detailed GTT checklist records"
+    },
+    "inspeksi_tier1_switching": {
+      "schema": "InspeksiTier1Switching",
+      "description": "Detailed Switching equipment checklist records"
+    },
+    "inspeksi_tier2_thermovision": {
+      "schema": "InspeksiTier2Thermovision",
+      "description": "Thermovision inspection records"
+    },
+    "inspeksi_tier2_ultrasound": {
+      "schema": "InspeksiTier2Ultrasound",
+      "description": "Ultrasound inspection records"
     }
   }
 }

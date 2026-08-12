@@ -53,6 +53,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [editingGangguan, setEditingGangguan] = useState<GangguanLog | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
@@ -71,8 +72,14 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     const tgl = g.tanggal || '';
     if (startDate && tgl < startDate) return false;
     if (endDate && tgl > endDate) return false;
-    if (!startDate && !endDate && selectedYear) {
-      return tgl.startsWith(selectedYear);
+    if (!startDate && !endDate) {
+      if (selectedMonth !== 'all') {
+        const parts = tgl.split('-');
+        if (parts[1] !== selectedMonth) return false;
+      }
+      if (selectedYear) {
+        return tgl.startsWith(selectedYear);
+      }
     }
     return true;
   });
@@ -367,6 +374,32 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                 <span className="hidden md:inline">Reset</span>
               </button>
             )}
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+            <span className="text-slate-500">Bulan:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              disabled={!!(startDate || endDate)}
+              className={`bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer ${
+                startDate || endDate ? 'opacity-40 cursor-not-allowed' : ''
+              }`}
+            >
+              <option value="all">Semua Bulan</option>
+              <option value="01">Januari</option>
+              <option value="02">Februari</option>
+              <option value="03">Maret</option>
+              <option value="04">April</option>
+              <option value="05">Mei</option>
+              <option value="06">Juni</option>
+              <option value="07">Juli</option>
+              <option value="08">Agustus</option>
+              <option value="09">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
+            </select>
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">

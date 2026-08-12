@@ -24,6 +24,7 @@ import {
   Gauge,
   Car,
   Calendar,
+  Thermometer,
   Network
 } from 'lucide-react';
 import { ViewType, User } from '../types';
@@ -42,12 +43,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser
 }) => {
   const [pemeliharaanOpen, setPemeliharaanOpen] = useState(
-    ['row', 'inspeksi_tier1', 'inspeksi_tier2', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView)
+    ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView)
   );
 
   if (!isOpen) return null;
 
-  const isPemeliharaanActive = ['row', 'inspeksi_tier1', 'inspeksi_tier2', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView);
+  const isPemeliharaanActive = ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView);
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 h-[calc(100vh-4rem)] text-slate-300 font-sans z-20 select-none overflow-y-auto">
@@ -164,7 +165,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Inspeksi Tier 1</span>
+                  <span>Inspeksi Tier 1 (Simple)</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('inspeksi_tier1_jtm')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    activeView === 'inspeksi_tier1_jtm'
+                      ? 'bg-blue-600/20 text-blue-400 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Checklist JTM (Tier 1)</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('inspeksi_tier1_gtt')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    activeView === 'inspeksi_tier1_gtt'
+                      ? 'bg-blue-600/20 text-blue-400 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Factory className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Checklist GTT (Tier 1)</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('inspeksi_tier1_switching')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    activeView === 'inspeksi_tier1_switching'
+                      ? 'bg-blue-600/20 text-blue-400 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <GitGraph className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Checklist Switching (Tier 1)</span>
                 </button>
 
                 <button
@@ -177,6 +214,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Search className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Inspeksi Tier 2</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('inspeksi_tier2_thermovision')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    activeView === 'inspeksi_tier2_thermovision'
+                      ? 'bg-blue-600/20 text-blue-400 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Thermometer className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Checklist Thermovision (Tier 2)</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('inspeksi_tier2_ultrasound')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    activeView === 'inspeksi_tier2_ultrasound'
+                      ? 'bg-blue-600/20 text-blue-400 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Network className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Checklist Ultrasound (Tier 2)</span>
                 </button>
 
                 <button

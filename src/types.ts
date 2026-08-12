@@ -5,7 +5,12 @@ export type ViewType =
   | 'matriks_gangguan'
   | 'row'
   | 'inspeksi_tier1'
+  | 'inspeksi_tier1_jtm'
+  | 'inspeksi_tier1_gtt'
+  | 'inspeksi_tier1_switching'
   | 'inspeksi_tier2'
+  | 'inspeksi_tier2_thermovision'
+  | 'inspeksi_tier2_ultrasound'
   | 'pemeliharaan_20kv'
   | 'perintah_kerja'
   | 'master_data'
@@ -92,11 +97,11 @@ export interface ROWItem {
 export interface InspeksiItem {
   id: string;
   tiangOrGarduId: string;
-  tipe: 'Tier 1' | 'Tier 2' | 'Gardu';
+  tipe: 'Tier 1' | 'Tier 2' | 'Gardu' | 'Thermovision' | 'Ultrasound';
   namaPenyulang: string;
   lokasi: string;
   temuan: string;
-  kondisi: 'Baik' | 'Ringan' | 'Berat';
+  kondisi: 'Baik' | 'Ringan' | 'Berat' | 'Selesai' | 'Kurang' | 'Buruk' | 'Cukup';
   tanggalInspeksi: string;
   petugas: string;
 }
@@ -171,6 +176,7 @@ export interface MapLayerItem {
   visible: boolean;
   color: string;
   coordinates: [number, number][];
+  poleNames?: string[];
 }
 
 export interface SldComponent {
@@ -351,6 +357,320 @@ export interface AsetJaringan {
   nonScada: number;
   panjangJtr: number;
   lastUpdate: string;
+}
+
+export interface InspeksiTier1JTM {
+  id: string;
+  tglPelaksanaan: string;
+  giPembangkit: string;
+  noTiang: string;
+  up3: string;
+  penyulang: string;
+  konstruksi: string;
+  ulp: string;
+  section: string;
+  pelaksana: string;
+  koordinatX: string;
+  koordinatY: string;
+
+  // TIANG JTM
+  tinggiTiang: string; // 7, 9, 11, 12, 13, 14
+  kekuatanTiang: string; // 90, 100, 156, 200, 350
+  jenisTiang: string; // Beton, Besi, Kayu
+  kepemilikan: string; // PLN, Pemda, Pihak Lain
+  kondisiTiang: string[]; // Baik, Berkarat, Miring, Retak, Keropos
+
+  // AKSESORIS TIANG JTM
+  verlenkStick3M: string; // Baik, Tdk Ada, Berkarat, Miring
+  crossArm: string; // Baik, Berkarat, Keropos, Pendek
+  armTie: string; // Baik, Berkarat, Miring, Keropos, Putus
+  bandStrap: string; // Baik, Berkarat, Putus
+  strainClamp: string; // Baik, Berkarat, Longgar, Putus
+  bautCrossArm: string; // Baik, Bengkok, Tdk Lengkap, Tdk Ada
+  groundWire: string; // Baik, Rantas, Berkarat, Tdk Ada
+  wireClip: string; // Baik, Tdk Ada
+  grounding: string; // Baik, Putus, Tdk Ada
+  penghalangPanjat: string; // Baik, Tdk Ada
+  flangNet: string; // Baik, Miring, Berkarat, Tdk Ada
+
+  // POLE SUPPORTER JTM
+  trackSchoor: string; // Baik, Kendor, Putus, Rantas, Tdk Ada
+  dragSchoor: string; // Baik, Tdk Ada
+  kontraMast: string; // Baik, Tdk Ada
+  guyInsulator: string; // Baik, Longgar, Lepas, Tdk Ada
+  pondasi: string; // Baik, Retak, Tdk Ada
+
+  // KONDUKTOR
+  lokasiPenempatan: string; // SKTM, SUTM, SKUTM
+  panjangKonduktor: string;
+  penampangKonduktor: string; // 70, 90, 110, 150, 240, 300
+  jenisKonduktor: string; // A3C, ACSR, A3Cs, A3COC, MVTC, XLPE
+  kondisiKonduktor: string; // Baik, Rantas
+  jenisJumperan: string; // LLC, Joint, Line Tap, Paralel
+  kondisiJumperan: string; // Baik, Rantas, Telanjang
+  jarakJumperan: string;
+  kondisiAndongan: string; // Baik, Kendor
+  bendingIsolator: string; // Top Ties, Tekep, Cover Pin, Isolasi, Alumunium
+  kondisiBending: string; // Baik, Rantas
+
+  // ISOLATOR
+  isolatorTumpu: string; // Baik, Lama/Kaca, Kotor, Pecah, Flash Over, Line Post
+  isolatorTarik: string; // Baik, Lama/Kaca, Kotor, Pecah, Flash Over
+  isolatorGantung: string; // Baik, Lama/Kaca, Kotor, Pecah, Flash Over
+  sepatuKabel: string; // 2 Lubang, 1 Lubang
+  terminasi: string; // Baik, Cacat
+  lightingArrester: string; // Baik, Keramik, Retak, Lepas/Tdk Ada
+  cutOut: string; // Baik, Keramik, Retak
+  konstruksiSeharusnya: string;
+
+  // ROW
+  pohon: string; // Tdk Ada, > 2.5 m, 1-2.5 m, < 1 m, Menempel
+  jenisPohon: string;
+  jumlahPohon: string;
+  layangLayang: string; // Tdk Ada, Benang, Kerangka, Menempel
+  bangunanBaliho: string; // Tdk Ada, > 2.5 m, 1-2.5 m, < 1 m, Menempel
+  umbulUmbul: string; // Tdk Ada, > 2.5 m, 1-2.5 m, < 1 m, Menempel
+
+  kondisiTemuanLain: string;
+}
+
+export interface InspeksiTier1GTT {
+  id: string;
+  tglPelaksanaan: string;
+  giPembangkit: string;
+  section: string;
+  tipeGardu: string;
+  pelaksana: string;
+  area: string;
+  penyulang: string;
+  noGtt: string;
+  alamat: string;
+  ulp: string;
+  koordinatX: string;
+  koordinatY: string;
+
+  // TIANG GTT
+  konstruksiTiang: string; // 1 Tiang, 2 Tiang
+  tinggiTiang: string;
+  pondasi: string;
+  jenisTiang: string;
+  kondisiTiang: string[];
+
+  // PENGAMAN TM
+  konektorJumperJtm: string;
+  konektorJumperFco: string;
+  jumperanJtmCo: string;
+  dudukanFco: string;
+  konektorFcoBushing: string;
+  jumperanJtmCo2: string;
+  
+  // Simplified phase status for Cut Out, Deksel, LA
+  statusPhaseR: string;
+  statusPhaseS: string;
+  statusPhaseT: string;
+  
+  posisiLaThdFco: string;
+  koneksiLaTanah: string;
+
+  // DATA GTT
+  jumlahTrafo: string;
+  noSeri: string;
+  merk: string;
+  daya: string;
+  tahunBuat: string;
+  teganganPrimer: string;
+  teganganSekunder: string;
+  arusPrimer: string;
+  arusSekunder: string;
+  impedansi: string;
+  beratTrafo: string;
+  teganganTap: string;
+  hubBelitan: string;
+  statusTrafo: string;
+  volumeMinyak: string;
+  kwhMeter: string;
+
+  // DATA INSPEKSI GTT
+  bodyTrafo: string;
+  suaraTrafo: string;
+  bushingPrimer: string;
+  bushingSekunder: string;
+  platCopperBushing: string;
+  groundingNetral: string;
+  dudukanTrafo: string;
+  lingkunganGardu: string;
+
+  // LV PANEL
+  bodyLvPanel: string;
+  kebersihanLvPanel: string;
+  kondisiCat: string;
+  kunciLvPanel: string;
+  relBusBar: string;
+
+  kondisiTemuanLain: string;
+}
+
+export interface InspeksiTier1Switching {
+  id: string;
+  tglPelaksanaan: string;
+  giPembangkit: string;
+  noTiang: string;
+  area: string;
+  penyulang: string;
+  konstruksi: string;
+  ulp: string;
+  section: string;
+  pelaksana: string;
+  namaSwitching: string;
+  alamat: string;
+  koordinatX: string;
+  koordinatY: string;
+
+  // TIANG JTM
+  tinggiTiang: string;
+  kekuatanTiang: string;
+  jenisTiang: string;
+  kepemilikan: string;
+  kondisiTiang: string[];
+
+  // PMCB
+  merkPmcb: string;
+  thnBuatPmcb: string;
+  tglPasangPmcb: string;
+  tglOperasiPmcb: string;
+  lokasiPmcb: string;
+  ratedCurrentPmcb: string;
+  ratedVoltagePmcb: string;
+  normalOperasiPmcb: string;
+  kondisiPmcb: string;
+  kotakPmcb: string;
+  panelControlPmcb: string;
+  isolatorPmcb: string;
+  lbsManualPmcb: string;
+  dsOutdoorPmcb: string;
+  kondisiDsOutdoorPmcb: string;
+  groundingPmcb: string;
+  namePlatePmcb: string;
+  fungsiRemotePmcb: string;
+  supply220Pmcb: string;
+  bateraiPmcb: string;
+
+  // RECLOSER/ LBS MOTORIZE/ LBS MANUAL
+  merkRec: string;
+  thnBuatRec: string;
+  tglPasangRec: string;
+  tglOperasiRec: string;
+  noSeriRec: string;
+  tipeRec: string;
+  ratedCurrentRec: string;
+  ratedVoltageRec: string;
+  breakingCurrentRec: string;
+  peredamBusurApiRec: string;
+  teganganMotorRec: string;
+  lokasiRec: string;
+  normalOperasiRec: string;
+  kondisiRec: string;
+  kondisiGasSf6Rec: string;
+  cvtBushingRec: string;
+  tutupBushingRec: string;
+  isolatorRec: string;
+  lbsManualRec: string;
+  dsOutdoorRec: string;
+  kondisiDsOutdoorRec: string;
+  groundingRec: string;
+  namePlateRec: string;
+  panelControlRec: string;
+  fungsiRemoteRec: string;
+  supply220Rec: string;
+  bateraiRec: string;
+
+  kondisiTemuanLain: string;
+}
+
+export interface ThermovisionPoint {
+  tempR: string;
+  tempS: string;
+  tempT: string;
+  tempN?: string;
+  status: string;
+}
+
+export interface InspeksiTier2Thermovision {
+  id: string;
+  tglPelaksanaan: string;
+  area: string;
+  ulp: string;
+  giPembangkit: string;
+  penyulang: string;
+  section: string;
+  noTiang: string;
+  konstruksi: string;
+  pelaksana: string;
+  koordinatX: string;
+  koordinatY: string;
+
+  // KONEKTOR/ JUMPERAN
+  konektorJumperan: ThermovisionPoint;
+  konektorJumperanCO: ThermovisionPoint;
+  konektorJumperanLA: ThermovisionPoint;
+  sepatuKabelTanah: ThermovisionPoint;
+  sepatuKabelMVTIC: ThermovisionPoint;
+
+  // GTT
+  bushingPrimerGTT: ThermovisionPoint;
+  bushingSekunderGTT: ThermovisionPoint;
+  sepatuKabelInfoer: ThermovisionPoint;
+  contactVeerUtama: ThermovisionPoint;
+  contactVeerJurusanA: ThermovisionPoint;
+  contactVeerJurusanB: ThermovisionPoint;
+  contactVeerJurusanC: ThermovisionPoint;
+  contactVeerJurusanD: ThermovisionPoint;
+  sepatuKabelTofoerA: ThermovisionPoint;
+  sepatuKabelTofoerB: ThermovisionPoint;
+  sepatuKabelTofoerC: ThermovisionPoint;
+  sepatuKabelTofoerD: ThermovisionPoint;
+
+  // RECLOSER/ PMCB/ LBS
+  pisauLBS: ThermovisionPoint;
+  peredamBusurApi: ThermovisionPoint;
+  bushing: ThermovisionPoint;
+
+  kondisiTemuanLain: string;
+}
+
+export interface InspeksiTier2Ultrasound {
+  id: string;
+  tglPelaksanaan: string;
+  giPembangkit: string;
+  noTiang: string;
+  area: string;
+  penyulang: string;
+  konstruksi: string;
+  ulp: string;
+  section: string;
+  pelaksana: string;
+  koordinatX: string;
+  koordinatY: string;
+
+  // ISOLATOR
+  isolatorTumpu: string;
+  isolatorTarik: string;
+  fuseCutOut: string;
+  lightningArrester: string;
+  terminasiKabelTanah: string;
+  terminasiKabelMVTIC: string;
+
+  // JUMPERAN JTM
+  konektorJumperan: string;
+
+  // GTT
+  bushingPrimerGTT: string;
+  bushingSekunderGTT: string;
+
+  // RECLOSER/ PMCB/ LBS
+  bushingSwitching: string;
+
+  kondisiTemuanLain: string;
 }
 
 export interface JadwalPiket {

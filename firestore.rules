@@ -115,5 +115,28 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /inspeksi_tier1_jtm/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /inspeksi_tier1_gtt/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /inspeksi_tier1_switching/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+    match /inspeksi_tier2_thermovision/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+    match /inspeksi_tier2_ultrasound/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }
