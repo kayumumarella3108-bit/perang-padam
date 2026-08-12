@@ -170,54 +170,69 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
                   <th className="px-4 py-3.5">Nama Penyulang</th>
                   <th className="px-4 py-3.5 text-center">Status</th>
                   <th className="px-4 py-3.5">Kode / ID</th>
+                  <th className="px-4 py-3.5 text-right">Jml Pelanggan</th>
                   <th className="px-4 py-3.5 text-right">Panjang Jaringan</th>
                   <th className="px-4 py-3.5 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredPenyulang.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-amber-700">{p.namaGi}</td>
-                    <td className="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-2">
-                      <span>{p.namaPenyulang}</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
-                        {p.sectionTerlama ? '1 Section' : '0 Section'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                        p.status === 'Utama' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 font-mono font-bold text-slate-600">{p.kodeId}</td>
-                    <td className="px-4 py-3.5 text-right font-mono font-bold text-emerald-700">
-                      {p.panjangJaringanKms} <span className="text-[10px] text-slate-400">KMS</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingPenyulang(p);
-                            setIsPenyulangModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
-                          title="Edit Penyulang"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDeletePenyulang(p.id)}
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                          title="Hapus Penyulang"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredPenyulang.map((p) => {
+                  const feederSections = sectionList.filter(
+                    (s) => s.penyulangId === p.id || s.namaPenyulang?.toLowerCase() === p.namaPenyulang?.toLowerCase()
+                  );
+                  const totalSectionPlg = feederSections.reduce(
+                    (acc, curr) => acc + (curr.jumlahPelanggan || 0),
+                    0
+                  );
+                  const totalPlg = p.jumlahPelanggan && p.jumlahPelanggan > 0 ? p.jumlahPelanggan : totalSectionPlg;
+
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3.5 font-bold text-amber-700">{p.namaGi}</td>
+                      <td className="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-2">
+                        <span>{p.namaPenyulang}</span>
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
+                          {feederSections.length} Section
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          p.status === 'Utama' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 font-mono font-bold text-slate-600">{p.kodeId}</td>
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-blue-700">
+                        {totalPlg.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">Plg</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-emerald-700">
+                        {p.panjangJaringanKms} <span className="text-[10px] text-slate-400 font-normal">KMS</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingPenyulang(p);
+                              setIsPenyulangModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Edit Penyulang"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDeletePenyulang(p.id)}
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="Hapus Penyulang"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

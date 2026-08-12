@@ -78,6 +78,7 @@ import { InspeksiTier1GTTView } from './components/views/InspeksiTier1GTTView';
 import { InspeksiTier1SwitchingView } from './components/views/InspeksiTier1SwitchingView';
 import { InspeksiTier2ThermovisionView } from './components/views/InspeksiTier2ThermovisionView';
 import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2UltrasoundView';
+import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
 
 export default function App() {
   // Authentication state
@@ -1391,6 +1392,16 @@ export default function App() {
               penyulangList={syncedPenyulangList}
               onAddSaidi={handleAddSaidi}
               onDeleteSaidi={handleDeleteSaidi}
+            />
+          )}
+
+          {activeView === 'estimasi_saidi_saifi' && (
+            <EstimasiSaidiSaifiView
+              currentUser={user}
+              gangguanList={gangguanList}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+              onSelectView={setActiveView}
             />
           )}
 

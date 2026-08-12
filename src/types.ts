@@ -16,6 +16,7 @@ export type ViewType =
   | 'master_data'
   | 'pengukuran_gardu'
   | 'saidi_saifi'
+  | 'estimasi_saidi_saifi'
   | 'material'
   | 'alker_apd'
   | 'kendaraan_operasional'
@@ -39,6 +40,7 @@ export interface Penyulang {
   healthIndexStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis';
   sectionTerlama?: string;
   gangguanTerakhir?: string;
+  jumlahPelanggan?: number;
 }
 
 export interface SectionJaringan {
@@ -69,6 +71,12 @@ export interface GangguanLog {
   kodeGangguan: string;
   detailLokasi: string;
   catatan: string;
+  // SAIDI SAIFI Estimation per section event
+  jumlahPelangganPadam?: number;
+  totalPelangganUlp?: number;
+  estimasiSaidiMenit?: number;
+  estimasiSaidiJam?: number;
+  estimasiSaifi?: number;
 }
 
 export interface ROWItem {

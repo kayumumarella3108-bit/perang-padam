@@ -25,7 +25,8 @@ import {
   Car,
   Calendar,
   Thermometer,
-  Network
+  Network,
+  Calculator
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 
@@ -331,6 +332,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <BarChart3 className={`w-4 h-4 shrink-0 ${activeView === 'saidi_saifi' ? 'text-blue-400' : 'text-slate-400'}`} />
             <span>Kinerja SAIDI / SAIFI</span>
+          </button>
+
+          {/* Estimasi SAIDI / SAIFI (Event) */}
+          <button
+            onClick={() => onSelectView('estimasi_saidi_saifi')}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+              activeView === 'estimasi_saidi_saifi'
+                ? 'bg-blue-600/10 text-blue-400 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Calculator className={`w-4 h-4 shrink-0 ${activeView === 'estimasi_saidi_saifi' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <div className="flex flex-col">
+              <span>Estimasi SAIDI/SAIFI (Event)</span>
+              <span className="text-[10px] text-slate-500 font-normal">Per Section & Durasi</span>
+            </div>
           </button>
 
           {/* Manajemen Material */}

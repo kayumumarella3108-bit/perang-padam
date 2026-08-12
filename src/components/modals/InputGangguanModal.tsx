@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Zap, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator } from 'lucide-react';
 import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
 
 interface InputGangguanModalProps {
@@ -36,7 +36,34 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const [detailLokasi, setDetailLokasi] = useState('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
   const [catatan, setCatatan] = useState('Keterangan tindakan penanganan gangguan...');
 
-  React.useEffect(() => {
+  // SAIDI SAIFI estimation inputs
+  const [jumlahPelangganPadam, setJumlahPelangganPadam] = useState<number>(2450);
+  const [totalPelangganUlp, setTotalPelangganUlp] = useState<number>(48524);
+
+  // Derive master data calculations
+  const selectedPenyulang = penyulangList.find((p) => p.id === penyulangId);
+  const availableSections = sectionList.filter((s) => s.penyulangId === penyulangId || s.namaPenyulang?.toLowerCase() === selectedPenyulang?.namaPenyulang?.toLowerCase());
+
+  // Calculate total customers for current feeder from section master data
+  const feederSectionsCustomerSum = availableSections.reduce(
+    (sum, sec) => sum + (sec.jumlahPelanggan || 0),
+    0
+  );
+  const feederTotalCustomers =
+    selectedPenyulang?.jumlahPelanggan && selectedPenyulang.jumlahPelanggan > 0
+      ? selectedPenyulang.jumlahPelanggan
+      : feederSectionsCustomerSum > 0
+      ? feederSectionsCustomerSum
+      : 9800;
+
+  // Calculate total ULP customers from all sections across all feeders in Master Data
+  const masterDataTotalUlp = sectionList.reduce(
+    (sum, sec) => sum + (sec.jumlahPelanggan || 0),
+    0
+  );
+  const safeMasterUlp = masterDataTotalUlp > 0 ? masterDataTotalUlp : 48524;
+
+  useEffect(() => {
     if (editItem) {
       setTanggal(editItem.tanggal || '2026-08-08');
       setPenyulangId(editItem.penyulangId || penyulangList[0]?.id || '17');
@@ -52,6 +79,8 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setKodeGangguan(editItem.kodeGangguan || 'E-3');
       setDetailLokasi(editItem.detailLokasi || '');
       setCatatan(editItem.catatan || '');
+      setJumlahPelangganPadam(editItem.jumlahPelangganPadam || feederTotalCustomers);
+      setTotalPelangganUlp(editItem.totalPelangganUlp || safeMasterUlp);
     } else {
       setTanggal('2026-08-08');
       setPenyulangId(initialPenyulangId || penyulangList[0]?.id || '17');
@@ -67,30 +96,53 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setKodeGangguan('E-3');
       setDetailLokasi('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
       setCatatan('Keterangan tindakan penanganan gangguan...');
+      setTotalPelangganUlp(safeMasterUlp);
     }
   }, [editItem, isOpen, initialPenyulangId]);
 
+  // Sync customer count dynamically when Penyulang or Section changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (section && section.trim() !== '') {
+      const matchedSec = availableSections.find(
+        (s) => s.namaSection.toLowerCase() === section.toLowerCase()
+      );
+      if (matchedSec && matchedSec.jumlahPelanggan) {
+        setJumlahPelangganPadam(matchedSec.jumlahPelanggan);
+      } else {
+        // Fallback or user custom section
+      }
+    } else {
+      // If section is blank or Pangkal / Whole feeder selected -> default to feeder total
+      setJumlahPelangganPadam(feederTotalCustomers);
+    }
+  }, [section, penyulangId, isOpen, feederTotalCustomers]);
+
   if (!isOpen) return null;
 
-  // Calculate duration automatically
-  const calculateDuration = () => {
+  // Calculate duration in minutes and format string
+  const calculateDurationMinutes = (): number => {
     try {
       const [hOut, mOut] = jamKeluar.split(':').map(Number);
       const [hIn, mIn] = jamMasuk.split(':').map(Number);
       let diffMinutes = (hIn * 60 + mIn) - (hOut * 60 + mOut);
       if (diffMinutes < 0) diffMinutes += 24 * 60;
-      const hours = Math.floor(diffMinutes / 60);
-      const mins = diffMinutes % 60;
-      return `${hours}j ${mins}m`;
+      return diffMinutes;
     } catch {
-      return '1j 30m';
+      return 90;
     }
   };
 
-  const durasiCalculated = calculateDuration();
+  const durasiMenit = calculateDurationMinutes();
+  const durasiHours = durasiMenit / 60;
+  const durasiCalculated = `${Math.floor(durasiMenit / 60)}j ${durasiMenit % 60}m`;
 
-  const selectedPenyulang = penyulangList.find((p) => p.id === penyulangId);
-  const availableSections = sectionList.filter((s) => s.penyulangId === penyulangId);
+  // Calculate SAIDI and SAIFI estimates for this event
+  const safeTotalUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
+  const estimasiSaifi = jumlahPelangganPadam / safeTotalUlp; // Kali / Plg
+  const estimasiSaidiMenit = (jumlahPelangganPadam * durasiMenit) / safeTotalUlp; // Menit / Plg
+  const estimasiSaidiJam = estimasiSaidiMenit / 60; // Jam / Plg
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +165,13 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       penyebab,
       kodeGangguan,
       detailLokasi,
-      catatan
+      catatan,
+      // SAIDI SAIFI calculation values
+      jumlahPelangganPadam: Number(jumlahPelangganPadam) || 0,
+      totalPelangganUlp: Number(safeTotalUlp),
+      estimasiSaidiMenit: Number(estimasiSaidiMenit.toFixed(4)),
+      estimasiSaidiJam: Number(estimasiSaidiJam.toFixed(5)),
+      estimasiSaifi: Number(estimasiSaifi.toFixed(5))
     };
 
     onSave(newLog);
@@ -135,7 +193,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
                 Input Gangguan Penyulang
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Ekosistem gangguan trip & pemadaman penyulang
+                Ekosistem gangguan trip & kalkulasi estimasi SAIDI SAIFI section
               </p>
             </div>
           </div>
@@ -189,18 +247,25 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
           {/* Section Jaringan */}
           <div>
             <label className="block font-bold text-slate-700 mb-1">
-              Section Jaringan (Master Data)
+              Section Jaringan Padam (Master Data)
             </label>
             {availableSections.length > 0 ? (
               <select
                 value={section}
-                onChange={(e) => setSection(e.target.value)}
+                onChange={(e) => {
+                  const secVal = e.target.value;
+                  setSection(secVal);
+                  const matched = availableSections.find((s) => s.namaSection === secVal);
+                  if (matched && matched.jumlahPelanggan) {
+                    setJumlahPelangganPadam(matched.jumlahPelanggan);
+                  }
+                }}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer mb-2"
               >
                 <option value="" className="bg-white">-- Pilih Section --</option>
                 {availableSections.map((s) => (
                   <option key={s.id} value={s.namaSection} className="bg-white">
-                    {s.namaSection}
+                    {s.namaSection} ({s.jumlahPelanggan?.toLocaleString('id-ID') || 0} Plg)
                   </option>
                 ))}
               </select>
@@ -237,8 +302,102 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               />
             </div>
             <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-center text-xs">
-              <span className="text-[10px] text-emerald-600 block font-normal">Durasi Auto</span>
-              {durasiCalculated}
+              <span className="text-[10px] text-emerald-600 block font-normal">Durasi Padam</span>
+              {durasiCalculated} ({durasiMenit}m)
+            </div>
+          </div>
+
+          {/* SAIDI SAIFI ESTIMATION CALCULATION CARD */}
+          <div className="p-3.5 bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl border border-blue-800/50 space-y-3 shadow-md">
+            <div className="flex items-center justify-between border-b border-blue-800/60 pb-2">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-blue-400" />
+                <span className="font-bold text-xs text-blue-200 uppercase tracking-wider">
+                  Kalkulasi Estimasi SAIDI & SAIFI Event
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-semibold text-[10px]">
+                Tersinkron Master Data
+              </span>
+            </div>
+
+            {/* Master Data Sync Summary Bar */}
+            <div className="p-2 bg-blue-900/40 rounded-xl border border-blue-800/40 text-[11px] space-y-1">
+              <div className="flex items-center justify-between text-blue-200">
+                <span>Penyulang <strong>{selectedPenyulang?.namaPenyulang || 'Terpilih'}</strong> ({availableSections.length} Section):</span>
+                <span className="font-bold text-amber-300 font-mono">{feederTotalCustomers.toLocaleString('id-ID')} Plg</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Total Pelanggan ULP (Akumulasi Master Data):</span>
+                <span className="font-bold text-emerald-300 font-mono">{safeMasterUlp.toLocaleString('id-ID')} Plg</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] text-slate-300">
+                    Pelanggan Padam:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setJumlahPelangganPadam(feederTotalCustomers)}
+                    className="text-[9px] text-blue-300 hover:text-white underline cursor-pointer"
+                    title="Gunakan total pelanggan seluruh penyulang jika Trip Pangkal"
+                  >
+                    1 Feeder Full ({feederTotalCustomers.toLocaleString('id-ID')})
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  value={jumlahPelangganPadam}
+                  onChange={(e) => setJumlahPelangganPadam(Number(e.target.value))}
+                  min={1}
+                  className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-blue-400"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] text-slate-300">
+                    Total Pelanggan ULP:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTotalPelangganUlp(safeMasterUlp)}
+                    className="text-[9px] text-emerald-300 hover:text-white underline cursor-pointer"
+                    title="Reset ke total ULP dari Master Data"
+                  >
+                    Sync ULP ({safeMasterUlp.toLocaleString('id-ID')})
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  value={totalPelangganUlp}
+                  onChange={(e) => setTotalPelangganUlp(Number(e.target.value))}
+                  min={1}
+                  className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-blue-400"
+                />
+              </div>
+            </div>
+
+            {/* Calculated Badges */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="p-2.5 rounded-xl bg-blue-900/50 border border-blue-700/50">
+                <span className="text-[10px] text-blue-300 uppercase font-semibold block">ESTIMASI SAIDI EVENT</span>
+                <div className="text-sm font-extrabold text-blue-300 mt-0.5">
+                  {estimasiSaidiMenit.toFixed(3)} <span className="text-[10px] font-normal">Menit/Plg</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">({estimasiSaidiJam.toFixed(4)} Jam/Plg)</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-purple-900/50 border border-purple-700/50">
+                <span className="text-[10px] text-purple-300 uppercase font-semibold block">ESTIMASI SAIFI EVENT</span>
+                <div className="text-sm font-extrabold text-purple-300 mt-0.5">
+                  {estimasiSaifi.toFixed(4)} <span className="text-[10px] font-normal">Kali/Plg</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">({jumlahPelangganPadam.toLocaleString('id-ID')} / {safeTotalUlp.toLocaleString('id-ID')})</span>
+              </div>
             </div>
           </div>
 
@@ -363,7 +522,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               type="submit"
               className="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs shadow-sm shadow-blue-500/30 transition-all cursor-pointer"
             >
-              Simpan Data Gangguan
+              Simpan Data Gangguan & Estimasi SAIDI SAIFI
             </button>
           </div>
         </form>

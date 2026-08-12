@@ -20,6 +20,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
   const [status, setStatus] = useState<'Utama' | 'Percabangan'>('Utama');
   const [kodeId, setKodeId] = useState('BGL');
   const [panjangJaringanKms, setPanjangJaringanKms] = useState(12.5);
+  const [jumlahPelanggan, setJumlahPelanggan] = useState<number | ''>(9800);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -29,12 +30,14 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
         setStatus(initialData.status);
         setKodeId(initialData.kodeId);
         setPanjangJaringanKms(initialData.panjangJaringanKms);
+        setJumlahPelanggan(initialData.jumlahPelanggan || 0);
       } else {
         setNamaGi('GI PASSO');
         setNamaPenyulang('BAGUALA');
         setStatus('Utama');
         setKodeId('BGL');
         setPanjangJaringanKms(12.5);
+        setJumlahPelanggan(9800);
       }
     }
   }, [isOpen, initialData]);
@@ -52,6 +55,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
       status,
       kodeId,
       panjangJaringanKms: Number(panjangJaringanKms) || 0,
+      jumlahPelanggan: Number(jumlahPelanggan) || 0,
       frekuensiGangguan: initialData ? initialData.frekuensiGangguan : 0,
       healthIndexStatus: initialData ? initialData.healthIndexStatus : 'Sempurna'
     };
@@ -148,6 +152,22 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
               required
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              JUMLAH PELANGGAN PENYULANG (TOTAL)
+            </label>
+            <input
+              type="number"
+              value={jumlahPelanggan}
+              onChange={(e) => setJumlahPelanggan(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="e.g. 9800"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              Total pelanggan penyulang. Jika kosong, akan diakumulasi dari total pelanggan section-section di bawahnya.
+            </p>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
