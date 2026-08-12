@@ -29,6 +29,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { ViewType, User } from '../types';
+import { SocialContacts } from './SocialContacts';
 
 interface SidebarProps {
   activeView: ViewType;
@@ -415,6 +416,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </button>
         </nav>
+
+        {/* Developer & Admin Social Contact Footer */}
+        <div className="mt-6 pt-4 border-t border-slate-800/80 px-2">
+          <SocialContacts variant="dark" />
+        </div>
       </div>
     </aside>
   );

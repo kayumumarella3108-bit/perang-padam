@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, Zap, Cloud, User, LogOut, ChevronDown, ShieldCheck, Search, Eye, AlertTriangle, X } from 'lucide-react';
 import { User as UserType, ViewType } from '../types';
 import { canEditData } from '../utils/permissions';
+import { SocialContacts } from './SocialContacts';
 
 interface TopHeaderProps {
   user: UserType;
@@ -57,19 +58,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Center Section: Mode Indicator Badge */}
-      <div className="hidden lg:flex items-center gap-3">
+      {/* Center Section: Mode Indicator Badge & Social Badges */}
+      <div className="hidden xl:flex items-center gap-3">
         {isEditMode ? (
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Mode Edit & Entri Data ({user.role})</span>
+            <span>Mode Edit ({user.role})</span>
           </div>
         ) : (
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold shadow-xs">
             <Eye className="w-4 h-4 text-amber-600" />
-            <span>Mode Monitoring Read-Only ({user.role})</span>
+            <span>Mode Read-Only ({user.role})</span>
           </div>
         )}
+
+        <SocialContacts variant="compact" />
       </div>
 
       {/* Right Section: Cloud status, User Profile, Logout */}
