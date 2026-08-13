@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator } from 'lucide-react';
+import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter } from 'lucide-react';
 import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
 
 interface InputGangguanModalProps {
@@ -11,6 +11,58 @@ interface InputGangguanModalProps {
   editItem?: GangguanLog | null;
   initialPenyulangId?: string;
 }
+
+// Standard PLN Cause options categorized by Fault Code (Kode Gangguan)
+const STANDARD_PENYEBAB_MAP: Record<string, string[]> = {
+  'E-1': [
+    'Pohon Tumbang Menimpa SUTM',
+    'Dahan / Ranting Pohon Sentuh Jaringan SUTM',
+    'Daun / Dahan Pelepah Kelapa Menimpa Kawat',
+    'Pohon Bambu Roboh Mengenai SUTM'
+  ],
+  'E-2': [
+    'Sambaran Petir / Overvoltage Atmosferik',
+    'Bencana Alam Tanah Longsor / Banjir Bandang',
+    'Angin Kencang / Hujan Deras'
+  ],
+  'E-3': [
+    'Burung Hinggap / Tersangkut di Jaringan SUTM',
+    'Kelelawar / Tikus / Ular Naik di Trafo / Tiang',
+    'Pekerjaan Pihak Ketiga (Alat Berat / Galian)',
+    'Kendaraan Menabrak Tiang Listrik'
+  ],
+  'E-4': [
+    'Tali / Benang Layangan Kawat Menyangkut di JTM',
+    'Umbul-umbul / Spanduk / Baliho Terbang Menempel SUTM',
+    'Atap Seng / Plastik Terbang Menempel SUTM'
+  ],
+  'E-5': [
+    'Tidak Ditemukan (Gangguan Sesaat / Transient Fault)',
+    'Penelusuran Jalur Selesai - Hasil Nihil / Normal Kembali'
+  ],
+  'I-1': [
+    'Isolator Tumpu / Tarik Flashover / Retak',
+    'Arrester Bocor / Megger Rendah / Peledakan',
+    'Jumperan Putus / Joint Panas / Connector Slack',
+    'Fuse Cut Out (FCO) Peledakan / CO Element Putus',
+    'Kabel SKTM / SUTM Terkelupas / Short Circuit'
+  ],
+  'I-2': [
+    'Peralatan LBS / Recloser Fails / Trip Mekanis',
+    'Cubicle / Switchgear GI / GH Merekah',
+    'Relay Proteksi OCR / GFR Malfungsi',
+    'CT / PT Rusak / Terbakar'
+  ],
+  'I-3': [
+    'Trafo Distribusi Kerusakan Enclosure / Minyak Merembes',
+    'Trafo Distribusi Overload / Beda Fasa',
+    'Bushing Trafo Flashover'
+  ],
+  'I-4': [
+    'Tiang Miring / Retak / Roboh Terkikis',
+    'Crossarm Bengkok / Korosi Berat'
+  ]
+};
 
 export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   isOpen,
@@ -456,40 +508,81 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
             />
           </div>
 
-          {/* Penyebab Gangguan */}
+          {/* Kode Gangguan */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Penyebab Gangguan</label>
+            <label className="block font-bold text-slate-700 mb-1">Kode Gangguan (PLN Standard) *</label>
+            <select
+              value={kodeGangguan}
+              onChange={(e) => {
+                const newCode = e.target.value;
+                setKodeGangguan(newCode);
+                // Auto suggest first cause option if current cause is empty or default
+                const options = STANDARD_PENYEBAB_MAP[newCode];
+                if (options && options.length > 0 && (!penyebab || penyebab.startsWith('Pohon') || penyebab.startsWith('Tidak Ditemukan'))) {
+                  setPenyebab(options[0]);
+                }
+              }}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer"
+            >
+              <optgroup label="Eksternal (E)">
+                <option value="E-1" className="bg-white">E-1 (Pohon / Ranting / Dahan)</option>
+                <option value="E-2" className="bg-white">E-2 (Bencana Alam / Petir / Hujan Deras)</option>
+                <option value="E-3" className="bg-white">E-3 (Pekerjaan Pihak III / Binatang / Kendaraan)</option>
+                <option value="E-4" className="bg-white">E-4 (Layang-layang / Umbul-umbul / Baliho)</option>
+                <option value="E-5" className="bg-white">E-5 (Tidak Ditemukan / Gangguan Sesaat)</option>
+              </optgroup>
+              <optgroup label="Internal (I)">
+                <option value="I-1" className="bg-white">I-1 (Komponen JTM / Isolator / Arrester)</option>
+                <option value="I-2" className="bg-white">I-2 (Peralatan JTM / LBS / Recloser / Relay)</option>
+                <option value="I-3" className="bg-white">I-3 (Trafo Distribusi & Bushing)</option>
+                <option value="I-4" className="bg-white">I-4 (Tiang / Crossarm)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          {/* Penyebab Gangguan dengan Pilihan Dropdown Preset + Custom */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-bold text-slate-700">Penyebab Gangguan *</label>
+              <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+                <ListFilter className="w-3 h-3" /> Pilihan Standard & Custom
+              </span>
+            </div>
+
+            {/* Dropdown Preset Options */}
+            <select
+              value={
+                STANDARD_PENYEBAB_MAP[kodeGangguan]?.includes(penyebab)
+                  ? penyebab
+                  : 'custom'
+              }
+              onChange={(e) => {
+                if (e.target.value !== 'custom') {
+                  setPenyebab(e.target.value);
+                }
+              }}
+              className="w-full px-3 py-2.5 bg-blue-50/50 border border-blue-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:bg-white focus:border-blue-500 mb-2 cursor-pointer"
+            >
+              <option value="" disabled>-- Pilih Preset Penyebab Gangguan --</option>
+              {(STANDARD_PENYEBAB_MAP[kodeGangguan] || []).map((opt) => (
+                <option key={opt} value={opt} className="bg-white">
+                  {opt}
+                </option>
+              ))}
+              <option value="custom" className="bg-white text-blue-700 font-bold">
+                + Ketik / Edit Penyebab Manual...
+              </option>
+            </select>
+
+            {/* Custom Input Field */}
             <input
               type="text"
               value={penyebab}
               onChange={(e) => setPenyebab(e.target.value)}
-              placeholder="Pohon rimbun / hewan / petir / komponen rusak"
+              placeholder="Detail penyebab gangguan..."
+              required
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
-          </div>
-
-          {/* Kode Gangguan */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Kode Gangguan</label>
-            <select
-              value={kodeGangguan}
-              onChange={(e) => setKodeGangguan(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer"
-            >
-              <optgroup label="Internal (I)">
-                <option value="I-1" className="bg-white">I-1 (Komponen JTM)</option>
-                <option value="I-2" className="bg-white">I-2 (Peralatan JTM)</option>
-                <option value="I-3" className="bg-white">I-3 (Trafo dan Lainnya)</option>
-                <option value="I-4" className="bg-white">I-4 (Tiang)</option>
-              </optgroup>
-              <optgroup label="Eksternal (E)">
-                <option value="E-1" className="bg-white">E-1 (Pohon)</option>
-                <option value="E-2" className="bg-white">E-2 (Bencana Alam)</option>
-                <option value="E-3" className="bg-white">E-3 (Pekerjaan Pihak III / Binatang)</option>
-                <option value="E-4" className="bg-white">E-4 (Layang-layang / Umbul-umbul, DLL)</option>
-                <option value="E-5" className="bg-white">Tidak Ditemukan</option>
-              </optgroup>
-            </select>
           </div>
 
           {/* Detail Lokasi Gangguan */}

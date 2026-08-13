@@ -9,7 +9,10 @@ import {
   Zap,
   Calendar,
   AlertCircle,
-  X
+  X,
+  SlidersHorizontal,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -58,6 +61,13 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [endDate, setEndDate] = useState('');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
   const [penyulangChartType, setPenyulangChartType] = useState<'bar' | 'line'>('bar');
+
+  // Export column selection state
+  const [exportIncludePenyebab, setExportIncludePenyebab] = useState(true);
+  const [exportIncludeKode, setExportIncludeKode] = useState(true);
+  const [exportIncludeArus, setExportIncludeArus] = useState(true);
+  const [exportIncludeLokasi, setExportIncludeLokasi] = useState(true);
+  const [showExportOptions, setShowExportOptions] = useState(false);
 
   const tripPangkalList = gangguanList.filter((g) => {
     const p = penyulangList.find(
@@ -216,74 +226,77 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
     doc.text('Data Laporan Gangguan Penyulang / Trip - PT PLN (Persero)', 14, 15);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')} | Total Record: ${filteredList.length} Event`,
+      14,
+      22
+    );
 
-    const headers = [
-      ['Tanggal', 'Penyulang', 'Section', 'Jam Keluar', 'Jam Masuk', 'Durasi', 'Relay', 'Penyebab', 'Detail Lokasi']
-    ];
+    const headerRow = ['Tanggal', 'Penyulang', 'Section', 'Jam Out - In', 'Durasi', 'Relay'];
+    if (exportIncludeKode) headerRow.push('Kode');
+    if (exportIncludePenyebab) headerRow.push('Penyebab Gangguan');
+    if (exportIncludeArus) headerRow.push('Arus RST/IN (A)');
+    if (exportIncludeLokasi) headerRow.push('Detail Lokasi');
 
-    const dataRows = filteredList.map((g) => [
-      g.tanggal,
-      g.namaPenyulang,
-      g.section,
-      g.jamKeluar,
-      g.jamMasuk,
-      g.durasi || '-',
-      g.relayBekerja,
-      g.penyebabGangguan,
-      g.detailLokasi
-    ]);
+    const dataRows = filteredList.map((g) => {
+      const row = [
+        g.tanggal || '-',
+        g.namaPenyulang || '-',
+        g.section || '-',
+        `${g.jamKeluar || ''} - ${g.jamMasuk || ''}`,
+        g.durasi || '-',
+        g.relayBekerja || '-'
+      ];
+      if (exportIncludeKode) row.push(g.kodeGangguan === 'E-5' ? 'E-5 (Tidak Ditemukan)' : (g.kodeGangguan || '-'));
+      if (exportIncludePenyebab) row.push(g.penyebab || '-');
+      if (exportIncludeArus) row.push(`R:${g.arusR || 0} A, S:${g.arusS || 0} A, T:${g.arusT || 0} A, IN:${g.arusIN || 0} A`);
+      if (exportIncludeLokasi) row.push(g.detailLokasi || '-');
+      return row;
+    });
 
     autoTable(doc, {
-      head: headers,
+      head: [headerRow],
       body: dataRows,
-      startY: 28,
+      startY: 27,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 3 },
+      styles: { fontSize: 7.5, cellPadding: 2.5 },
       headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
-    doc.save(`Gangguan_Penyulang_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Laporan_Gangguan_Penyulang_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Export to CSV/Excel handler
   const handleExportGangguan = () => {
-    const headers = [
-      'Tanggal',
-      'Penyulang',
-      'Section',
-      'Jam Keluar',
-      'Jam Masuk',
-      'Durasi',
-      'Relay Bekerja',
-      'Kode Gangguan',
-      'Arus R (A)',
-      'Arus S (A)',
-      'Arus T (A)',
-      'Arus IN (A)',
-      'Penyebab',
-      'Detail Lokasi'
-    ];
+    const headers = ['Tanggal', 'Penyulang', 'Section', 'Jam Keluar', 'Jam Masuk', 'Durasi', 'Relay Bekerja'];
+    if (exportIncludeKode) headers.push('Kode Gangguan');
+    if (exportIncludePenyebab) headers.push('Penyebab Gangguan');
+    if (exportIncludeArus) {
+      headers.push('Arus R (A)', 'Arus S (A)', 'Arus T (A)', 'Arus IN (A)');
+    }
+    if (exportIncludeLokasi) headers.push('Detail Lokasi');
 
-    const rows = filteredList.map((g) => [
-      g.tanggal,
-      g.namaPenyulang,
-      g.section,
-      g.jamKeluar,
-      g.jamMasuk,
-      g.durasi,
-      g.relayBekerja,
-      g.kodeGangguan,
-      g.arusR,
-      g.arusS,
-      g.arusT,
-      g.arusIN,
-      g.penyebab,
-      g.detailLokasi
-    ]);
+    const rows = filteredList.map((g) => {
+      const row: (string | number)[] = [
+        g.tanggal || '-',
+        g.namaPenyulang || '-',
+        g.section || '-',
+        g.jamKeluar || '',
+        g.jamMasuk || '',
+        g.durasi || '',
+        g.relayBekerja || '-'
+      ];
+      if (exportIncludeKode) row.push(g.kodeGangguan || '-');
+      if (exportIncludePenyebab) row.push(g.penyebab || '-');
+      if (exportIncludeArus) {
+        row.push(g.arusR || 0, g.arusS || 0, g.arusT || 0, g.arusIN || 0);
+      }
+      if (exportIncludeLokasi) row.push(g.detailLokasi || '-');
+      return row;
+    });
 
     exportToCSV('Laporan_Gangguan_20kV_ULP_Baguala', headers, rows);
   };
@@ -701,10 +714,18 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Import Excel/CSV</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                showExportOptions
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              }`}
+              title="Pilih kolom yang akan disertakan pada file download"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Pilihan Kolom Export</span>
             </button>
             <button
               onClick={handleExportPDF}
@@ -731,6 +752,62 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Export Column Choices Panel */}
+        {showExportOptions && (
+          <div className="p-3.5 bg-slate-50 border border-blue-200 rounded-xl space-y-2 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+                Pilihan Kolom Laporan Gangguan (Sertakan / Sembunyikan Saat Download):
+              </span>
+              <button
+                onClick={() => setShowExportOptions(false)}
+                className="text-slate-400 hover:text-slate-700 text-[11px] font-bold underline cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 font-semibold text-slate-700">
+              <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={exportIncludePenyebab}
+                  onChange={(e) => setExportIncludePenyebab(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span>Penyebab Gangguan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={exportIncludeKode}
+                  onChange={(e) => setExportIncludeKode(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span>Kode Gangguan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={exportIncludeArus}
+                  onChange={(e) => setExportIncludeArus(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span>Arus Proteksi (R/S/T/IN)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={exportIncludeLokasi}
+                  onChange={(e) => setExportIncludeLokasi(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span>Detail Lokasi</span>
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
