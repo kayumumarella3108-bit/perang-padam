@@ -205,6 +205,7 @@ export const JadwalPiketView: React.FC<JadwalPiketViewProps> = ({
                     <option value="KP POKA">KP POKA</option>
                     <option value="KP LAHA">KP LAHA</option>
                     <option value="KP GALALA">KP GALALA</option>
+                    <option value="KP PASSO">KP PASSO</option>
                     <option value="KP TULEHU">KP TULEHU</option>
                   </select>
                 </div>

@@ -786,5 +786,15 @@ export const INITIAL_JADWAL_PIKET: JadwalPiket[] = [
       '14': 'L', '15': 'L', '16': 'P', '17': 'P', '18': 'M', '19': 'M', '20': 'M', '21': 'L', '22': 'L', '23': 'P'
     },
     lastUpdate: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'jp_4',
+    namaPetugas: 'SAMSUL BAHRI',
+    noHp: '081234567893',
+    unit: 'KP PASSO',
+    jadwal: {
+      '14': 'P', '15': 'P', '16': 'S', '17': 'S', '18': 'L', '19': 'L', '20': 'M', '21': 'M', '22': 'P', '23': 'P'
+    },
+    lastUpdate: '2026-08-01T08:00:00Z'
   }
 ];
