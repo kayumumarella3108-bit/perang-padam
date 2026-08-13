@@ -16,6 +16,8 @@ import {
   Building2
 } from 'lucide-react';
 import { JadwalPiket } from '../../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface JadwalPiketViewProps {
   jadwalList: JadwalPiket[];
@@ -102,7 +104,7 @@ export const JadwalPiketView: React.FC<JadwalPiketViewProps> = ({
   );
 
   // Group by unit
-  const units = [...new Set(jadwalList.map(item => item.unit))];
+  const units: string[] = Array.from(new Set(jadwalList.map(item => item.unit)));
   if (units.length === 0) units.push('ULC BAGUALA');
 
   const getDayName = (day: number) => {
@@ -113,6 +115,110 @@ export const JadwalPiketView: React.FC<JadwalPiketViewProps> = ({
   const isSunday = (day: number) => {
     const date = new Date(currentYear, currentMonth, day);
     return date.getDay() === 0;
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Kop Header PLN
+    doc.setFillColor(30, 58, 138); // Blue 900
+    doc.rect(0, 0, 297, 16, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('PT PLN (PERSERO) UIW MMU - UP3 AMBON - ULP BAGUALA', 10, 10);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(`JADWAL PIKET PETUGAS OPERASIONAL & PELAYANAN TEKNIK`, 10, 24);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      `Periode: ${monthName.toUpperCase()} ${currentYear} | Total Petugas: ${filteredList.length} Personel | Dicetak: ${new Date().toLocaleDateString('id-ID')}`,
+      10,
+      30
+    );
+
+    // Keterangan Shift
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('Keterangan Shift:  P: Pagi (08:00 - 16:00) | S: Siang (16:00 - 00:00) | M: Malam (00:00 - 08:00) | L: Libur / Off', 10, 35);
+
+    // Build Table Header
+    const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+    const tableHeader = ['No', 'Nama Petugas', 'Unit / KP', 'No HP', ...dayHeaders];
+
+    // Build Table Rows
+    const tableBody: any[] = [];
+
+    let counter = 1;
+    units.forEach((u) => {
+      const unitPetugas = filteredList.filter((p) => p.unit === u);
+      if (unitPetugas.length === 0) return;
+
+      // Unit Header Row
+      tableBody.push([
+        {
+          content: `UNIT / KP: ${u.toUpperCase()}`,
+          colSpan: daysInMonth + 4,
+          styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42], halign: 'left' }
+        }
+      ]);
+
+      unitPetugas.forEach((p) => {
+        const shifts = Array.from({ length: daysInMonth }, (_, i) => p.jadwal[i + 1] || '-');
+        tableBody.push([
+          counter++,
+          p.namaPetugas,
+          p.unit,
+          p.noHp || '-',
+          ...shifts
+        ]);
+      });
+    });
+
+    autoTable(doc, {
+      startY: 38,
+      head: [tableHeader],
+      body: tableBody,
+      theme: 'grid',
+      styles: { fontSize: 6.5, cellPadding: 1, halign: 'center', valign: 'middle' },
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 35, halign: 'left', fontStyle: 'bold' },
+        2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 22, halign: 'center' }
+      },
+      margin: { left: 10, right: 10 }
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 160;
+
+    // Signature Slots if space permits
+    if (finalY + 30 < 200) {
+      const sigY = finalY + 12;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 41, 59);
+
+      doc.text('Ambon, ' + new Date().toLocaleDateString('id-ID'), 220, sigY);
+      doc.text('Manager ULP Baguala', 220, sigY + 4);
+
+      doc.text('Mengetahui,', 20, sigY);
+      doc.text('Supervisor Teknik ULP Baguala', 20, sigY + 4);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('( ........................................... )', 220, sigY + 22);
+      doc.text('( ........................................... )', 20, sigY + 22);
+    }
+
+    doc.save(`Jadwal_Piket_Petugas_${monthName}_${currentYear}.pdf`);
   };
 
   return (
@@ -135,13 +241,18 @@ export const JadwalPiketView: React.FC<JadwalPiketViewProps> = ({
               setIsAdding(!isAdding);
               if (isAdding) setEditingId(null);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all shadow-md shadow-rose-100"
+            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all shadow-md shadow-rose-100 cursor-pointer"
           >
             {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {isAdding ? 'Batal' : 'Tambah Petugas'}
           </button>
-          <button className="p-2.5 text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-            <Download className="w-5 h-5" />
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-4 py-2.5 text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm font-bold text-xs cursor-pointer active:scale-95"
+            title="Export PDF Jadwal Piket Petugas"
+          >
+            <Download className="w-4 h-4 text-rose-600" />
+            <span>Export PDF</span>
           </button>
         </div>
       </div>
