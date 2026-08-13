@@ -59,8 +59,47 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedPenyulang, setSelectedPenyulang] = useState('all');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
   const [penyulangChartType, setPenyulangChartType] = useState<'bar' | 'line'>('bar');
+
+  // Preset handlers
+  const handlePresetToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setStartDate(today);
+    setEndDate(today);
+  };
+
+  const handlePreset7Days = () => {
+    const now = new Date();
+    const past = new Date();
+    past.setDate(now.getDate() - 7);
+    setStartDate(past.toISOString().split('T')[0]);
+    setEndDate(now.toISOString().split('T')[0]);
+  };
+
+  const handlePresetThisMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    setStartDate(firstDay.toISOString().split('T')[0]);
+    setEndDate(now.toISOString().split('T')[0]);
+  };
+
+  const handlePreset30Days = () => {
+    const now = new Date();
+    const past = new Date();
+    past.setDate(now.getDate() - 30);
+    setStartDate(past.toISOString().split('T')[0]);
+    setEndDate(now.toISOString().split('T')[0]);
+  };
+
+  const handleResetFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedMonth('all');
+    setSelectedYear('2026');
+    setSelectedPenyulang('all');
+  };
 
   // Export column selection state
   const [exportIncludePenyebab, setExportIncludePenyebab] = useState(true);
@@ -90,6 +129,11 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const rawActiveList = activeGangguanTab === 'trip_pangkal' ? tripPangkalList : gangguanList;
 
   const activeList = rawActiveList.filter((g) => {
+    if (selectedPenyulang !== 'all') {
+      if ((g.namaPenyulang || '').trim().toLowerCase() !== selectedPenyulang.trim().toLowerCase()) {
+        return false;
+      }
+    }
     const tgl = g.tanggal || '';
     if (startDate && tgl < startDate) return false;
     if (endDate && tgl > endDate) return false;
@@ -234,25 +278,46 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   });
 
   const handleExportPDF = () => {
-    const doc = new jsPDF('landscape');
-    doc.setFontSize(14);
-    doc.text('Data Laporan Gangguan Penyulang / Trip - PT PLN (Persero)', 14, 15);
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Kop Header PLN
+    doc.setFillColor(30, 58, 138); // Blue 900
+    doc.rect(0, 0, 297, 16, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('PT PLN (PERSERO) UIW MMU - UP3 AMBON - ULP BAGUALA', 14, 10);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('LAPORAN DATA LOG GANGGUAN PENYULANG 20kV', 14, 25);
+
     doc.setFontSize(9);
-    doc.setTextColor(100);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+
+    const filterInfo = (startDate || endDate)
+      ? `Filter Rentang Tanggal: ${startDate || 'Awal'} s/d ${endDate || 'Akhir'}`
+      : `Periode: ${selectedMonth !== 'all' ? `Bulan ${selectedMonth} ` : ''}Tahun ${selectedYear}`;
+    const penyulangFilter = selectedPenyulang !== 'all' ? ` | Penyulang: ${selectedPenyulang}` : '';
+
     doc.text(
-      `Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')} | Total Record: ${filteredList.length} Event`,
+      `${filterInfo}${penyulangFilter} | Total Record: ${filteredList.length} Event | Dicetak: ${new Date().toLocaleDateString('id-ID')}`,
       14,
-      22
+      31
     );
 
-    const headerRow = ['Tanggal', 'Penyulang', 'Section', 'Jam Out - In', 'Durasi', 'Relay'];
+    const headerRow = ['No', 'Tanggal', 'Penyulang', 'Section', 'Jam Out - In', 'Durasi', 'Relay'];
     if (exportIncludeKode) headerRow.push('Kode');
     if (exportIncludePenyebab) headerRow.push('Penyebab Gangguan');
     if (exportIncludeArus) headerRow.push('Arus RST/IN (A)');
     if (exportIncludeLokasi) headerRow.push('Detail Lokasi');
 
-    const dataRows = filteredList.map((g) => {
+    const dataRows = filteredList.map((g, idx) => {
       const row = [
+        (idx + 1).toString(),
         g.tanggal || '-',
         g.namaPenyulang || '-',
         g.section || '-',
@@ -270,19 +335,21 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     autoTable(doc, {
       head: [headerRow],
       body: dataRows,
-      startY: 27,
+      startY: 36,
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 2.5 },
+      styles: { fontSize: 7.5, cellPadding: 2 },
       headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 }
     });
 
-    doc.save(`Laporan_Gangguan_Penyulang_${new Date().toISOString().split('T')[0]}.pdf`);
+    const fileSuffix = startDate && endDate ? `${startDate}_sd_${endDate}` : `${selectedYear}_${selectedMonth}`;
+    doc.save(`Laporan_Gangguan_Penyulang_${fileSuffix}.pdf`);
   };
 
   // Export to CSV/Excel handler
   const handleExportGangguan = () => {
-    const headers = ['Tanggal', 'Penyulang', 'Section', 'Jam Keluar', 'Jam Masuk', 'Durasi', 'Relay Bekerja'];
+    const headers = ['No', 'Tanggal', 'Penyulang', 'Section', 'Jam Keluar', 'Jam Masuk', 'Durasi', 'Relay Bekerja'];
     if (exportIncludeKode) headers.push('Kode Gangguan');
     if (exportIncludePenyebab) headers.push('Penyebab Gangguan');
     if (exportIncludeArus) {
@@ -290,8 +357,9 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     }
     if (exportIncludeLokasi) headers.push('Detail Lokasi');
 
-    const rows = filteredList.map((g) => {
+    const rows = filteredList.map((g, idx) => {
       const row: (string | number)[] = [
+        idx + 1,
         g.tanggal || '-',
         g.namaPenyulang || '-',
         g.section || '-',
@@ -309,7 +377,70 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       return row;
     });
 
-    exportToCSV('Laporan_Gangguan_20kV_ULP_Baguala', headers, rows);
+    const fileSuffix = startDate && endDate ? `${startDate}_sd_${endDate}` : `${selectedYear}_${selectedMonth}`;
+    exportToCSV(`Laporan_Gangguan_20kV_ULP_Baguala_${fileSuffix}`, headers, rows);
+  };
+
+  // Export Matriks Distribusi Per Kode to PDF
+  const handleExportMatriksPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Kop Header PLN
+    doc.setFillColor(30, 58, 138); // Blue 900
+    doc.rect(0, 0, 297, 16, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('PT PLN (PERSERO) UIW MMU - UP3 AMBON - ULP BAGUALA', 14, 10);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('LAPORAN MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN', 14, 25);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+
+    const periodeInfo = (startDate || endDate)
+      ? `Rentang Tanggal: ${startDate || 'Awal'} s/d ${endDate || 'Akhir'}`
+      : `Tahun: ${selectedYear}${selectedMonth !== 'all' ? ` | Bulan: ${selectedMonth}` : ' (Semua Bulan)'}`;
+    const penyulangInfo = selectedPenyulang !== 'all' ? ` | Penyulang: ${selectedPenyulang}` : '';
+
+    doc.text(
+      `Periode: ${periodeInfo}${penyulangInfo} | Total Gangguan: ${overallMatrixTotal} Kejadian | Dicetak: ${new Date().toLocaleDateString('id-ID')}`,
+      14,
+      31
+    );
+
+    const headRow = ['Kode', 'Keterangan Jenis Gangguan', ...months, 'TOTAL'];
+    const bodyRows = matrixRowsData.map((row) => [
+      row.code === 'E-5' ? '-' : row.code,
+      row.label,
+      ...row.monthlyCounts.map((c) => (c > 0 ? c.toString() : '-')),
+      row.totalRow.toString()
+    ]);
+
+    bodyRows.push([
+      'TOTAL',
+      'JUMLAH TOTAL PER BULAN',
+      ...monthlyTotalSums.map((s) => (s > 0 ? s.toString() : '-')),
+      overallMatrixTotal.toString()
+    ]);
+
+    autoTable(doc, {
+      startY: 36,
+      head: [headRow],
+      body: bodyRows,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+      margin: { left: 14, right: 14 }
+    });
+
+    const fileSuffix = startDate && endDate ? `${startDate}_sd_${endDate}` : `${selectedYear}_${selectedMonth}`;
+    doc.save(`Matriks_Distribusi_Gangguan_ULP_Baguala_${fileSuffix}.pdf`);
   };
 
   return (
@@ -377,108 +508,204 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       </div>
 
       {/* NEW: Dedicated Filter Toolbar */}
-      <div className="p-4 bg-white border border-slate-200 shadow-sm rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <div className="flex items-center gap-2">
+      <div className="p-4 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Rentang Tanggal Filter Box */}
+            <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-2xs">
+              <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
               <div className="flex flex-col">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Bulan</span>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  disabled={!!(startDate || endDate)}
-                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">Semua Bulan</option>
-                  <option value="01">Januari</option>
-                  <option value="02">Februari</option>
-                  <option value="03">Maret</option>
-                  <option value="04">April</option>
-                  <option value="05">Mei</option>
-                  <option value="06">Juni</option>
-                  <option value="07">Juli</option>
-                  <option value="08">Agustus</option>
-                  <option value="09">September</option>
-                  <option value="10">Oktober</option>
-                  <option value="11">November</option>
-                  <option value="12">Desember</option>
-                </select>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Rentang Tanggal (Mulai - Sampai)</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                  />
+                  <span className="text-[10px] font-extrabold text-slate-400">s/d</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                  />
+                  {(startDate || endDate) && (
+                    <button
+                      onClick={() => { setStartDate(''); setEndDate(''); }}
+                      className="p-1 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                      title="Clear Date Range"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="w-px h-6 bg-slate-200 mx-1" />
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={handlePresetToday}
+                className="px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-700 hover:bg-white hover:shadow-2xs transition-all cursor-pointer"
+              >
+                Hari Ini
+              </button>
+              <button
+                onClick={handlePreset7Days}
+                className="px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-700 hover:bg-white hover:shadow-2xs transition-all cursor-pointer"
+              >
+                7 Hari
+              </button>
+              <button
+                onClick={handlePresetThisMonth}
+                className="px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-700 hover:bg-white hover:shadow-2xs transition-all cursor-pointer"
+              >
+                Bulan Ini
+              </button>
+              <button
+                onClick={handlePreset30Days}
+                className="px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-700 hover:bg-white hover:shadow-2xs transition-all cursor-pointer"
+              >
+                30 Hari
+              </button>
+            </div>
+
+            {/* Filter Penyulang */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-2xs">
               <div className="flex flex-col">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Tahun</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Filter Penyulang</span>
                 <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  disabled={!!(startDate || endDate)}
-                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
+                  value={selectedPenyulang}
+                  onChange={(e) => setSelectedPenyulang(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer mt-0.5"
                 >
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
+                  <option value="all">Semua Penyulang ({penyulangList.length})</option>
+                  {penyulangList.map((p) => (
+                    <option key={p.id} value={p.namaPenyulang}>
+                      {p.namaPenyulang} ({p.namaGi})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Rentang Tanggal</span>
+            {/* Bulan & Tahun Fallback */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-2xs">
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
-                />
-                <span className="text-[10px] font-bold text-slate-400">s/d</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
-                />
-                {(startDate || endDate) && (
-                  <button
-                    onClick={() => { setStartDate(''); setEndDate(''); }}
-                    className="ml-1 p-1 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Bulan</span>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    disabled={!!(startDate || endDate)}
+                    className={`bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer mt-0.5 ${
+                      startDate || endDate ? 'opacity-40' : ''
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                    <option value="all">Semua Bulan</option>
+                    <option value="01">Januari</option>
+                    <option value="02">Februari</option>
+                    <option value="03">Maret</option>
+                    <option value="04">April</option>
+                    <option value="05">Mei</option>
+                    <option value="06">Juni</option>
+                    <option value="07">Juli</option>
+                    <option value="08">Agustus</option>
+                    <option value="09">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Tahun</span>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    disabled={!!(startDate || endDate)}
+                    className={`bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer mt-0.5 ${
+                      startDate || endDate ? 'opacity-40' : ''
+                    }`}
+                  >
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                  </select>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 lg:w-60">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari penyulang/kode..."
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleExportPDF}
+                className="px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="Export PDF Sesuai Rentang Tanggal"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>PDF</span>
+              </button>
+              <button
+                onClick={handleExportGangguan}
+                className="px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-emerald-600 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="Export Excel/CSV Sesuai Rentang Tanggal"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 lg:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari penyulang/kode/penyebab..."
-              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-1">
+        {/* Active Filter Indicator Badge Bar */}
+        {(startDate || endDate || selectedPenyulang !== 'all' || selectedMonth !== 'all') && (
+          <div className="flex items-center justify-between px-3.5 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-extrabold text-blue-900 uppercase text-[10px] tracking-wider">
+                FILTER PERIODE AKTIF:
+              </span>
+              {startDate || endDate ? (
+                <span className="px-2 py-0.5 rounded-md bg-white border border-blue-200 font-bold text-blue-800 text-[11px]">
+                  📅 {startDate || 'Awal'} s/d {endDate || 'Akhir'}
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-md bg-white border border-blue-200 font-bold text-blue-800 text-[11px]">
+                  🗓️ Periode: {selectedMonth !== 'all' ? `Bulan ${selectedMonth}` : ''} {selectedYear}
+                </span>
+              )}
+
+              {selectedPenyulang !== 'all' && (
+                <span className="px-2 py-0.5 rounded-md bg-white border border-blue-200 font-bold text-blue-800 text-[11px]">
+                  ⚡ Penyulang: {selectedPenyulang}
+                </span>
+              )}
+
+              <span className="text-[11px] text-blue-700 font-semibold">
+                ({activeList.length} Event Ditemukan)
+              </span>
+            </div>
+
             <button
-              onClick={handleExportPDF}
-              className="p-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 transition-all cursor-pointer shadow-sm active:scale-95"
-              title="Export PDF"
+              onClick={handleResetFilters}
+              className="text-rose-600 hover:text-rose-800 font-bold text-[11px] flex items-center gap-1 cursor-pointer underline"
             >
-              <Download className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleExportGangguan}
-              className="p-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-emerald-600 transition-all cursor-pointer shadow-sm active:scale-95"
-              title="Export Excel"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
+              <span>Reset Filter</span>
             </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Metric Cards Row */}
@@ -638,19 +865,27 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
 
       {/* Matriks Distribusi Per Kode & Bulan */}
       <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             📊 MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {(startDate || endDate) && (
               <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
                 PERIODE: {startDate || 'Awal'} s/d {endDate || 'Akhir'}
               </span>
             )}
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
-              TOTAL KESELURUHAN: {overallMatrixTotal} KEJADIAN
+              TOTAL: {overallMatrixTotal} KEJADIAN
             </span>
+            <button
+              onClick={handleExportMatriksPDF}
+              className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="Cetak/Export Matriks Distribusi ke PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-400" />
+              <span>Export Matriks PDF</span>
+            </button>
           </div>
         </div>
 
