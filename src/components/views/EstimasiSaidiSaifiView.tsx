@@ -42,23 +42,27 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
   const [selectedPenyulangId, setSelectedPenyulangId] = useState<string>('all');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  // Calculate total ULP customers from Master Data
+  // Calculate total ULP customers from Master Data (sum of all penyulangs or sections)
   const masterDataTotalUlp = useMemo(() => {
+    const sumFromPenyulang = penyulangList.reduce((acc, p) => {
+      const fSections = sectionList.filter(
+        (s) => s.penyulangId === p.id || s.namaPenyulang?.toLowerCase() === p.namaPenyulang?.toLowerCase()
+      );
+      const sumSec = fSections.reduce((sAcc, s) => sAcc + (s.jumlahPelanggan || 0), 0);
+      const pPlg = p.jumlahPelanggan && p.jumlahPelanggan > 0 ? p.jumlahPelanggan : sumSec;
+      return acc + pPlg;
+    }, 0);
+
+    if (sumFromPenyulang > 0) return sumFromPenyulang;
+
     const sumFromSections = sectionList.reduce(
       (acc, s) => acc + (s.jumlahPelanggan || 0),
       0
     );
-    if (sumFromSections > 0) return sumFromSections;
-    
-    // Fallback: sum from penyulangList
-    const sumFromPenyulang = penyulangList.reduce(
-      (acc, p) => acc + (p.jumlahPelanggan || 0),
-      0
-    );
-    return sumFromPenyulang > 0 ? sumFromPenyulang : 48524;
+    return sumFromSections > 0 ? sumFromSections : 91740;
   }, [sectionList, penyulangList]);
 
-  const [totalPelangganUlp, setTotalPelangganUlp] = useState<number>(48524);
+  const [totalPelangganUlp, setTotalPelangganUlp] = useState<number>(masterDataTotalUlp || 91740);
 
   // Sync initial state when master data loads
   React.useEffect(() => {
@@ -88,9 +92,6 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
 
   // Helper to parse duration into minutes
   const parseDurasiMenit = (log: GangguanLog): number => {
-    if (log.estimasiSaidiMenit && log.jumlahPelangganPadam && log.jumlahPelangganPadam > 0) {
-      // If we saved durasi directly, we can derive or calculate
-    }
     if (log.jamKeluar && log.jamMasuk) {
       try {
         const [hOut, mOut] = log.jamKeluar.split(':').map(Number);
@@ -105,22 +106,44 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     return 60;
   };
 
-  // Helper to get customers for a log
+  // Helper to get customers for a log synced with Master Data Section & Penyulang
   const getJumlahPelangganPadam = (log: GangguanLog): number => {
-    if (log.jumlahPelangganPadam && log.jumlahPelangganPadam > 0) {
-      return log.jumlahPelangganPadam;
-    }
-    // Lookup from sectionList
+    const normalize = (str?: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // 1. Check section match in Master Data Section
     if (log.section) {
-      const matchSec = sectionList.find(
-        (s) => s.namaSection.toLowerCase() === log.section.toLowerCase()
-      );
-      if (matchSec && matchSec.jumlahPelanggan) {
+      const logNorm = normalize(log.section);
+      const matchSec = sectionList.find((s) => {
+        const sNorm = normalize(s.namaSection);
+        return sNorm === logNorm || sNorm.includes(logNorm) || logNorm.includes(sNorm);
+      });
+      if (matchSec && matchSec.jumlahPelanggan !== undefined && matchSec.jumlahPelanggan !== null && matchSec.jumlahPelanggan > 0) {
         return matchSec.jumlahPelanggan;
       }
     }
-    // Default estimated value per section (~2,400 customers)
-    return 2450;
+
+    // 2. Check penyulang match in Master Data Penyulang (for feeder trip or whole feeder)
+    if (log.penyulangId || log.namaPenyulang) {
+      const pMatch = penyulangList.find(
+        (p) => p.id === log.penyulangId || normalize(p.namaPenyulang) === normalize(log.namaPenyulang)
+      );
+      if (pMatch) {
+        const fSections = sectionList.filter(
+          (s) => s.penyulangId === pMatch.id || normalize(s.namaPenyulang) === normalize(pMatch.namaPenyulang)
+        );
+        const sumSec = fSections.reduce((acc, curr) => acc + (curr.jumlahPelanggan || 0), 0);
+        const pPlg = pMatch.jumlahPelanggan && pMatch.jumlahPelanggan > 0 ? pMatch.jumlahPelanggan : sumSec;
+        if (pPlg > 0) {
+          return pPlg;
+        }
+      }
+    }
+
+    // 3. Fallback to saved customer count on log
+    if (log.jumlahPelangganPadam && log.jumlahPelangganPadam > 0) {
+      return log.jumlahPelangganPadam;
+    }
+    return 0;
   };
 
   // Filtered Gangguan Logs
@@ -194,14 +217,14 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     let totalPelangganPadamAccum = 0;
     let totalDurasiPadamMenit = 0;
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
 
     filteredLogs.forEach((log) => {
       const durasiMenit = parseDurasiMenit(log);
       const jmlPlg = getJumlahPelangganPadam(log);
 
-      const eventSaifi = log.estimasiSaifi || jmlPlg / safeUlp;
-      const eventSaidiMenit = log.estimasiSaidiMenit || (jmlPlg * durasiMenit) / safeUlp;
+      const eventSaifi = jmlPlg / safeUlp;
+      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
 
       totalSaidiMenit += eventSaidiMenit;
       totalSaifi += eventSaifi;
@@ -237,7 +260,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       }
     > = {};
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
 
     filteredLogs.forEach((log) => {
       const name = log.namaPenyulang || 'Lainnya';
@@ -254,8 +277,8 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
 
       const durasiMenit = parseDurasiMenit(log);
       const jmlPlg = getJumlahPelangganPadam(log);
-      const eventSaifi = log.estimasiSaifi || jmlPlg / safeUlp;
-      const eventSaidiMenit = log.estimasiSaidiMenit || (jmlPlg * durasiMenit) / safeUlp;
+      const eventSaifi = jmlPlg / safeUlp;
+      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
 
       map[name].count += 1;
       map[name].saidiMenit += eventSaidiMenit;
@@ -280,7 +303,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       }
     > = {};
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
 
     filteredLogs.forEach((log) => {
       const secName = log.section || 'General Section';
@@ -296,7 +319,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
 
       const durasiMenit = parseDurasiMenit(log);
       const jmlPlg = getJumlahPelangganPadam(log);
-      const eventSaidiMenit = log.estimasiSaidiMenit || (jmlPlg * durasiMenit) / safeUlp;
+      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
 
       map[secName].count += 1;
       map[secName].saidiMenit += eventSaidiMenit;
@@ -330,13 +353,13 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       'Detail Lokasi'
     ];
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
 
     const rows = filteredLogs.map((log) => {
       const durasiMenit = parseDurasiMenit(log);
       const jmlPlg = getJumlahPelangganPadam(log);
-      const eSaifi = log.estimasiSaifi || jmlPlg / safeUlp;
-      const eSaidiM = log.estimasiSaidiMenit || (jmlPlg * durasiMenit) / safeUlp;
+      const eSaifi = jmlPlg / safeUlp;
+      const eSaidiM = (jmlPlg * durasiMenit) / safeUlp;
       const eSaidiJ = eSaidiM / 60;
 
       return [
@@ -841,9 +864,9 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
               {filteredLogs.map((log) => {
                 const durasiMenit = parseDurasiMenit(log);
                 const jmlPlg = getJumlahPelangganPadam(log);
-                const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
-                const eSaifi = log.estimasiSaifi || jmlPlg / safeUlp;
-                const eSaidiM = log.estimasiSaidiMenit || (jmlPlg * durasiMenit) / safeUlp;
+                const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
+                const eSaifi = jmlPlg / safeUlp;
+                const eSaidiM = (jmlPlg * durasiMenit) / safeUlp;
                 const eSaidiJ = eSaidiM / 60;
 
                 return (

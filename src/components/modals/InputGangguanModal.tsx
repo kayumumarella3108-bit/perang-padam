@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter } from 'lucide-react';
 import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
 
@@ -104,7 +104,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const selectedPenyulang = penyulangList.find((p) => p.id === penyulangId);
   const availableSections = sectionList.filter((s) => s.penyulangId === penyulangId || s.namaPenyulang?.toLowerCase() === selectedPenyulang?.namaPenyulang?.toLowerCase());
 
-  // Calculate total customers for current feeder from section master data
+  // Calculate total customers for current feeder from section or feeder master data
   const feederSectionsCustomerSum = availableSections.reduce(
     (sum, sec) => sum + (sec.jumlahPelanggan || 0),
     0
@@ -112,16 +112,29 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const feederTotalCustomers =
     selectedPenyulang?.jumlahPelanggan && selectedPenyulang.jumlahPelanggan > 0
       ? selectedPenyulang.jumlahPelanggan
-      : feederSectionsCustomerSum > 0
-      ? feederSectionsCustomerSum
-      : 9800;
+      : feederSectionsCustomerSum;
 
-  // Calculate total ULP customers from all sections across all feeders in Master Data
-  const masterDataTotalUlp = sectionList.reduce(
-    (sum, sec) => sum + (sec.jumlahPelanggan || 0),
-    0
-  );
-  const safeMasterUlp = masterDataTotalUlp > 0 ? masterDataTotalUlp : 48524;
+  // Calculate total ULP customers from all penyulangs and sections in Master Data
+  const masterDataTotalUlp = useMemo(() => {
+    const sumFromPenyulangs = penyulangList.reduce((acc, p) => {
+      const fSections = sectionList.filter(
+        (s) => s.penyulangId === p.id || s.namaPenyulang?.toLowerCase() === p.namaPenyulang?.toLowerCase()
+      );
+      const sumSec = fSections.reduce((sAcc, s) => sAcc + (s.jumlahPelanggan || 0), 0);
+      const pPlg = p.jumlahPelanggan && p.jumlahPelanggan > 0 ? p.jumlahPelanggan : sumSec;
+      return acc + pPlg;
+    }, 0);
+
+    if (sumFromPenyulangs > 0) return sumFromPenyulangs;
+
+    const sumFromSections = sectionList.reduce(
+      (sum, sec) => sum + (sec.jumlahPelanggan || 0),
+      0
+    );
+    return sumFromSections > 0 ? sumFromSections : 91740;
+  }, [penyulangList, sectionList]);
+
+  const safeMasterUlp = masterDataTotalUlp;
 
   useEffect(() => {
     if (editItem) {
