@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Shield, Eye, EyeOff, Lock, User as UserIcon, HardHat, Zap, Leaf, AlertTriangle, Sun, Wind, Activity, Sparkles } from 'lucide-react';
 import { User } from '../types';
-import { SocialContacts } from './SocialContacts';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -273,11 +272,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
               <Leaf className="w-3 h-3" /> EBT Integrated
             </span>
           </div>
-        </div>
-
-        {/* Social Media Contact Cards */}
-        <div className="w-full max-w-md mt-4">
-          <SocialContacts variant="login" />
         </div>
 
         {/* Footer Slogans */}
