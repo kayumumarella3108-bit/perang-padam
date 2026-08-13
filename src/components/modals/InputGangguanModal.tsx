@@ -413,6 +413,12 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               placeholder="Atau ketik nama section..."
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
+            {section && (section.trim().toUpperCase().startsWith('GI') || section.trim().toUpperCase().startsWith('GIS') || section.trim().toUpperCase().startsWith('G.I') || section.trim().toUpperCase().startsWith('PMT') || section.trim().toUpperCase().includes('GI ')) && (
+              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200/80 rounded-lg text-blue-700 text-[10px] font-extrabold">
+                <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>Section berasal dari GI (Otomatis masuk Kategori Trip Pangkal)</span>
+              </div>
+            )}
           </div>
 
           {/* Jam Keluar, Jam Masuk, Durasi */}

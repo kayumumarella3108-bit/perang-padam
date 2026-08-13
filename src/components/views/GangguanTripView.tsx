@@ -69,11 +69,29 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [exportIncludeLokasi, setExportIncludeLokasi] = useState(true);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-  const tripPangkalList = gangguanList.filter((g) => {
-    const p = penyulangList.find(
-      (item) => item.namaPenyulang.toLowerCase() === (g.namaPenyulang || '').toLowerCase()
+  const isSectionFromGi = (sectionStr: string): boolean => {
+    if (!sectionStr) return false;
+    const s = sectionStr.trim().toUpperCase();
+    return (
+      s.startsWith('GI') ||
+      s.startsWith('GIS') ||
+      s.startsWith('G.I') ||
+      s.startsWith('PMT') ||
+      s.startsWith('GARDU INDUK') ||
+      /\bGI\b/.test(s) ||
+      /\bGIS\b/.test(s)
     );
-    return p?.status === 'Utama' || (g.namaPenyulang || '').toUpperCase().includes('UTAMA');
+  };
+
+  const tripPangkalList = gangguanList.filter((g) => {
+    const sec = g.section || '';
+    const pName = g.namaPenyulang || '';
+    const p = penyulangList.find(
+      (item) => item.namaPenyulang.toLowerCase() === pName.toLowerCase()
+    );
+    const fromGi = isSectionFromGi(sec);
+    const isUtama = p?.status === 'Utama' || pName.toUpperCase().includes('UTAMA');
+    return fromGi || isUtama;
   });
 
   const rawActiveList = activeGangguanTab === 'trip_pangkal' ? tripPangkalList : gangguanList;
@@ -837,7 +855,16 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                   <tr key={g.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3.5 font-mono text-slate-500">{g.tanggal}</td>
                     <td className="px-4 py-3.5 font-bold text-blue-600">{g.namaPenyulang}</td>
-                    <td className="px-4 py-3.5 text-slate-700 text-[11px]">{g.section}</td>
+                    <td className="px-4 py-3.5 text-slate-700 text-[11px]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-slate-800">{g.section}</span>
+                        {isSectionFromGi(g.section) && (
+                          <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-extrabold text-[9px] uppercase tracking-wider shrink-0">
+                            GI / Pangkal
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3.5 font-mono text-slate-500">{g.jamKeluar} - {g.jamMasuk}</td>
                     <td className="px-4 py-3.5">
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-mono font-bold text-[11px]">
