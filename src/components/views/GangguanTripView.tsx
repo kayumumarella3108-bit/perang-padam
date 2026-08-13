@@ -850,8 +850,11 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                         {g.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : g.kodeGangguan}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500">
-                      R:{g.arusR} A | S:{g.arusS} A | T:{g.arusT} A | IN:{g.arusIN} A
+                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-700 whitespace-nowrap">
+                      <span className="font-bold text-slate-800">R:</span> {g.arusR > 0 && g.arusR < 50 ? `${g.arusR} kA` : `${g.arusR || 0} A`} <span className="text-slate-300">|</span>{' '}
+                      <span className="font-bold text-slate-800">S:</span> {g.arusS > 0 && g.arusS < 50 ? `${g.arusS} kA` : `${g.arusS || 0} A`} <span className="text-slate-300">|</span>{' '}
+                      <span className="font-bold text-slate-800">T:</span> {g.arusT > 0 && g.arusT < 50 ? `${g.arusT} kA` : `${g.arusT || 0} A`} <span className="text-slate-300">|</span>{' '}
+                      <span className="font-bold text-slate-800">IN:</span> {g.arusIN > 0 && g.arusIN < 50 ? `${g.arusIN} kA` : `${g.arusIN || 0} A`}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="font-semibold text-slate-900">{g.penyebab}</div>

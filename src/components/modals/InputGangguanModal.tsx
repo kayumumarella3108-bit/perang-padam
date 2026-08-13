@@ -79,10 +79,18 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const [jamKeluar, setJamKeluar] = useState('08:00');
   const [jamMasuk, setJamMasuk] = useState('09:30');
   const [relayBekerja, setRelayBekerja] = useState('OCR / GFR / RECLOSER');
-  const [arusR, setArusR] = useState(150);
-  const [arusS, setArusS] = useState(180);
-  const [arusT, setArusT] = useState(160);
-  const [arusIN, setArusIN] = useState(320);
+  const [arusR, setArusR] = useState<number | string>(150);
+  const [satuanR, setSatuanR] = useState<'A' | 'kA'>('A');
+
+  const [arusS, setArusS] = useState<number | string>(180);
+  const [satuanS, setSatuanS] = useState<'A' | 'kA'>('A');
+
+  const [arusT, setArusT] = useState<number | string>(160);
+  const [satuanT, setSatuanT] = useState<'A' | 'kA'>('A');
+
+  const [arusIN, setArusIN] = useState<number | string>(320);
+  const [satuanIN, setSatuanIN] = useState<'A' | 'kA'>('A');
+
   const [penyebab, setPenyebab] = useState('Pohon tumbang / ranting / petir / komponen rusak');
   const [kodeGangguan, setKodeGangguan] = useState('E-3');
   const [detailLokasi, setDetailLokasi] = useState('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
@@ -123,10 +131,43 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setJamKeluar(editItem.jamKeluar || '08:00');
       setJamMasuk(editItem.jamMasuk || '09:30');
       setRelayBekerja(editItem.relayBekerja || 'OCR');
-      setArusR(editItem.arusR || 0);
-      setArusS(editItem.arusS || 0);
-      setArusT(editItem.arusT || 0);
-      setArusIN(editItem.arusIN || 0);
+
+      const valR = editItem.arusR || 0;
+      if (valR > 0 && valR < 50) {
+        setArusR(valR);
+        setSatuanR('kA');
+      } else {
+        setArusR(valR);
+        setSatuanR('A');
+      }
+
+      const valS = editItem.arusS || 0;
+      if (valS > 0 && valS < 50) {
+        setArusS(valS);
+        setSatuanS('kA');
+      } else {
+        setArusS(valS);
+        setSatuanS('A');
+      }
+
+      const valT = editItem.arusT || 0;
+      if (valT > 0 && valT < 50) {
+        setArusT(valT);
+        setSatuanT('kA');
+      } else {
+        setArusT(valT);
+        setSatuanT('A');
+      }
+
+      const valIN = editItem.arusIN || 0;
+      if (valIN > 0 && valIN < 50) {
+        setArusIN(valIN);
+        setSatuanIN('kA');
+      } else {
+        setArusIN(valIN);
+        setSatuanIN('A');
+      }
+
       setPenyebab(editItem.penyebab || '');
       setKodeGangguan(editItem.kodeGangguan || 'E-3');
       setDetailLokasi(editItem.detailLokasi || '');
@@ -141,9 +182,13 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setJamMasuk('09:30');
       setRelayBekerja('OCR / GFR / RECLOSER');
       setArusR(150);
+      setSatuanR('A');
       setArusS(180);
+      setSatuanS('A');
       setArusT(160);
+      setSatuanT('A');
       setArusIN(320);
+      setSatuanIN('A');
       setPenyebab('Pohon tumbang / ranting / petir / komponen rusak');
       setKodeGangguan('E-3');
       setDetailLokasi('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
@@ -151,6 +196,35 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setTotalPelangganUlp(safeMasterUlp);
     }
   }, [editItem, isOpen, initialPenyulangId]);
+
+  const parseArusValue = (val: string | number): number => {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    const cleaned = String(val).replace(',', '.').trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const handleSatuanChange = (
+    newUnit: 'A' | 'kA',
+    currentUnit: 'A' | 'kA',
+    currentVal: string | number,
+    setVal: (val: string | number) => void,
+    setUnit: (unit: 'A' | 'kA') => void
+  ) => {
+    if (newUnit === currentUnit) return;
+    setUnit(newUnit);
+    const num = parseArusValue(currentVal);
+    if (num > 0) {
+      if (newUnit === 'kA' && currentUnit === 'A') {
+        const converted = Number((num / 1000).toFixed(3));
+        setVal(converted);
+      } else if (newUnit === 'A' && currentUnit === 'kA') {
+        const converted = Number((num * 1000).toFixed(1));
+        setVal(converted);
+      }
+    }
+  };
 
   // Sync customer count dynamically when Penyulang or Section changes
   useEffect(() => {
@@ -200,6 +274,16 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
     e.preventDefault();
     if (!selectedPenyulang) return;
 
+    const valR = parseArusValue(arusR);
+    const valS = parseArusValue(arusS);
+    const valT = parseArusValue(arusT);
+    const valIN = parseArusValue(arusIN);
+
+    const calculatedArusR = satuanR === 'kA' ? valR * 1000 : valR;
+    const calculatedArusS = satuanS === 'kA' ? valS * 1000 : valS;
+    const calculatedArusT = satuanT === 'kA' ? valT * 1000 : valT;
+    const calculatedArusIN = satuanIN === 'kA' ? valIN * 1000 : valIN;
+
     const newLog: GangguanLog = {
       id: editItem ? editItem.id : `g_${Date.now()}`,
       tanggal,
@@ -210,10 +294,10 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       jamMasuk,
       durasi: durasiCalculated,
       relayBekerja,
-      arusR: Number(arusR) || 0,
-      arusS: Number(arusS) || 0,
-      arusT: Number(arusT) || 0,
-      arusIN: Number(arusIN) || 0,
+      arusR: calculatedArusR || 0,
+      arusS: calculatedArusS || 0,
+      arusT: calculatedArusT || 0,
+      arusIN: calculatedArusIN || 0,
       penyebab,
       kodeGangguan,
       detailLokasi,
@@ -454,58 +538,186 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
           </div>
 
           {/* Relay Bekerja */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Relay Bekerja</label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-slate-700">Relay Bekerja *</label>
+              <span className="text-[10px] text-blue-600 font-semibold">Klik Pilihan Preset Relay</span>
+            </div>
+
+            {/* Clickable Preset Relay Chips */}
+            <div className="flex flex-wrap gap-1.5 pb-0.5">
+              {['OCR', 'GFR', 'RECLOSER', 'UFR', 'REF', 'SSO'].map((relay) => {
+                const isSelected = relayBekerja
+                  .toUpperCase()
+                  .split('/')
+                  .map((s) => s.trim())
+                  .includes(relay);
+                return (
+                  <button
+                    key={relay}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        const parts = relayBekerja
+                          .split('/')
+                          .map((p) => p.trim())
+                          .filter((p) => p && p.toUpperCase() !== relay);
+                        setRelayBekerja(parts.join(' / '));
+                      } else {
+                        const parts = relayBekerja
+                          .split('/')
+                          .map((p) => p.trim())
+                          .filter(Boolean);
+                        if (!parts.includes(relay)) {
+                          parts.push(relay);
+                        }
+                        setRelayBekerja(parts.join(' / '));
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-500/20'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : '+ '}{relay}
+                  </button>
+                );
+              })}
+
+              {/* Combo Preset Options */}
+              {['OCR / GFR', 'OCR / GFR / RECLOSER'].map((combo) => {
+                const isMatch = relayBekerja.trim().toUpperCase() === combo.toUpperCase();
+                return (
+                  <button
+                    key={combo}
+                    type="button"
+                    onClick={() => setRelayBekerja(combo)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                      isMatch
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-500/20'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {combo}
+                  </button>
+                );
+              })}
+            </div>
+
             <input
               type="text"
               value={relayBekerja}
               onChange={(e) => setRelayBekerja(e.target.value)}
-              placeholder="OCR / GFR / RECLOSER"
+              placeholder="OCR / GFR / RECLOSER / UFR..."
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
           </div>
 
-          {/* Arus RST & IN */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="font-bold text-slate-700">Relay Arus R S T</label>
-              <span className="text-[10px] text-blue-600 font-semibold">Satuan: Ampere (A)</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <input
-                type="number"
-                value={arusR}
-                onChange={(e) => setArusR(Number(e.target.value))}
-                placeholder="Arus R (A)"
-                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-              />
-              <input
-                type="number"
-                value={arusS}
-                onChange={(e) => setArusS(Number(e.target.value))}
-                placeholder="Arus S (A)"
-                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-              />
-              <input
-                type="number"
-                value={arusT}
-                onChange={(e) => setArusT(Number(e.target.value))}
-                placeholder="Arus T (A)"
-                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-              />
-            </div>
-          </div>
+          {/* Arus RST & IN with Unit Choice (A / kA) per Column */}
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700">Relay Arus R S T *</label>
+                <span className="text-[10px] text-blue-600 font-semibold">Pilih Satuan (A / kA) per Kolom</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {/* Phase R */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Fasa R</label>
+                  <div className="flex rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={arusR}
+                      onChange={(e) => setArusR(e.target.value)}
+                      placeholder="Arus R"
+                      className="w-full px-2 py-2 bg-transparent text-xs text-slate-800 font-medium focus:outline-none min-w-0"
+                    />
+                    <select
+                      value={satuanR}
+                      onChange={(e) => handleSatuanChange(e.target.value as 'A' | 'kA', satuanR, arusR, setArusR, setSatuanR)}
+                      className="px-1.5 py-2 bg-slate-200/80 border-l border-slate-200 text-[11px] font-extrabold text-slate-800 cursor-pointer focus:outline-none hover:bg-slate-300 shrink-0"
+                    >
+                      <option value="A">A</option>
+                      <option value="kA">kA</option>
+                    </select>
+                  </div>
+                </div>
 
-          {/* Arus IN */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Arus IN (A)</label>
-            <input
-              type="number"
-              value={arusIN}
-              onChange={(e) => setArusIN(Number(e.target.value))}
-              placeholder="Arus IN (Bisa 0)"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-            />
+                {/* Phase S */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Fasa S</label>
+                  <div className="flex rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={arusS}
+                      onChange={(e) => setArusS(e.target.value)}
+                      placeholder="Arus S"
+                      className="w-full px-2 py-2 bg-transparent text-xs text-slate-800 font-medium focus:outline-none min-w-0"
+                    />
+                    <select
+                      value={satuanS}
+                      onChange={(e) => handleSatuanChange(e.target.value as 'A' | 'kA', satuanS, arusS, setArusS, setSatuanS)}
+                      className="px-1.5 py-2 bg-slate-200/80 border-l border-slate-200 text-[11px] font-extrabold text-slate-800 cursor-pointer focus:outline-none hover:bg-slate-300 shrink-0"
+                    >
+                      <option value="A">A</option>
+                      <option value="kA">kA</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Phase T */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Fasa T</label>
+                  <div className="flex rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={arusT}
+                      onChange={(e) => setArusT(e.target.value)}
+                      placeholder="Arus T"
+                      className="w-full px-2 py-2 bg-transparent text-xs text-slate-800 font-medium focus:outline-none min-w-0"
+                    />
+                    <select
+                      value={satuanT}
+                      onChange={(e) => handleSatuanChange(e.target.value as 'A' | 'kA', satuanT, arusT, setArusT, setSatuanT)}
+                      className="px-1.5 py-2 bg-slate-200/80 border-l border-slate-200 text-[11px] font-extrabold text-slate-800 cursor-pointer focus:outline-none hover:bg-slate-300 shrink-0"
+                    >
+                      <option value="A">A</option>
+                      <option value="kA">kA</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Arus IN */}
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="block text-[10px] font-bold text-slate-500">Arus Neutral / IN</label>
+                <span className="text-[10px] text-slate-400 font-medium">Bisa 0 jika tidak ada arus netral</span>
+              </div>
+              <div className="flex rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={arusIN}
+                  onChange={(e) => setArusIN(e.target.value)}
+                  placeholder="Arus Neutral IN"
+                  className="w-full px-3 py-2.5 bg-transparent text-xs text-slate-800 font-medium focus:outline-none min-w-0"
+                />
+                <select
+                  value={satuanIN}
+                  onChange={(e) => handleSatuanChange(e.target.value as 'A' | 'kA', satuanIN, arusIN, setArusIN, setSatuanIN)}
+                  className="px-2.5 py-2.5 bg-slate-200/80 border-l border-slate-200 text-[11px] font-extrabold text-slate-800 cursor-pointer focus:outline-none hover:bg-slate-300 shrink-0"
+                >
+                  <option value="A">A (Ampere)</option>
+                  <option value="kA">kA (Kiloampere)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Kode Gangguan */}
