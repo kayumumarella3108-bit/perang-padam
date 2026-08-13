@@ -84,14 +84,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   };
 
   const tripPangkalList = gangguanList.filter((g) => {
-    const sec = g.section || '';
-    const pName = g.namaPenyulang || '';
-    const p = penyulangList.find(
-      (item) => item.namaPenyulang.toLowerCase() === pName.toLowerCase()
-    );
-    const fromGi = isSectionFromGi(sec);
-    const isUtama = p?.status === 'Utama' || pName.toUpperCase().includes('UTAMA');
-    return fromGi || isUtama;
+    return isSectionFromGi(g.section || '');
   });
 
   const rawActiveList = activeGangguanTab === 'trip_pangkal' ? tripPangkalList : gangguanList;
@@ -267,7 +260,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
         g.durasi || '-',
         g.relayBekerja || '-'
       ];
-      if (exportIncludeKode) row.push(g.kodeGangguan === 'E-5' ? 'E-5 (Tidak Ditemukan)' : (g.kodeGangguan || '-'));
+      if (exportIncludeKode) row.push(g.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : (g.kodeGangguan || '-'));
       if (exportIncludePenyebab) row.push(g.penyebab || '-');
       if (exportIncludeArus) row.push(`R:${g.arusR || 0} A, S:${g.arusS || 0} A, T:${g.arusT || 0} A, IN:${g.arusIN || 0} A`);
       if (exportIncludeLokasi) row.push(g.detailLokasi || '-');
