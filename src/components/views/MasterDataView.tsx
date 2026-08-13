@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Database,
   Plus,
@@ -11,6 +11,9 @@ import {
   History,
   Layers
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { exportToCSV } from '../../utils/exportCsv';
 import { Penyulang, SectionJaringan, ActivityLog, MasterTab } from '../../types';
 import { TambahPenyulangModal } from '../modals/TambahPenyulangModal';
 import { TambahSectionModal } from '../modals/TambahSectionModal';
@@ -42,6 +45,8 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
   const [editingPenyulang, setEditingPenyulang] = useState<Penyulang | null>(null);
   const [editingSection, setEditingSection] = useState<SectionJaringan | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Filtered Penyulang
   const filteredPenyulang = penyulangList.filter((p) =>
     (p.namaPenyulang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -61,6 +66,164 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
     (act.aktivitas || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (act.modul || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle Export Excel / CSV
+  const handleExportExcel = () => {
+    if (activeTab === 'penyulang') {
+      const headers = ['Nama GI', 'Penyulang Utama', 'Nama Penyulang', 'Status', 'Kode ID', 'Jml Pelanggan', 'Panjang Jaringan (KMS)'];
+      const rows = filteredPenyulang.map(p => [
+        p.namaGi || '',
+        p.penyulangUtama || '',
+        p.namaPenyulang || '',
+        p.status || '',
+        p.kodeId || '',
+        p.jumlahPelanggan || 0,
+        p.panjangJaringanKms || 0
+      ]);
+      exportToCSV('Master_Data_Penyulang_ULP_Baguala', headers, rows);
+    } else if (activeTab === 'section') {
+      const headers = ['Nama Section', 'Nama Penyulang', 'Jml Pelanggan', 'Sistem Operasi', 'Penyulang Di-Supply'];
+      const rows = filteredSections.map(s => [
+        s.namaSection || '',
+        s.namaPenyulang || '',
+        s.jumlahPelanggan || 0,
+        s.sistemOperasi || '',
+        s.penyulangDiSupply || ''
+      ]);
+      exportToCSV('Master_Data_Section_ULP_Baguala', headers, rows);
+    } else if (activeTab === 'log_aktivitas') {
+      const headers = ['Waktu', 'User', 'Detail Aktivitas', 'Modul'];
+      const rows = filteredActivities.map(a => [
+        a.waktu || '',
+        a.user || '',
+        a.aktivitas || '',
+        a.modul || ''
+      ]);
+      exportToCSV('Log_Aktivitas_Sistem_ULP_Baguala', headers, rows);
+    }
+  };
+
+  // Handle Export PDF
+  const handleExportPDF = () => {
+    const doc = new jsPDF('landscape');
+    const title = activeTab === 'penyulang' 
+      ? 'MASTER DATA PENYULANG - PLN ULP BAGUALA' 
+      : activeTab === 'section' 
+      ? 'MASTER DATA SECTION JARINGAN - PLN ULP BAGUALA' 
+      : 'LOG AKTIVITAS SISTEM OPERASIONAL';
+
+    doc.setFontSize(14);
+    doc.text(title, 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+
+    if (activeTab === 'penyulang') {
+      autoTable(doc, {
+        startY: 28,
+        head: [['Nama GI', 'Penyulang Utama', 'Nama Penyulang', 'Status', 'Kode ID', 'Jml Pelanggan', 'Panjang (KMS)']],
+        body: filteredPenyulang.map(p => [
+          p.namaGi || '-',
+          p.penyulangUtama || '-',
+          p.namaPenyulang || '-',
+          p.status || '-',
+          p.kodeId || '-',
+          (p.jumlahPelanggan || 0).toLocaleString('id-ID'),
+          `${p.panjangJaringanKms || 0} KMS`
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [30, 58, 138] }
+      });
+      doc.save(`Master_Penyulang_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } else if (activeTab === 'section') {
+      autoTable(doc, {
+        startY: 28,
+        head: [['Nama Section', 'Nama Penyulang', 'Jml Pelanggan', 'Sistem Operasi', 'Penyulang Di-Supply']],
+        body: filteredSections.map(s => [
+          s.namaSection || '-',
+          s.namaPenyulang || '-',
+          (s.jumlahPelanggan || 0).toLocaleString('id-ID'),
+          s.sistemOperasi || '-',
+          s.penyulangDiSupply || '-'
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [16, 185, 129] }
+      });
+      doc.save(`Master_Section_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } else {
+      autoTable(doc, {
+        startY: 28,
+        head: [['Waktu', 'User', 'Detail Aktivitas', 'Modul']],
+        body: filteredActivities.map(a => [
+          a.waktu || '-',
+          a.user || '-',
+          a.aktivitas || '-',
+          a.modul || '-'
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [217, 119, 6] }
+      });
+      doc.save(`Log_Aktivitas_${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+  };
+
+  // Handle Import CSV/Excel file
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        if (!text) return;
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        if (lines.length <= 1) {
+          alert('File kosong atau hanya berisi header.');
+          return;
+        }
+
+        let importedCount = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols.length >= 2) {
+            if (activeTab === 'penyulang') {
+              const newPenyulang: Penyulang = {
+                id: `p_imp_${Date.now()}_${i}`,
+                namaGi: cols[0] || 'GI PASSO',
+                namaPenyulang: cols[2] || cols[0] || `Penyulang Import ${i}`,
+                penyulangUtama: cols[1] || '',
+                status: (cols[3] as any) || 'Utama',
+                kodeId: cols[4] || `IMP-${i}`,
+                jumlahPelanggan: parseInt(cols[5]) || 1000,
+                panjangJaringanKms: parseFloat(cols[6]) || 10.0,
+                healthIndexStatus: 'Sempurna',
+                frekuensiGangguan: 0
+              };
+              onAddPenyulang(newPenyulang);
+              importedCount++;
+            } else if (activeTab === 'section') {
+              const newSec: SectionJaringan = {
+                id: `s_imp_${Date.now()}_${i}`,
+                namaSection: cols[0] || `Section Import ${i}`,
+                namaPenyulang: cols[1] || penyulangList[0]?.namaPenyulang || 'PASSO',
+                jumlahPelanggan: parseInt(cols[2]) || 500,
+                penyulangId: penyulangList[0]?.id || '1',
+                sistemOperasi: (cols[3] as any) || 'Radial',
+                penyulangDiSupply: cols[4] || cols[1] || 'PASSO'
+              };
+              onAddSection(newSec);
+              importedCount++;
+            }
+          }
+        }
+        alert(`Berhasil mengimpor ${importedCount} data ${activeTab === 'penyulang' ? 'Penyulang' : 'Section'}.`);
+      } catch (err) {
+        alert('Gagal membaca file CSV. Pastikan format file sesuai.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
@@ -132,13 +295,32 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv,.xlsx,.xls"
+                onChange={handleImportCSV}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Impor file Excel/CSV data master"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Import Excel/CSV
               </button>
-              <button className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm">
+              <button
+                onClick={handleExportExcel}
+                title="Ekspor data ke file Excel/CSV"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
                 <Download className="w-3.5 h-3.5" /> Excel
               </button>
-              <button className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm">
+              <button
+                onClick={handleExportPDF}
+                title="Ekspor data ke file PDF"
+                className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
                 <FileText className="w-3.5 h-3.5" /> PDF
               </button>
               <button
@@ -265,10 +447,25 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Impor file Excel/CSV data section"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Import Excel/CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                title="Ekspor data section ke Excel"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
                 <Download className="w-3.5 h-3.5" /> Excel
               </button>
-              <button className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm">
+              <button
+                onClick={handleExportPDF}
+                title="Ekspor data section ke PDF"
+                className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
                 <FileText className="w-3.5 h-3.5" /> PDF
               </button>
               <button

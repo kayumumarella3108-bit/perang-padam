@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Zap,
   ClipboardList,
@@ -21,7 +21,10 @@ import {
   ChevronRight,
   TrendingDown,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  BrainCircuit,
+  Loader2
 } from 'lucide-react';
 import {
   BarChart,
@@ -176,6 +179,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       last6MonthsTrend[0] || { shortLabel: '-', 'Total Trip': 0 }
     );
   }, [last6MonthsTrend]);
+
+  // Gemini AI Trend Narrative Analysis State
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAnalyzingAi, setIsAnalyzingAi] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleGenerateAiAnalysis = async () => {
+    setIsAnalyzingAi(true);
+    setAiError(null);
+    try {
+      const response = await fetch('/api/gemini/analyze-trend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trendData: last6MonthsTrend,
+          totalGangguan: total6Bulan,
+          avgGangguan: avg6Bulan,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal memuat analisis Gemini');
+      }
+      setAiAnalysis(data.analysis);
+    } catch (err: any) {
+      setAiError(err.message || 'Gagal terhubung ke layanan Gemini AI');
+    } finally {
+      setIsAnalyzingAi(false);
+    }
+  };
+
+  // Auto-trigger AI analysis on mount
+  useEffect(() => {
+    if (!aiAnalysis && !isAnalyzingAi && last6MonthsTrend.length > 0) {
+      handleGenerateAiAnalysis();
+    }
+  }, []);
 
   // New Summary Stats
   const currentMonthYear = '2026-08'; // Hardcoded for demo/project context consistency
@@ -666,6 +706,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </BarChart>
             )}
           </ResponsiveContainer>
+        </div>
+
+        {/* Gemini AI Automated Narrative Analysis Component */}
+        <div className="mt-4 pt-4 border-t border-slate-100 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-slate-50 p-4.5 rounded-xl border border-indigo-100 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-indigo-950 uppercase tracking-tight flex items-center gap-1.5">
+                  RINGKASAN NARATIF OTOMATIS GEMINI AI
+                  <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-indigo-100 text-indigo-700 rounded-md border border-indigo-200">
+                    GEMINI 3.6 FLASH
+                  </span>
+                </h3>
+                <p className="text-[10px] text-indigo-700/80 font-medium">
+                  Analisis otomatis tren keandalan, faktor dominan, & rekomendasi taktis operasional ULP Baguala
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleGenerateAiAnalysis}
+              disabled={isAnalyzingAi}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs disabled:opacity-50 cursor-pointer self-start sm:self-center"
+            >
+              {isAnalyzingAi ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Menganalisis Tren...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Analisis Ulang AI</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Loading State */}
+          {isAnalyzingAi && !aiAnalysis && (
+            <div className="p-6 bg-white/80 rounded-xl border border-indigo-100 flex flex-col items-center justify-center text-center space-y-2">
+              <BrainCircuit className="w-8 h-8 text-indigo-500 animate-pulse" />
+              <p className="text-xs font-bold text-indigo-900">Menganalisis data tren gangguan 6 bulan dengan Gemini AI...</p>
+              <p className="text-[10px] text-slate-500">Mengevaluasi pola trip, dampak perintisan pohon ROW, dan estimasi keandalan</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {aiError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{aiError}</span>
+            </div>
+          )}
+
+          {/* Analysis Result */}
+          {aiAnalysis && (
+            <div className="p-4 bg-white/90 backdrop-blur-xs rounded-xl border border-indigo-100 shadow-2xs space-y-2">
+              <div className="prose prose-xs text-slate-700 text-xs leading-relaxed whitespace-pre-line font-normal">
+                {aiAnalysis}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
