@@ -42,6 +42,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
   const [selectedPenyulangId, setSelectedPenyulangId] = useState<string>('all');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
   // Calculate total ULP customers from Master Data (sum of all penyulangs or sections)
   const masterDataTotalUlp = useMemo(() => {
     const sumFromPenyulang = penyulangList.reduce((acc, p) => {
@@ -89,6 +90,33 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       totalPlgFeeder
     };
   }, [selectedPenyulangId, penyulangList, sectionList]);
+
+  // Master Data Customer Monitoring list
+  const penyulangWithStats = useMemo(() => {
+    return penyulangList.map((p) => {
+      const fSections = sectionList.filter(
+        (s) => s.penyulangId === p.id || s.namaPenyulang?.toLowerCase() === p.namaPenyulang?.toLowerCase()
+      );
+      const sumSecPlg = fSections.reduce((acc, curr) => acc + (curr.jumlahPelanggan || 0), 0);
+      const calculatedPlg = p.jumlahPelanggan && p.jumlahPelanggan > 0 ? p.jumlahPelanggan : sumSecPlg;
+      const pctUlp = masterDataTotalUlp > 0 ? (calculatedPlg / masterDataTotalUlp) * 100 : 0;
+
+      return {
+        ...p,
+        sections: fSections,
+        calculatedPlg,
+        pctUlp
+      };
+    }).filter((item) => {
+      if (!customerSearchQuery) return true;
+      const q = customerSearchQuery.toLowerCase();
+      return (
+        item.namaPenyulang.toLowerCase().includes(q) ||
+        (item.kodeId && item.kodeId.toLowerCase().includes(q)) ||
+        (item.namaGi && item.namaGi.toLowerCase().includes(q))
+      );
+    });
+  }, [penyulangList, sectionList, masterDataTotalUlp, customerSearchQuery]);
 
   // Helper to parse duration into minutes
   const parseDurasiMenit = (log: GangguanLog): number => {
@@ -257,28 +285,33 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
         saifi: number;
         pelangganPadam: number;
         durasiMenit: number;
+        feederCustomerCount: number;
       }
     > = {};
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 88281;
 
     filteredLogs.forEach((log) => {
       const name = log.namaPenyulang || 'Lainnya';
+      const durasiMenit = parseDurasiMenit(log);
+      const jmlPlg = getJumlahPelangganPadam(log);
+      const eventSaifi = jmlPlg / safeUlp;
+      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
+
       if (!map[name]) {
+        const pMatch = penyulangList.find((p) => p.namaPenyulang?.toLowerCase() === name.toLowerCase());
+        const feederPlg = pMatch?.jumlahPelanggan || 0;
+
         map[name] = {
           namaPenyulang: name,
           count: 0,
           saidiMenit: 0,
           saifi: 0,
           pelangganPadam: 0,
-          durasiMenit: 0
+          durasiMenit: 0,
+          feederCustomerCount: feederPlg > 0 ? feederPlg : jmlPlg
         };
       }
-
-      const durasiMenit = parseDurasiMenit(log);
-      const jmlPlg = getJumlahPelangganPadam(log);
-      const eventSaifi = jmlPlg / safeUlp;
-      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
 
       map[name].count += 1;
       map[name].saidiMenit += eventSaidiMenit;
@@ -288,7 +321,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     });
 
     return Object.values(map).sort((a, b) => b.saidiMenit - a.saidiMenit);
-  }, [filteredLogs, totalPelangganUlp, sectionList]);
+  }, [filteredLogs, totalPelangganUlp, masterDataTotalUlp, penyulangList]);
 
   // Section Breakdown
   const sectionBreakdown = useMemo(() => {
@@ -300,26 +333,28 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
         count: number;
         saidiMenit: number;
         pelangganPadam: number;
+        sectionCustomerCount: number;
       }
     > = {};
 
-    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 88281;
 
     filteredLogs.forEach((log) => {
       const secName = log.section || 'General Section';
+      const durasiMenit = parseDurasiMenit(log);
+      const jmlPlg = getJumlahPelangganPadam(log);
+      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
+
       if (!map[secName]) {
         map[secName] = {
           section: secName,
           namaPenyulang: log.namaPenyulang || '-',
           count: 0,
           saidiMenit: 0,
-          pelangganPadam: 0
+          pelangganPadam: 0,
+          sectionCustomerCount: jmlPlg
         };
       }
-
-      const durasiMenit = parseDurasiMenit(log);
-      const jmlPlg = getJumlahPelangganPadam(log);
-      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
 
       map[secName].count += 1;
       map[secName].saidiMenit += eventSaidiMenit;
@@ -327,7 +362,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     });
 
     return Object.values(map).sort((a, b) => b.saidiMenit - a.saidiMenit);
-  }, [filteredLogs, totalPelangganUlp]);
+  }, [filteredLogs, totalPelangganUlp, masterDataTotalUlp]);
 
   // Print PDF Summary
   const handlePrintReport = () => {
@@ -808,7 +843,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
                     {sec.section}
                   </div>
                   <span className="text-[11px] text-slate-500 mt-0.5 block">
-                    Penyulang: {sec.namaPenyulang} • {sec.pelangganPadam.toLocaleString('id-ID')} Plg
+                    Penyulang: {sec.namaPenyulang} • <span className="font-semibold text-slate-700">{sec.sectionCustomerCount.toLocaleString('id-ID')} Plg</span> <span className="text-purple-600 font-medium">({sec.count}x Event)</span>
                   </span>
                 </div>
                 <div className="text-right">
@@ -826,6 +861,144 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* MONITORING DATA PELANGGAN MASTER ULP */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm text-slate-900">
+                  Monitoring Data Pelanggan ULP (Hasil Penjumlahan Master Data)
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  100% Sinkron Master
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Total jumlah pelanggan ULP yang dijumlahkan secara otomatis dari seluruh {penyulangList.length} Penyulang dan {sectionList.length} Section di Data Master.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={customerSearchQuery}
+                onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                placeholder="Cari Penyulang / GI..."
+                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            {onSelectView && (
+              <button
+                onClick={() => onSelectView('master_data')}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Kelola Master Data
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Master Summary KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Total Pelanggan ULP</span>
+            <div className="text-lg font-black text-blue-900 font-mono">
+              {masterDataTotalUlp.toLocaleString('id-ID')} <span className="text-xs font-normal text-blue-700">Plg</span>
+            </div>
+            <span className="text-[10px] text-blue-600 block">Sum dari {penyulangList.length} Penyulang Master</span>
+          </div>
+
+          <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Total Penyulang (Feeder)</span>
+            <div className="text-lg font-black text-indigo-900 font-mono">
+              {penyulangList.length} <span className="text-xs font-normal text-indigo-700">Feeder</span>
+            </div>
+            <span className="text-[10px] text-indigo-600 block">Terhubung GI Passo & Native</span>
+          </div>
+
+          <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Total Section Jaringan</span>
+            <div className="text-lg font-black text-emerald-900 font-mono">
+              {sectionList.length} <span className="text-xs font-normal text-emerald-700">Section</span>
+            </div>
+            <span className="text-[10px] text-emerald-600 block">Detail per LBS / Sakelar</span>
+          </div>
+
+          <div className="p-3 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Rata-Rata Plg / Penyulang</span>
+            <div className="text-lg font-black text-amber-900 font-mono">
+              {Math.round(masterDataTotalUlp / (penyulangList.length || 1)).toLocaleString('id-ID')} <span className="text-xs font-normal text-amber-700">Plg</span>
+            </div>
+            <span className="text-[10px] text-amber-600 block">Beban rata-rata per feeder</span>
+          </div>
+        </div>
+
+        {/* Penyulang & Customer Table */}
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th className="px-3.5 py-2.5">Nama Gardu Induk</th>
+                <th className="px-3.5 py-2.5">Kode & Nama Penyulang</th>
+                <th className="px-3.5 py-2.5 text-center">Status</th>
+                <th className="px-3.5 py-2.5 text-center">Jumlah Section</th>
+                <th className="px-3.5 py-2.5 text-right">Jumlah Pelanggan Master</th>
+                <th className="px-3.5 py-2.5 text-right">% Kontribusi ULP</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {penyulangWithStats.map((p) => (
+                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-3.5 py-2.5 font-bold text-amber-800">{p.namaGi}</td>
+                  <td className="px-3.5 py-2.5 font-bold text-slate-900 flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-[10px]">
+                      {p.kodeId}
+                    </span>
+                    <span>{p.namaPenyulang}</span>
+                  </td>
+                  <td className="px-3.5 py-2.5 text-center">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      p.status === 'Utama' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="px-3.5 py-2.5 text-center">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px]">
+                      {p.sections.length} Section
+                    </span>
+                  </td>
+                  <td className="px-3.5 py-2.5 text-right font-mono font-bold text-blue-700">
+                    {p.calculatedPlg.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">Plg</span>
+                  </td>
+                  <td className="px-3.5 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(100, p.pctUlp * 4)}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-[11px] font-bold text-slate-700">
+                        {p.pctUlp.toFixed(1)}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
