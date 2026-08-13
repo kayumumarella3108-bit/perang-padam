@@ -188,7 +188,14 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-amber-700">{p.namaGi}</td>
+                      <td className="px-4 py-3.5 font-bold text-amber-700">
+                        <div>{p.namaGi}</div>
+                        {p.penyulangUtama && (
+                          <div className="text-[10px] text-slate-500 font-medium font-sans">
+                            Utama: <span className="text-blue-700 font-bold">{p.penyulangUtama}</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-2">
                         <span>{p.namaPenyulang}</span>
                         <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
@@ -418,6 +425,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
         }}
         onSave={onAddPenyulang}
         initialData={editingPenyulang}
+        penyulangList={penyulangList}
       />
 
       <TambahSectionModal

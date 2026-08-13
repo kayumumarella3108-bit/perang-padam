@@ -7,15 +7,18 @@ interface TambahPenyulangModalProps {
   onClose: () => void;
   onSave: (penyulang: Penyulang) => void;
   initialData?: Penyulang | null;
+  penyulangList?: Penyulang[];
 }
 
 export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialData
+  initialData,
+  penyulangList = []
 }) => {
   const [namaGi, setNamaGi] = useState('GI PASSO');
+  const [penyulangUtama, setPenyulangUtama] = useState('BAGUALA UTAMA');
   const [namaPenyulang, setNamaPenyulang] = useState('BAGUALA');
   const [status, setStatus] = useState<'Utama' | 'Percabangan'>('Utama');
   const [kodeId, setKodeId] = useState('BGL');
@@ -26,6 +29,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
     if (isOpen) {
       if (initialData) {
         setNamaGi(initialData.namaGi);
+        setPenyulangUtama(initialData.penyulangUtama || '');
         setNamaPenyulang(initialData.namaPenyulang);
         setStatus(initialData.status);
         setKodeId(initialData.kodeId);
@@ -33,6 +37,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
         setJumlahPelanggan(initialData.jumlahPelanggan || 0);
       } else {
         setNamaGi('GI PASSO');
+        setPenyulangUtama('BAGUALA UTAMA');
         setNamaPenyulang('BAGUALA');
         setStatus('Utama');
         setKodeId('BGL');
@@ -51,6 +56,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
     const savedPenyulang: Penyulang = {
       id: initialData ? initialData.id : `p_${Date.now()}`,
       namaGi,
+      penyulangUtama,
       namaPenyulang,
       status,
       kodeId,
@@ -71,7 +77,7 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
           <h3 className="text-base font-extrabold text-slate-900">
-            Tambah Penyulang Baru
+            {initialData ? 'Edit Penyulang' : 'Tambah Penyulang Baru'}
           </h3>
           <button
             onClick={onClose}
@@ -95,6 +101,29 @@ export const TambahPenyulangModal: React.FC<TambahPenyulangModalProps> = ({
               required
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              PENYULANG UTAMA
+            </label>
+            <input
+              type="text"
+              list="penyulang-utama-list"
+              value={penyulangUtama}
+              onChange={(e) => setPenyulangUtama(e.target.value)}
+              placeholder="e.g. BAGUALA UTAMA"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+            />
+            {penyulangList && penyulangList.length > 0 && (
+              <datalist id="penyulang-utama-list">
+                {penyulangList
+                  .filter((p) => p.status === 'Utama')
+                  .map((p) => (
+                    <option key={p.id} value={p.namaPenyulang} />
+                  ))}
+              </datalist>
+            )}
           </div>
 
           <div>

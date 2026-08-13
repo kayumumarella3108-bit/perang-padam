@@ -32,6 +32,7 @@ export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'log_aktivitas';
 export interface Penyulang {
   id: string;
   namaGi: string;
+  penyulangUtama?: string;
   namaPenyulang: string;
   status: 'Utama' | 'Percabangan';
   kodeId: string;
