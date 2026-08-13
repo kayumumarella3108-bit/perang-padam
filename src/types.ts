@@ -13,6 +13,7 @@ export type ViewType =
   | 'inspeksi_tier2_ultrasound'
   | 'pemeliharaan_20kv'
   | 'perintah_kerja'
+  | 'format_surat'
   | 'master_data'
   | 'pengukuran_gardu'
   | 'saidi_saifi'
@@ -27,7 +28,7 @@ export type ViewType =
   | 'jadwal_piket'
   | 'gangguan';
 
-export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'log_aktivitas';
+export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'petugas' | 'log_aktivitas';
 
 export interface Penyulang {
   id: string;
@@ -231,6 +232,22 @@ export interface AlkerApdItem {
   catatan?: string;
 }
 
+export interface PetugasSpkDetail {
+  id?: string;
+  nama: string;
+  jabatan: string;
+}
+
+export interface PetugasMasterItem {
+  id: string;
+  nama: string;
+  nipOrNik?: string;
+  jabatan: string;
+  regu: string;
+  noHp?: string;
+  status: 'Aktif' | 'Non-Aktif';
+}
+
 export interface PerintahKerja {
   id: string;
   noSpk: string;
@@ -243,6 +260,11 @@ export interface PerintahKerja {
   jumlahPersonil: number;
   status: 'Terencana' | 'Dalam Proses' | 'Selesai' | 'Dibatalkan';
   timAtauPetugas?: string;
+  daftarPetugas?: string;
+  petugasList?: PetugasSpkDetail[];
+  namaManager?: string;
+  isApproved?: boolean;
+  approvalDate?: string;
   catatan?: string;
   createdAt?: string;
 }
@@ -690,3 +712,59 @@ export interface JadwalPiket {
   jadwal: { [key: string]: string }; // key: date (ISO string or day number), value: shift (P, S, M, L)
   lastUpdate: string;
 }
+
+export type JenisSurat = 
+  | 'surat_cuti' 
+  | 'permintaan_alker' 
+  | 'cmc_petugas' 
+  | 'surat_panggilan' 
+  | 'permintaan_material';
+
+export interface SuratItem {
+  id: string;
+  nomorSurat: string;
+  jenisSurat: JenisSurat;
+  tanggalSurat: string;
+  perihal: string;
+  kepada: string;
+  pembuat: string;
+  unit: string;
+  status: 'Draft' | 'Diajukan' | 'Disetujui' | 'Selesai';
+  payload: {
+    namaPegawai?: string;
+    nip?: string;
+    jabatan?: string;
+    cutiDari?: string;
+    cutiSampai?: string;
+    alasanCuti?: string;
+    alamatCuti?: string;
+    pengganti?: string;
+
+    namaAlker?: string;
+    jumlahAlker?: number;
+    keperluanAlker?: string;
+    tglDibutuhkan?: string;
+
+    namaKetua?: string;
+    anggotaTim?: string;
+    shiftPiket?: string;
+    noKendaraan?: string;
+    penyulangTarget?: string;
+    peralatanDibawa?: string;
+
+    namaDipanggil?: string;
+    jabatanDipanggil?: string;
+    hariTanggalPanggilan?: string;
+    waktuPanggilan?: string;
+    tempatPanggilan?: string;
+    agendaPanggilan?: string;
+
+    namaProyek?: string;
+    lokasiPekerjaan?: string;
+    gudangTujuan?: string;
+    listMaterial?: { nama: string; satuan: string; volume: number }[];
+  };
+  catatan?: string;
+  createdAt: string;
+}
+

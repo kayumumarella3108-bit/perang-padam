@@ -43,6 +43,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
+  const [showHealthLegend, setShowHealthLegend] = useState(true);
 
   const [manualStatuses, setManualStatuses] = useState<Record<string, 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'>>({
     'ml1_0': 'PENYULANG',
@@ -758,6 +759,72 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           >
             <MapPin className="w-3.5 h-3.5" /> Street Map
           </button>
+        </div>
+
+        {/* Legend status kesehatan feeder (Sempurna, Sehat, Sakit, Kronis) */}
+        <div className="absolute bottom-6 left-6 z-10 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl w-64 overflow-hidden transition-all duration-300">
+          <div className="p-3 bg-slate-900 text-white flex items-center justify-between">
+            <span className="text-xs font-extrabold tracking-wider uppercase flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shrink-0"></span>
+              Kesehatan Feeder
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowHealthLegend(!showHealthLegend)}
+              className="text-slate-300 hover:text-white hover:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer"
+            >
+              {showHealthLegend ? 'Tutup' : 'Buka'}
+            </button>
+          </div>
+          {showHealthLegend && (
+            <div className="p-3.5 space-y-2.5 bg-white">
+              <div className="text-[10px] text-slate-500 font-bold leading-relaxed mb-1">
+                KLASIFIKASI AKUMULASI GANGGUAN / TAHUN:
+              </div>
+              <div className="space-y-2">
+                {/* Sempurna */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#10b981] border-2 border-emerald-100 shrink-0"></span>
+                    <span className="font-extrabold text-slate-700">Sempurna</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-[#10b981] font-extrabold text-[10px] border border-emerald-200/50">
+                    0 Gangguan
+                  </span>
+                </div>
+                {/* Sehat */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#3b82f6] border-2 border-blue-100 shrink-0"></span>
+                    <span className="font-extrabold text-slate-700">Sehat</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-[#3b82f6] font-extrabold text-[10px] border border-blue-200/50">
+                    1 - 3 Gangguan
+                  </span>
+                </div>
+                {/* Sakit */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#f59e0b] border-2 border-amber-100 shrink-0"></span>
+                    <span className="font-extrabold text-slate-700">Sakit</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-[#f59e0b] font-extrabold text-[10px] border border-amber-200/50">
+                    4 - 6 Gangguan
+                  </span>
+                </div>
+                {/* Kronis */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#ef4444] border-2 border-red-100 shrink-0"></span>
+                    <span className="font-extrabold text-slate-700">Kronis</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-red-50 text-[#ef4444] font-extrabold text-[10px] border border-red-200/50">
+                    ≥ 7 Gangguan
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

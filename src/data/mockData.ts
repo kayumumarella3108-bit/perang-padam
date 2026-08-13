@@ -19,7 +19,8 @@ import {
   PengukuranGardu,
   KendaraanOperasional,
   AsetJaringan,
-  JadwalPiket
+  JadwalPiket,
+  PetugasMasterItem
 } from '../types';
 
 export const INITIAL_PENYULANG: Penyulang[] = [
@@ -370,20 +371,6 @@ export const INITIAL_PERINTAH_KERJA: PerintahKerja[] = [
     timAtauPetugas: 'Tim ROW Yantek Baguala 1',
     catatan: 'Koordinasi dengan Kepala Desa Passo untuk izin pemangkasan',
     createdAt: '2026-02-09T08:00:00Z'
-  },
-  {
-    id: 'spk_2',
-    noSpk: 'SPK/ULP-BGL/2026/02/002',
-    tanggal: '2026-02-11',
-    jenisPekerjaan: 'Inspeksi',
-    namaPenyulang: 'TULEHU',
-    section: 'GH Asten - Recloser Tulehu',
-    target: 'Inspeksi Tier 1 SUTM 30 Tiang & Visual Isolator',
-    jumlahPersonil: 4,
-    status: 'Terencana',
-    timAtauPetugas: 'Tim Inspeksi Teknik ULP',
-    catatan: 'Bawa thermovision & grounding set',
-    createdAt: '2026-02-09T09:30:00Z'
   },
   {
     id: 'spk_3',
@@ -850,4 +837,15 @@ export const INITIAL_JADWAL_PIKET: JadwalPiket[] = [
 
   // --- KP POKA ---
   { id: 'jp_pok_1', namaPetugas: 'LA ODE DARMIN', noHp: '081234567891', unit: 'KP POKA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' }
+];
+
+export const INITIAL_MASTER_PETUGAS: PetugasMasterItem[] = [
+  { id: 'pet_1', nama: 'Ahmad Rivai', nipOrNik: '8812001', jabatan: 'Team Leader Yantek', regu: 'Regu Alpha', noHp: '081234567890', status: 'Aktif' },
+  { id: 'pet_2', nama: 'Markus Pattipeilohy', nipOrNik: '9012002', jabatan: 'Anggota Yantek 20kV', regu: 'Regu Alpha', noHp: '082198423363', status: 'Aktif' },
+  { id: 'pet_3', nama: 'Doni Latuconsina', nipOrNik: '9312003', jabatan: 'Petugas Groundman & APD', regu: 'Regu Alpha', noHp: '085243569433', status: 'Aktif' },
+  { id: 'pet_4', nama: 'Eko Prasetyo', nipOrNik: '9412004', jabatan: 'Driver Operasional 20kV', regu: 'Regu Alpha', noHp: '081248554129', status: 'Aktif' },
+  { id: 'pet_5', nama: 'Samsul Bahri', nipOrNik: '8912005', jabatan: 'Supervisor Teknik', regu: 'Regu Bravo', noHp: '081234567893', status: 'Aktif' },
+  { id: 'pet_6', nama: 'La Ode Darmin', nipOrNik: '9112006', jabatan: 'Officer K3 & Inspeksi', regu: 'Regu Bravo', noHp: '081234567891', status: 'Aktif' },
+  { id: 'pet_7', nama: 'Valer Demny', nipOrNik: '9212007', jabatan: 'Petugas ROW Pohon', regu: 'Tim ROW', noHp: '082248285352', status: 'Aktif' },
+  { id: 'pet_8', nama: 'Irfan Ipaenin', nipOrNik: '9512008', jabatan: 'Petugas Thermovision', regu: 'Tim Inspeksi', noHp: '082199543549', status: 'Aktif' }
 ];

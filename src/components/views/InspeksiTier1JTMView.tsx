@@ -117,6 +117,7 @@ export const InspeksiTier1JTMView: React.FC<InspeksiTier1JTMViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedPenyulangFilter, setSelectedPenyulangFilter] = useState('all');
   const [activeSection, setActiveSection] = useState<string | null>('header');
 
   const filteredList = tier1JtmList.filter(item => {
@@ -127,8 +128,10 @@ export const InspeksiTier1JTMView: React.FC<InspeksiTier1JTMViewProps> = ({
     const parts = (item.tglPelaksanaan || '').split('-');
     const matchesYear = parts[0] === selectedYear;
     const matchesMonth = selectedMonth === 'all' || parts[1] === selectedMonth;
+    const matchesPenyulang = selectedPenyulangFilter === 'all' || 
+      item.penyulang.toLowerCase() === selectedPenyulangFilter.toLowerCase();
 
-    return matchesSearch && matchesYear && matchesMonth;
+    return matchesSearch && matchesYear && matchesMonth && matchesPenyulang;
   });
 
   const handleInputChange = (field: keyof Omit<InspeksiTier1JTM, 'id'>, value: any) => {
@@ -361,7 +364,23 @@ export const InspeksiTier1JTMView: React.FC<InspeksiTier1JTMViewProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <span className="text-slate-500">Penyulang:</span>
+              <select
+                value={selectedPenyulangFilter}
+                onChange={(e) => setSelectedPenyulangFilter(e.target.value)}
+                className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer max-w-[150px] truncate"
+              >
+                <option value="all">Semua Penyulang</option>
+                {penyulangList.map((p) => (
+                  <option key={p.id} value={p.nama}>
+                    {p.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
               <span className="text-slate-500">Bulan:</span>
               <select

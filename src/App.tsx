@@ -52,6 +52,7 @@ import {
   INITIAL_JADWAL_PIKET
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
+import { sendWaNotification } from './utils/whatsappNotifier';
 import { Lock } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { TopHeader } from './components/TopHeader';
@@ -79,6 +80,7 @@ import { InspeksiTier1SwitchingView } from './components/views/InspeksiTier1Swit
 import { InspeksiTier2ThermovisionView } from './components/views/InspeksiTier2ThermovisionView';
 import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2UltrasoundView';
 import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
+import { FormatSuratView } from './components/views/FormatSuratView';
 
 export default function App() {
   // Authentication state
@@ -1098,9 +1100,11 @@ export default function App() {
   const handleAddSpk = async (newSpk: PerintahKerja) => {
     setSpkList((prev) => [newSpk, ...prev]);
     try {
-      await setDoc(doc(db, 'perintah_kerja_harian', newSpk.id), newSpk);
+      await setDoc(doc(db, 'perintah_kerja_harian', newSpk.id), JSON.parse(JSON.stringify(newSpk)));
+      // Kirim notifikasi WhatsApp ke petugas pelaksana segera setelah SPK baru disimpan ke database
+      await sendWaNotification(newSpk);
     } catch (err) {
-      console.error('Error saving SPK to Firestore:', err);
+      console.error('Error saving SPK or sending WA notification:', err);
     }
     logActivity(`Penerbitan SPK baru ${newSpk.noSpk} (${newSpk.jenisPekerjaan})`, newSpk.namaPenyulang);
   };
@@ -1108,7 +1112,7 @@ export default function App() {
   const handleUpdateSpk = async (updatedSpk: PerintahKerja) => {
     setSpkList((prev) => prev.map((s) => (s.id === updatedSpk.id ? updatedSpk : s)));
     try {
-      await setDoc(doc(db, 'perintah_kerja_harian', updatedSpk.id), updatedSpk);
+      await setDoc(doc(db, 'perintah_kerja_harian', updatedSpk.id), JSON.parse(JSON.stringify(updatedSpk)));
     } catch (err) {
       console.error('Error updating SPK in Firestore:', err);
     }
@@ -1468,6 +1472,10 @@ export default function App() {
               onUpdateSpk={handleUpdateSpk}
               onDeleteSpk={handleDeleteSpk}
             />
+          )}
+
+          {activeView === 'format_surat' && (
+            <FormatSuratView currentUser={user} />
           )}
 
           {activeView === 'pengukuran_gardu' && (

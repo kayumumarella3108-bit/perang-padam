@@ -138,5 +138,10 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /surat_keluar/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

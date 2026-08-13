@@ -20,11 +20,14 @@ import {
   ChevronRight,
   Target,
   X,
-  Download
+  Download,
+  MessageSquare
 } from 'lucide-react';
 import { PerintahKerja, Penyulang, SectionJaringan, User } from '../../types';
 import { InputSpkModal } from '../modals/InputSpkModal';
 import { generateSpkPDF } from '../../utils/spkPdfGenerator';
+import { sendSpkToWhatsApp } from '../../utils/whatsappNotifier';
+import { PLN_LOGO_BASE64 } from '../../utils/plnLogo';
 
 interface PerintahKerjaViewProps {
   currentUser?: User | null;
@@ -97,6 +100,17 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
     } else {
       onAddSpk(spk);
     }
+  };
+
+  const handleApproveSpk = (spk: PerintahKerja) => {
+    const updated: PerintahKerja = {
+      ...spk,
+      isApproved: true,
+      approvalDate: new Date().toISOString().split('T')[0],
+      namaManager: currentUser?.name || spk.namaManager || 'DWI SURYA PERMANA'
+    };
+    onUpdateSpk(updated);
+    setPrintItem(updated);
   };
 
   const handleStatusChange = (spk: PerintahKerja, newStatus: 'Terencana' | 'Dalam Proses' | 'Selesai' | 'Dibatalkan') => {
@@ -403,6 +417,27 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                     {/* Aksi */}
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/* WhatsApp Share Button */}
+                        <button
+                          onClick={() => sendSpkToWhatsApp(spk)}
+                          title="Kirim Notifikasi SPK via WhatsApp"
+                          className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+
+                        {/* Approve Button */}
+                        {!spk.isApproved && (
+                          <button
+                            onClick={() => handleApproveSpk(spk)}
+                            title="Approve SPK (Manager ULP)"
+                            className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Approve</span>
+                          </button>
+                        )}
+
                         {/* Print Button */}
                         <button
                           onClick={() => setPrintItem(spk)}
@@ -447,6 +482,7 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
         penyulangList={penyulangList}
         sectionList={sectionList}
         editItem={editItem}
+        spkList={spkList}
       />
 
       {/* Print / View Official SPK Document Modal */}
@@ -459,8 +495,26 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                 <h3 className="font-bold text-sm">Pratinjau Surat Perintah Kerja (SPK)</h3>
               </div>
               <div className="flex items-center gap-2">
+                {!printItem.isApproved && (
+                  <button
+                    onClick={() => handleApproveSpk(printItem)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm animate-pulse"
+                    title="Approve SPK dan Terbitkan Digital Signature"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Approve SPK</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => generateSpkPDF(printItem)}
+                  onClick={() => sendSpkToWhatsApp(printItem)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Kirim Notifikasi SPK ke WhatsApp"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Kirim WA</span>
+                </button>
+                <button
+                  onClick={async () => { await generateSpkPDF(printItem); }}
                   className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -485,14 +539,18 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
             {/* Printable Document Body */}
             <div className="p-8 overflow-y-auto bg-white text-slate-900 font-serif leading-relaxed">
               {/* Document Header */}
-              <div className="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-start font-sans">
-                <div>
-                  <h2 className="text-base font-black tracking-wider uppercase text-blue-900">PT PLN (PERSERO) UIW MMU</h2>
-                  <h3 className="text-sm font-bold text-slate-800">UP3 AMBON - ULP BAGUALA</h3>
-                  <p className="text-[10px] text-slate-500">Jl. Wolter Monginsidi No. 12, Baguala, Kota Ambon</p>
+              <div className="border-2 border-slate-900 p-3 mb-6 flex justify-between items-stretch font-sans">
+                <div className="flex items-center gap-3 pr-3 border-r-2 border-slate-900">
+                  <img src={PLN_LOGO_BASE64} alt="PLN Logo" className="w-14 h-16 object-contain shrink-0" />
+                  <div>
+                    <h2 className="text-xs font-black tracking-normal text-slate-900 leading-tight">PT PLN (Persero)</h2>
+                    <h3 className="text-[10px] font-bold text-slate-900 leading-tight">UNIT INDUK WILAYAH MALUKU DAN MALUKU UTARA</h3>
+                    <h4 className="text-[10px] font-bold text-slate-900 leading-tight">UP3 AMBON</h4>
+                    <h4 className="text-[10px] font-bold text-slate-900 leading-tight">ULP BAGUALA</h4>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-xs">
+                <div className="text-right flex items-center pl-3">
+                  <span className="inline-block px-3 py-1 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-xs text-slate-800">
                     {printItem.noSpk}
                   </span>
                 </div>
@@ -538,6 +596,13 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                   <span className="col-span-2 font-semibold text-slate-900">{printItem.timAtauPetugas || 'Tim Yantek ULP Baguala'}</span>
                 </div>
 
+                {printItem.daftarPetugas && (
+                  <div className="grid grid-cols-3 border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-600">Daftar Petugas Pelaksana:</span>
+                    <span className="col-span-2 text-slate-800 font-medium whitespace-pre-line bg-slate-50 p-2 rounded border border-slate-200 text-xs">{printItem.daftarPetugas}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 border-b border-slate-200 pb-2">
                   <span className="font-bold text-slate-600">Status Saat Ini:</span>
                   <span className="col-span-2">{getStatusBadge(printItem.status)}</span>
@@ -545,26 +610,43 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
 
                 {printItem.catatan && (
                   <div className="grid grid-cols-3 border-b border-slate-200 pb-2">
-                    <span className="font-bold text-slate-600">Catatan Khusus / K3:</span>
+                    <span className="font-bold text-slate-600">Instruksi K3:</span>
                     <span className="col-span-2 italic text-slate-700">{printItem.catatan}</span>
                   </div>
                 )}
               </div>
 
               {/* Signatures */}
-              <div className="grid grid-cols-2 gap-8 pt-8 border-t border-slate-300 font-sans text-xs text-center mt-12">
-                <div>
-                  <p className="font-semibold text-slate-600">Penerima Perintah / Tim Pelaksana</p>
-                  <div className="h-16"></div>
-                  <p className="font-bold text-slate-900 uppercase underline">({printItem.timAtauPetugas || 'Tim Yantek Baguala'})</p>
-                  <p className="text-[10px] text-slate-500">Supervisor / Koordinator Lapangan</p>
-                </div>
+              <div className="flex justify-end pt-6 border-t border-slate-300 font-sans text-xs text-center mt-8 pr-12">
+                <div className="flex flex-col justify-between min-h-[110px] items-center w-64">
+                  <p className="font-semibold text-slate-600 mb-1">Manager PLN ULP Baguala</p>
 
-                <div>
-                  <p className="font-semibold text-slate-600">Pemberi Perintah</p>
-                  <div className="h-16"></div>
-                  <p className="font-bold text-slate-900 uppercase underline">( Manager ULP Baguala )</p>
-                  <p className="text-[10px] text-slate-500">PT PLN (Persero) ULP Baguala</p>
+                  {printItem.isApproved ?? true ? (
+                    <div className="my-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg flex flex-col items-center justify-center space-y-0.5 shadow-xs w-full">
+                      <div className="font-mono text-xs font-black tracking-widest text-emerald-800 select-none">
+                        |||| || ||| |||| || |
+                      </div>
+                      <div className="flex items-center gap-1 text-[9px] font-extrabold text-emerald-700 uppercase">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>OFFICIAL DIGITAL SIGNATURE</span>
+                      </div>
+                      <div className="text-[8px] text-emerald-600 font-mono">
+                        ID: {printItem.noSpk.replace(/[^a-zA-Z0-9]/g, '')}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="my-2 p-2.5 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg text-center w-full">
+                      <p className="text-[10px] font-bold text-amber-800 uppercase flex items-center justify-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" /> MENUNGGU APPROVAL MANAGER
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-1">
+                    <p className="font-bold text-slate-900 uppercase underline text-xs">
+                      ( {printItem.namaManager || 'DWI SURYA PERMANA'} )
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

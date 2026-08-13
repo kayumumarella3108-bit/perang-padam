@@ -345,6 +345,26 @@
         "pelaksana": { "type": "string" }
       },
       "required": ["id", "tglPelaksanaan", "noTiang", "penyulang"]
+    },
+    "SuratItem": {
+      "title": "SuratItem",
+      "description": "Custom office letter document (Cuti, Alker, CMC, Panggilan, Material)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomorSurat": { "type": "string" },
+        "jenisSurat": { "type": "string" },
+        "tanggalSurat": { "type": "string" },
+        "perihal": { "type": "string" },
+        "kepada": { "type": "string" },
+        "pembuat": { "type": "string" },
+        "unit": { "type": "string" },
+        "status": { "type": "string" },
+        "payload": { "type": "object" },
+        "catatan": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "nomorSurat", "jenisSurat", "tanggalSurat", "perihal", "kepada"]
     }
   },
   "firestore": {
@@ -435,6 +455,10 @@
     "inspeksi_tier2_ultrasound": {
       "schema": "InspeksiTier2Ultrasound",
       "description": "Ultrasound inspection records"
+    },
+    "surat_keluar": {
+      "schema": "SuratItem",
+      "description": "Generated official letters and requests (Cuti, Alker, CMC, Panggilan, Material)"
     }
   }
 }

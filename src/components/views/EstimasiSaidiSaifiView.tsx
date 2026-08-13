@@ -47,6 +47,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+  const [syncWithDataPadam, setSyncWithDataPadam] = useState<boolean>(true);
   // Calculate total ULP customers from Master Data (sum of all penyulangs or sections)
   const masterDataTotalUlp = useMemo(() => {
     const sumFromPenyulang = penyulangList.reduce((acc, p) => {
@@ -140,6 +141,11 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
 
   // Helper to get customers for a log synced with Master Data Section & Penyulang
   const getJumlahPelangganPadam = (log: GangguanLog): number => {
+    // If syncWithDataPadam is true, prioritize direct input from "Data Padam" (GangguanLog)
+    if (syncWithDataPadam && log.jumlahPelangganPadam && log.jumlahPelangganPadam > 0) {
+      return log.jumlahPelangganPadam;
+    }
+
     const normalize = (str?: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
     // 1. Check section match in Master Data Section
@@ -276,7 +282,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       totalDurasiPadamJam,
       totalEvents: filteredLogs.length
     };
-  }, [filteredLogs, totalPelangganUlp, sectionList]);
+  }, [filteredLogs, totalPelangganUlp, sectionList, syncWithDataPadam, penyulangList]);
 
   const {
     totalSaidiMenit,
@@ -553,25 +559,40 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
             <span>Filter Data Event Gangguan</span>
           </div>
 
-          {/* Customer Base Setting */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl text-xs">
-            <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-slate-600 font-semibold">Total Plg ULP (Master Data):</span>
-            <input
-              type="number"
-              value={totalPelangganUlp}
-              onChange={(e) => setTotalPelangganUlp(Number(e.target.value))}
-              className="w-24 px-2 py-0.5 bg-white border border-slate-300 rounded text-center font-bold text-blue-700 focus:outline-none focus:border-blue-500"
-            />
-            {masterDataTotalUlp !== totalPelangganUlp && (
-              <button
-                onClick={() => setTotalPelangganUlp(masterDataTotalUlp)}
-                className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
-                title="Reset ke total ULP dari Master Data"
-              >
-                Sync Master ({masterDataTotalUlp.toLocaleString('id-ID')})
-              </button>
-            )}
+          {/* Customer Base Setting & Sync Mode Toggle */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-slate-600 font-semibold">Total Plg ULP:</span>
+              <input
+                type="number"
+                value={totalPelangganUlp}
+                onChange={(e) => setTotalPelangganUlp(Number(e.target.value))}
+                className="w-20 px-2 py-0.5 bg-white border border-slate-300 rounded text-center font-bold text-blue-700 focus:outline-none focus:border-blue-500"
+              />
+              {masterDataTotalUlp !== totalPelangganUlp && (
+                <button
+                  onClick={() => setTotalPelangganUlp(masterDataTotalUlp)}
+                  className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
+                  title="Reset ke total ULP dari Master Data"
+                >
+                  Sync ({masterDataTotalUlp.toLocaleString('id-ID')})
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+              <input
+                type="checkbox"
+                id="syncWithDataPadamCheckbox"
+                checked={syncWithDataPadam}
+                onChange={(e) => setSyncWithDataPadam(e.target.checked)}
+                className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
+              />
+              <label htmlFor="syncWithDataPadamCheckbox" className="text-slate-700 font-bold cursor-pointer select-none">
+                Sinkron dengan Data Padam (Rill Log)
+              </label>
+            </div>
           </div>
         </div>
 
