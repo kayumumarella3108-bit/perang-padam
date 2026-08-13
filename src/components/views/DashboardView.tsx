@@ -84,6 +84,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'health' | 'gangguan' | 'row' | 'inspeksi'>('health');
   const [selectedTimeframe, setSelectedTimeframe] = useState<'2026' | '2025'>('2026');
+  const [trend6MonthChartType, setTrend6MonthChartType] = useState<'area' | 'bar'>('area');
 
   // KPI calculations
   const totalPenyulang = penyulangList.length;
@@ -99,6 +100,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
   const pendingInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat' || i.kondisi === 'Sedang' || !i.kondisi);
   const criticalInspeksi = inspeksiList.filter((i) => i.kondisi === 'Berat');
+
+  // Executive Summary Calculations
+  const todayIsoStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayGangguanList = useMemo(() => {
+    return gangguanList.filter((g) => g.tanggal === todayIsoStr);
+  }, [gangguanList, todayIsoStr]);
+  const totalGangguanHariIni = todayGangguanList.length;
+
+  const penyulangKronisList = useMemo(() => {
+    return penyulangList.filter((p) => p.healthIndexStatus === 'Kronis');
+  }, [penyulangList]);
+  const jumlahKronis = penyulangKronisList.length;
+
+  const spkTotalCount = spkList.length;
+  const spkActiveCount = spkList.filter((s) => s.status === 'Dalam Proses' || s.status === 'Terencana').length;
+  const spkDalamProsesCount = spkList.filter((s) => s.status === 'Dalam Proses').length;
+  const spkSelesaiCount = spkList.filter((s) => s.status === 'Selesai').length;
+  const spkProgressPercentage = spkTotalCount > 0 ? Math.round((spkSelesaiCount / spkTotalCount) * 100) : 0;
+
+  // 6 Months Disturbance Trend Calculation (Recharts)
+  const last6MonthsTrend = useMemo(() => {
+    const baseYear = 2026;
+    const baseMonth = 8; // August 2026 anchor
+
+    const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const monthShorts = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    const list = [];
+    for (let i = 5; i >= 0; i--) {
+      let m = baseMonth - i;
+      let y = baseYear;
+      if (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
+      const monthStr = String(m).padStart(2, '0');
+      const prefix = `${y}-${monthStr}`;
+
+      const matchingLogs = gangguanList.filter((g) => g.tanggal && g.tanggal.startsWith(prefix));
+      const totalTrip = matchingLogs.length;
+
+      const tripPenyebabPohon = matchingLogs.filter(
+        (g) =>
+          (g.penyebab || '').toLowerCase().includes('pohon') ||
+          (g.penyebab || '').toLowerCase().includes('dahan') ||
+          (g.penyebab || '').toLowerCase().includes('row')
+      ).length;
+
+      const tripLainnya = Math.max(0, totalTrip - tripPenyebabPohon);
+
+      list.push({
+        bulanKey: prefix,
+        label: `${monthNames[m]} ${y}`,
+        shortLabel: `${monthShorts[m]} '${String(y).slice(2)}`,
+        'Total Trip': totalTrip,
+        'Faktor Pohon/ROW': tripPenyebabPohon,
+        'Penyebab Lainnya': tripLainnya
+      });
+    }
+    return list;
+  }, [gangguanList]);
+
+  const total6Bulan = useMemo(() => {
+    return last6MonthsTrend.reduce((acc, curr) => acc + curr['Total Trip'], 0);
+  }, [last6MonthsTrend]);
+
+  const avg6Bulan = useMemo(() => {
+    return (total6Bulan / 6).toFixed(1);
+  }, [total6Bulan]);
+
+  const max6BulanItem = useMemo(() => {
+    return last6MonthsTrend.reduce(
+      (max, curr) => (curr['Total Trip'] > max['Total Trip'] ? curr : max),
+      last6MonthsTrend[0] || { shortLabel: '-', 'Total Trip': 0 }
+    );
+  }, [last6MonthsTrend]);
 
   // New Summary Stats
   const currentMonthYear = '2026-08'; // Hardcoded for demo/project context consistency
@@ -294,57 +371,301 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Summary Statistics Quick Cards - REQUESTED COMPONENT */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Gangguan Bulan Ini */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="p-3 bg-rose-100 text-rose-600 rounded-xl">
-            <Zap className="w-6 h-6" />
+      {/* RINGKASAN EKSEKUTIF COMPONENT */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-900 text-amber-400 rounded-xl">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-slate-900 tracking-tight uppercase flex items-center gap-2">
+                RINGKASAN EKSEKUTIF ULP BAGUALA
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Pandangan cepat keandalan operasional, kesehatan feeder, dan progres pekerjaan
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">GANGGUAN BULAN INI</p>
-            <h3 className="text-xl font-black text-slate-900">{totalGangguanBulanIni} Kejadian</h3>
-            <p className="text-[10px] text-rose-600 font-bold mt-0.5 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Sesuai tren bulan Agustus
-            </p>
-          </div>
+          <span className="text-[10px] font-bold px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200 self-start sm:self-center">
+            Update Realtime • {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
         </div>
 
-        {/* Status Material Krusial */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-          <div className={`p-3 rounded-xl ${crucialMaterialStatus === 'Kritis' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-            <Layers className="w-6 h-6" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Total Gangguan Hari Ini */}
+          <div className="p-4.5 bg-slate-50 border border-slate-200/80 rounded-2xl hover:bg-slate-100/80 transition-all flex flex-col justify-between space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                  TOTAL GANGGUAN HARI INI
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-black text-slate-900">{totalGangguanHariIni}</span>
+                  <span className="text-xs font-bold text-slate-500">Kejadian</span>
+                </div>
+              </div>
+              <div className={`p-3 rounded-xl ${totalGangguanHariIni > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <Zap className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/60">
+              {totalGangguanHariIni > 0 ? (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{totalGangguanHariIni} trip perlu evaluasi tim lapangan</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Sistem aman & kondusif hari ini</span>
+                </div>
+              )}
+
+              <button
+                onClick={() => onSelectView('matriks_gangguan')}
+                className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Lihat Detail Log Gangguan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">STATUS MATERIAL</p>
-            <h3 className={`text-xl font-black ${crucialMaterialStatus === 'Kritis' ? 'text-amber-600' : 'text-emerald-600'}`}>
-              {crucialMaterialStatus} {lowStockCount > 0 && `(${lowStockCount} Menipis)`}
-            </h3>
-            <button 
-              onClick={() => onSelectView('material')}
-              className="text-[10px] text-blue-600 font-bold mt-0.5 hover:underline cursor-pointer"
+
+          {/* Card 2: Jumlah Penyulang Status Kronis */}
+          <div className="p-4.5 bg-slate-50 border border-slate-200/80 rounded-2xl hover:bg-slate-100/80 transition-all flex flex-col justify-between space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                  PENYULANG STATUS KRONIS
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className={`text-2xl font-black ${jumlahKronis > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {jumlahKronis}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">dari {totalPenyulang} Feeder</span>
+                </div>
+              </div>
+              <div className={`p-3 rounded-xl ${jumlahKronis > 0 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/60">
+              {jumlahKronis > 0 ? (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-500 font-bold">Feeder Kronis:</span>
+                  {penyulangKronisList.slice(0, 3).map((p) => (
+                    <span key={p.id} className="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">
+                      {p.namaPenyulang}
+                    </span>
+                  ))}
+                  {penyulangKronisList.length > 3 && (
+                    <span className="text-[10px] font-bold text-slate-400">+{penyulangKronisList.length - 3}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Tidak ada feeder berstatus Kronis</span>
+                </div>
+              )}
+
+              <button
+                onClick={() => onSelectView('kalkulator_health_index')}
+                className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Cek Matriks Health Index</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Progres SPK Aktif */}
+          <div className="p-4.5 bg-slate-50 border border-slate-200/80 rounded-2xl hover:bg-slate-100/80 transition-all flex flex-col justify-between space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                  PROGRES SPK AKTIF
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-black text-slate-900">{spkActiveCount}</span>
+                  <span className="text-xs font-bold text-slate-500">Pekerjaan Aktif</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>Selesai: {spkSelesaiCount}/{spkTotalCount} ({spkProgressPercentage}%)</span>
+                <span className="text-blue-600 font-extrabold">{spkDalamProsesCount} On-Progress</span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${spkProgressPercentage}%` }}
+                />
+              </div>
+
+              <button
+                onClick={() => onSelectView('perintah_kerja')}
+                className="mt-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Kelola Perintah Kerja (SPK)</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TREN GANGGUAN 6 BULAN TERAKHIR - RECHARTS COMPONENT */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
+              <TrendingUp className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-slate-900 tracking-tight uppercase flex items-center gap-2">
+                TREN GANGGUAN BULANAN (6 BULAN TERAKHIR)
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Visualisasi tren frekuensi trip & keandalan penyulang 20kV PLN ULP Baguala
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setTrend6MonthChartType('area')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  trend6MonthChartType === 'area'
+                    ? 'bg-white text-rose-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Area Chart
+              </button>
+              <button
+                onClick={() => setTrend6MonthChartType('bar')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  trend6MonthChartType === 'bar'
+                    ? 'bg-white text-rose-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Bar Chart
+              </button>
+            </div>
+
+            <button
+              onClick={() => onSelectView('matriks_gangguan')}
+              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
             >
-              Cek Stok Gudang &raquo;
+              <span>Matriks Gangguan</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Sisa SPK Aktif */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
-            <ClipboardList className="w-6 h-6" />
+        {/* Highlight KPI Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <div className="px-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total 6 Bulan</span>
+            <span className="text-lg font-black text-slate-900">{total6Bulan} <span className="text-xs font-normal text-slate-500">Trip</span></span>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">SPK AKTIF / OPEN</p>
-            <h3 className="text-xl font-black text-slate-900">{activeSpkCount} Pekerjaan</h3>
-            <button 
-              onClick={() => onSelectView('perintah_kerja')}
-              className="text-[10px] text-blue-600 font-bold mt-0.5 hover:underline cursor-pointer"
-            >
-              Kelola Progress SPK &raquo;
-            </button>
+          <div className="px-2 border-l border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rata-Rata Bulanan</span>
+            <span className="text-lg font-black text-rose-600">{avg6Bulan} <span className="text-xs font-normal text-slate-500">Trip/Bln</span></span>
           </div>
+          <div className="px-2 border-l border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bulan Puncak (Peak)</span>
+            <span className="text-lg font-black text-amber-600">{max6BulanItem.shortLabel} <span className="text-xs font-normal text-slate-500">({max6BulanItem['Total Trip']} Trip)</span></span>
+          </div>
+          <div className="px-2 border-l border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Faktor Pohon/ROW</span>
+            <span className="text-lg font-black text-emerald-700">
+              {last6MonthsTrend.reduce((acc, curr) => acc + curr['Faktor Pohon/ROW'], 0)} <span className="text-xs font-normal text-slate-500">Kejadian</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Recharts Render Container */}
+        <div className="h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            {trend6MonthChartType === 'area' ? (
+              <AreaChart data={last6MonthsTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorTotalTrip" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorPohon" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#059669" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="shortLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '12px',
+                    borderColor: '#cbd5e1',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    fontSize: '12px'
+                  }}
+                  formatter={(value: any, name: any) => [`${value} Kejadian`, name]}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                <Area
+                  type="monotone"
+                  dataKey="Total Trip"
+                  stroke="#e11d48"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorTotalTrip)"
+                  activeDot={{ r: 6 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Faktor Pohon/ROW"
+                  stroke="#059669"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorPohon)"
+                />
+              </AreaChart>
+            ) : (
+              <BarChart data={last6MonthsTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="shortLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '12px',
+                    borderColor: '#cbd5e1',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    fontSize: '12px'
+                  }}
+                  formatter={(value: any, name: any) => [`${value} Kejadian`, name]}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                <Bar dataKey="Faktor Pohon/ROW" stackId="a" fill="#059669" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="Penyebab Lainnya" stackId="a" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
         </div>
       </div>
 

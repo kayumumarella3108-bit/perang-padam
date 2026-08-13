@@ -20,7 +20,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { User } from '../../types';
-import { canEditData, getRoleCategory } from '../../utils/permissions';
+import { canEditData, canManageUsers, getRoleCategory } from '../../utils/permissions';
 
 interface UserManagementViewProps {
   currentUser: User;
@@ -52,8 +52,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [avatarUrl, setAvatarUrl] = useState('');
   const [password, setPassword] = useState('');
 
-  // Strict check: only Koordinator can add/edit/delete users
-  const canEdit = currentUser?.role === 'Koordinator';
+  // Strict check: only Koordinator / System Admin can add/edit/delete users
+  // Admin Teknik is restricted to operational data entry only and CANNOT manage users
+  const canEdit = canManageUsers(currentUser);
 
   const PRESET_AVATARS = [
     { label: 'Teknisi 1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
@@ -154,7 +155,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 Kelola User & Hak Akses (RBAC)
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Pengaturan hak akses entri data vs monitoring untuk Koordinator, Admin Teknik, Team Leader, Manager ULP, UP3, & UIW
+                Pengaturan hak akses entri data vs kelola user untuk Koordinator, Admin Teknik, Team Leader, Manager ULP, UP3, & UIW
               </p>
             </div>
           </div>
@@ -172,74 +173,97 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         )}
       </div>
 
-      {/* Role Rule Matrix Info Box */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        {/* Full Access Box */}
-        <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 shadow-sm flex items-start gap-3.5">
-          <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 mt-0.5">
-            <ShieldCheck className="w-5 h-5" />
+      {/* Restriction Notice for non-Koordinator roles (e.g. Admin Teknik) */}
+      {!canEdit && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3.5 shadow-xs">
+          <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0">
+            <Lock className="w-5 h-5" />
           </div>
+          <div className="text-xs leading-relaxed">
+            <span className="font-extrabold text-amber-950 block text-sm mb-0.5">
+              Akses Kelola User Dibatasi (Role: {currentUser?.role || 'Admin Teknik'})
+            </span>
+            Pengguna dengan Role <strong>{currentUser?.role || 'Admin Teknik'}</strong> dikhususkan untuk <strong>menginput & mengedit data operasional</strong> (gangguan, ROW, pemeliharaan, dll) dan <strong>tidak memiliki akses untuk membuat user baru atau mengelola user</strong>. Fitur pengelolaan user hanya dapat diakses oleh <strong>Koordinator</strong>.
+          </div>
+        </div>
+      )}
+
+      {/* Role Rule Matrix Info Box (3 Tiers) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* Tier 1: Koordinator */}
+        <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-sm text-emerald-950">
-                Mode Edit & Entri Data (Akses Penuh)
-              </h3>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 font-extrabold text-[10px]">
-                CAN EDIT & ENTRY
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="p-2 rounded-xl bg-blue-600 text-white">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-blue-200 text-blue-900 font-extrabold text-[10px]">
+                SUPER ADMIN & EDIT
               </span>
             </div>
-            <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-              Dapat menginput, mengedit, memperbarui, dan menghapus data gangguan, ROW, pemeliharaan, SAIDI/SAIFI, material, serta alat kerja.
+            <h3 className="font-extrabold text-sm text-blue-950">
+              1. Koordinator (Akses Penuh)
+            </h3>
+            <p className="text-xs text-blue-800 mt-1.5 leading-relaxed">
+              Memiliki wewenang penuh untuk <strong>membuat & mengelola user</strong> serta menginput/mengedit seluruh data operasional sistem.
             </p>
-            <div className="mt-2.5 flex items-center gap-2 flex-wrap text-xs font-bold">
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 shadow-xs">
-                • Koordinator
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 shadow-xs">
-                • Admin Teknik
-              </span>
-            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-blue-200/60">
+            <span className="px-2.5 py-1 rounded-lg bg-white border border-blue-300 text-blue-800 text-xs font-bold inline-block">
+              • Role: Koordinator
+            </span>
           </div>
         </div>
 
-        {/* Read Only Box */}
-        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm flex items-start gap-3.5">
-          <div className="p-2 rounded-xl bg-amber-600 text-white shrink-0 mt-0.5">
-            <ShieldAlert className="w-5 h-5" />
-          </div>
+        {/* Tier 2: Admin Teknik */}
+        <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-sm text-amber-950">
-                Mode Monitoring (Read Only)
-              </h3>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="p-2 rounded-xl bg-emerald-600 text-white">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 font-extrabold text-[10px]">
+                ENTRI DATA OPERASIONAL
+              </span>
+            </div>
+            <h3 className="font-extrabold text-sm text-emerald-950">
+              2. Admin Teknik (Input Data Only)
+            </h3>
+            <p className="text-xs text-emerald-800 mt-1.5 leading-relaxed">
+              Khusus untuk <strong>menginput & mengedit data operasional</strong> (gangguan, ROW, inspeksi, pemeliharaan, SPK). <strong>Tidak bisa membuat user baru atau kelola user.</strong>
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-emerald-200/60">
+            <span className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-xs font-bold inline-block">
+              • Role: Admin Teknik
+            </span>
+          </div>
+        </div>
+
+        {/* Tier 3: Monitoring Only */}
+        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="p-2 rounded-xl bg-amber-600 text-white">
+                <Eye className="w-5 h-5" />
+              </div>
               <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-extrabold text-[10px]">
                 MONITORING ONLY
               </span>
             </div>
-            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-              Dapat memantau seluruh dashboard, peta penyulang, tren SAIDI, laporan gangguan, tanpa opsi tombol input / edit / hapus data.
+            <h3 className="font-extrabold text-sm text-amber-950">
+              3. Hak Akses Monitoring
+            </h3>
+            <p className="text-xs text-amber-800 mt-1.5 leading-relaxed">
+              Dapat memantau dashboard, peta penyulang, tren SAIDI, laporan gangguan, tanpa hak akses entri data atau kelola user.
             </p>
-            <div className="mt-2.5 flex items-center gap-2 flex-wrap text-xs font-bold">
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • Bagian Teknik
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • Team Leader
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • Manager ULP
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • UP3
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • UIW
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 shadow-xs">
-                • PLN Nusadaya
-              </span>
-            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">Team Leader</span>
+            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">Manager ULP</span>
+            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">UP3</span>
+            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">UIW</span>
           </div>
         </div>
 
@@ -549,9 +573,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                 >
-                  <optgroup label="✅ Mode Edit & Entri Data">
-                    <option value="Koordinator">Koordinator (Dapat Edit & Entri)</option>
-                    <option value="Admin Teknik">Admin Teknik (Dapat Edit & Entri)</option>
+                  <optgroup label="✅ Mode Entri Data & Kelola Akses">
+                    <option value="Koordinator">Koordinator (Entri Data & Kelola User)</option>
+                    <option value="Admin Teknik">Admin Teknik (Khusus Entri Data Operasional - Tidak Kelola User)</option>
                   </optgroup>
                   <optgroup label="👁️ Mode Monitoring Only (Read-Only)">
                     <option value="Bagian Teknik">Bagian Teknik (Hanya Monitoring)</option>

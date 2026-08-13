@@ -1,11 +1,22 @@
 import { User } from '../types';
 
 /**
- * Checks whether the logged-in user has permission to add, edit, or delete data.
+ * Checks whether the logged-in user has permission to manage users (create, edit, delete users).
+ * - Koordinator: Can manage users and edit operational data.
+ * - Admin Teknik: Can input/edit operational data ONLY, CANNOT manage or create users.
+ */
+export const canManageUsers = (user: User | null | undefined): boolean => {
+  if (!user || !user.role) return false;
+  const roleLower = user.role.toLowerCase().trim();
+  return roleLower.includes('koordinator') || roleLower.includes('admin system');
+};
+
+/**
+ * Checks whether the logged-in user has permission to add, edit, or delete operational data.
  * Roles with edit/entry permissions:
  *  - Koordinator
- *  - Admin Teknik (restricted to ROW and Inspeksi)
- *  - Admin System (Legacy default)
+ *  - Admin Teknik (Entri data operasional)
+ *  - Admin System
  *
  * Roles with monitoring-only (read-only) permissions:
  *  - Bagian Teknik
@@ -36,9 +47,10 @@ export const canEditModule = (user: User | null | undefined, moduleName: string)
   }
 
   if (roleLower.includes('admin teknik')) {
-    // Admin Teknik can only edit ROW and Inspeksi data
+    // Admin Teknik can edit operational modules, but CANNOT manage users
     const mod = moduleName.toLowerCase();
-    return mod === 'row' || mod === 'inspeksi' || mod === 'peta_penyulang' || mod === 'tier1' || mod === 'tier2' || mod === 'pemeliharaan_20kv';
+    if (mod === 'kelola_user' || mod === 'users' || mod === 'user_management') return false;
+    return true;
   }
 
   return false;
@@ -50,4 +62,5 @@ export const getRoleCategory = (roleStr: string): 'Edit & Entri Data' | 'Hanya M
   }
   return 'Hanya Monitoring (Read Only)';
 };
+
 

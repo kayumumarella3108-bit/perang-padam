@@ -29,6 +29,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { ViewType, User } from '../types';
+import { canManageUsers } from '../utils/permissions';
 import { SocialContacts } from './SocialContacts';
 
 interface SidebarProps {
@@ -391,30 +392,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Kelola User & Hak Akses */}
-          <button
-            onClick={() => {
-              if (currentUser?.role === 'Koordinator') {
-                onSelectView('kelola_user');
-              }
-            }}
-            disabled={currentUser?.role !== 'Koordinator'}
-            title={currentUser?.role !== 'Koordinator' ? 'Menu ini dinonaktifkan (Hanya untuk Koordinator)' : 'Kelola User & Hak Akses'}
-            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
-              currentUser?.role === 'Koordinator'
-                ? activeView === 'kelola_user'
-                  ? 'bg-blue-600/10 text-blue-400 font-bold cursor-pointer'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer'
-                : 'text-slate-600 bg-slate-950/20 opacity-40 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Users className={`w-4 h-4 shrink-0 ${activeView === 'kelola_user' && currentUser?.role === 'Koordinator' ? 'text-blue-400' : 'text-slate-500'}`} />
-              <span>Kelola User & Hak Akses</span>
-            </div>
-            {currentUser?.role !== 'Koordinator' && (
-              <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            )}
-          </button>
+          {(() => {
+            const hasUserMgmtAccess = canManageUsers(currentUser);
+            return (
+              <button
+                onClick={() => {
+                  if (hasUserMgmtAccess) {
+                    onSelectView('kelola_user');
+                  }
+                }}
+                disabled={!hasUserMgmtAccess}
+                title={
+                  !hasUserMgmtAccess
+                    ? `Menu Kelola User dinonaktifkan untuk role ${currentUser?.role || 'Admin Teknik'} (Khusus Koordinator)`
+                    : 'Kelola User & Hak Akses'
+                }
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+                  hasUserMgmtAccess
+                    ? activeView === 'kelola_user'
+                      ? 'bg-blue-600/10 text-blue-400 font-bold cursor-pointer'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer'
+                    : 'text-slate-600 bg-slate-950/20 opacity-40 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className={`w-4 h-4 shrink-0 ${activeView === 'kelola_user' && hasUserMgmtAccess ? 'text-blue-400' : 'text-slate-500'}`} />
+                  <span>Kelola User & Hak Akses</span>
+                </div>
+                {!hasUserMgmtAccess && (
+                  <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                )}
+              </button>
+            );
+          })()}
         </nav>
 
         {/* Developer & Admin Social Contact Footer */}
