@@ -756,45 +756,93 @@ export const INITIAL_ASET_JARINGAN: AsetJaringan[] = [
   }
 ];
 
+// Schedule patterns for August 2026 (1 - 31)
+const PATTERN_A: Record<string, string> = {
+  '1': 'S', '2': 'M', '3': 'M', '4': 'L', '5': 'L', '6': 'P', '7': 'P', '8': 'S',
+  '9': 'S', '10': 'M', '11': 'M', '12': 'L', '13': 'L', '14': 'P', '15': 'P', '16': 'S',
+  '17': 'S', '18': 'M', '19': 'M', '20': 'L', '21': 'L', '22': 'P', '23': 'P', '24': 'S',
+  '25': 'S', '26': 'M', '27': 'M', '28': 'L', '29': 'L', '30': 'P', '31': 'P'
+};
+
+const PATTERN_B: Record<string, string> = {
+  '1': 'M', '2': 'L', '3': 'L', '4': 'P', '5': 'P', '6': 'S', '7': 'S', '8': 'M',
+  '9': 'M', '10': 'L', '11': 'L', '12': 'P', '13': 'P', '14': 'S', '15': 'S', '16': 'M',
+  '17': 'M', '18': 'L', '19': 'L', '20': 'P', '21': 'P', '22': 'S', '23': 'S', '24': 'M',
+  '25': 'M', '26': 'L', '27': 'L', '28': 'P', '29': 'P', '30': 'S', '31': 'S'
+};
+
+const PATTERN_C: Record<string, string> = {
+  '1': 'L', '2': 'P', '3': 'P', '4': 'S', '5': 'S', '6': 'M', '7': 'M', '8': 'L',
+  '9': 'L', '10': 'P', '11': 'P', '12': 'S', '13': 'S', '14': 'M', '15': 'M', '16': 'L',
+  '17': 'L', '18': 'P', '19': 'P', '20': 'S', '21': 'S', '22': 'M', '23': 'M', '24': 'L',
+  '25': 'L', '26': 'P', '27': 'P', '28': 'S', '29': 'S', '30': 'M', '31': 'M'
+};
+
+const PATTERN_D: Record<string, string> = {
+  '1': 'P', '2': 'S', '3': 'S', '4': 'M', '5': 'M', '6': 'L', '7': 'L', '8': 'P',
+  '9': 'P', '10': 'S', '11': 'S', '12': 'M', '13': 'M', '14': 'L', '15': 'L', '16': 'P',
+  '17': 'P', '18': 'S', '19': 'S', '20': 'M', '21': 'M', '22': 'L', '23': 'L', '24': 'P',
+  '25': 'P', '26': 'S', '27': 'S', '28': 'M', '29': 'M', '30': 'L', '31': 'L'
+};
+
+const PATTERN_ULC_1: Record<string, string> = {
+  '1': 'L', '2': 'L', '3': 'L', '4': 'S', '5': 'S', '6': 'S', '7': 'S', '8': 'L', '9': 'L', '10': 'P', '11': 'P', '12': 'P', '13': 'P', '14': 'P', '15': 'L', '16': 'L', '17': 'S', '18': 'S', '19': 'S', '20': 'S', '21': 'S', '22': 'L', '23': 'L', '24': 'P', '25': 'P', '26': 'P', '27': 'P', '28': 'P', '29': 'L', '30': 'L', '31': 'P'
+};
+
+const PATTERN_ULC_2: Record<string, string> = {
+  '1': 'L', '2': 'L', '3': 'L', '4': 'P', '5': 'P', '6': 'P', '7': 'P', '8': 'L', '9': 'L', '10': 'S', '11': 'S', '12': 'S', '13': 'S', '14': 'S', '15': 'L', '16': 'L', '17': 'P', '18': 'P', '19': 'P', '20': 'P', '21': 'P', '22': 'L', '23': 'L', '24': 'S', '25': 'S', '26': 'S', '27': 'S', '28': 'S', '29': 'L', '30': 'L', '31': 'S'
+};
+
 export const INITIAL_JADWAL_PIKET: JadwalPiket[] = [
-  {
-    id: 'jp_1',
-    namaPetugas: 'AKRAMANTO RIDWAN',
-    noHp: '081234567890',
-    unit: 'ULC BAGUALA',
-    jadwal: {
-      '14': 'L', '15': 'L', '16': 'P', '17': 'P', '18': 'S', '19': 'S', '20': 'M', '21': 'M', '22': 'L', '23': 'L'
-    },
-    lastUpdate: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'jp_2',
-    namaPetugas: 'LA ODE DARMIN',
-    noHp: '081234567891',
-    unit: 'ULC BAGUALA',
-    jadwal: {
-      '14': 'P', '15': 'P', '16': 'S', '17': 'S', '18': 'M', '19': 'M', '20': 'L', '21': 'L', '22': 'P', '23': 'P'
-    },
-    lastUpdate: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'jp_3',
-    namaPetugas: 'DEDI WAEL',
-    noHp: '081234567892',
-    unit: 'KP POKA',
-    jadwal: {
-      '14': 'L', '15': 'L', '16': 'P', '17': 'P', '18': 'M', '19': 'M', '20': 'M', '21': 'L', '22': 'L', '23': 'P'
-    },
-    lastUpdate: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'jp_4',
-    namaPetugas: 'SAMSUL BAHRI',
-    noHp: '081234567893',
-    unit: 'KP PASSO',
-    jadwal: {
-      '14': 'P', '15': 'P', '16': 'S', '17': 'S', '18': 'L', '19': 'L', '20': 'M', '21': 'M', '22': 'P', '23': 'P'
-    },
-    lastUpdate: '2026-08-01T08:00:00Z'
-  }
+  // --- ULC BAGUALA ---
+  { id: 'jp_ulc_1', namaPetugas: 'MARTHINUS APONNO', noHp: '0852 4453 7044', unit: 'ULC BAGUALA', jadwal: PATTERN_ULC_1, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_ulc_2', namaPetugas: 'MYCHEL F CAMERLING', noHp: '082199756293', unit: 'ULC BAGUALA', jadwal: PATTERN_ULC_1, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_ulc_3', namaPetugas: 'RESSA RUHUPESSY', noHp: '0812 4000 9740', unit: 'ULC BAGUALA', jadwal: PATTERN_ULC_2, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_ulc_4', namaPetugas: 'FREDY J. AKIHARY', noHp: '0812 4000 9741', unit: 'ULC BAGUALA', jadwal: PATTERN_ULC_2, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP GALALA ---
+  { id: 'jp_gal_1', namaPetugas: 'MICHAEL D. PATTIPEILOHY', noHp: '081342847046', unit: 'KP GALALA', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_2', namaPetugas: 'GERALDY MAIRUHU', noHp: '0821 1432 3094', unit: 'KP GALALA', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_3', namaPetugas: 'YUSUF', noHp: '082211240871', unit: 'KP GALALA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_4', namaPetugas: 'RENOLD PALIJAMA', noHp: '085243902172', unit: 'KP GALALA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_5', namaPetugas: 'JUENTRY K SIPAHELUT', noHp: '085254270862', unit: 'KP GALALA', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_6', namaPetugas: 'AKRAMANTO RIDWAN', noHp: '082251889595', unit: 'KP GALALA', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_7', namaPetugas: 'MUSYADIN ALIYASA', noHp: '082198049457', unit: 'KP GALALA', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_gal_8', namaPetugas: 'ALEXANDER SAUKOLY', noHp: '082197591719', unit: 'KP GALALA', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP LAHA ---
+  { id: 'jp_lah_1', namaPetugas: 'CORNELES LALIHATU', noHp: '0821 9785 5656', unit: 'KP LAHA', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_2', namaPetugas: 'VALER DEMNY', noHp: '082248285352', unit: 'KP LAHA', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_3', namaPetugas: 'LA IMAN', noHp: '082198423363', unit: 'KP LAHA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_4', namaPetugas: 'LEOPOLD SABANDAR', noHp: '0812 4855 4129', unit: 'KP LAHA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_5', namaPetugas: 'DUDY J. TANIKWELE', noHp: '082238586082', unit: 'KP LAHA', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_6', namaPetugas: 'ARNOLD D. APITULEY', noHp: '085243569433', unit: 'KP LAHA', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_7', namaPetugas: 'MUHAMMAD WALLY', noHp: '082199172064', unit: 'KP LAHA', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_lah_8', namaPetugas: 'ARIOK ANDARIAS MANUHUA', noHp: '082248285352', unit: 'KP LAHA', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP ALLANG ---
+  { id: 'jp_alg_1', namaPetugas: 'LA JAYA', noHp: '082198424139', unit: 'KP ALLANG', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_2', namaPetugas: 'DEDI WAEL', noHp: '082198220266', unit: 'KP ALLANG', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_3', namaPetugas: 'USANI', noHp: '082152847355', unit: 'KP ALLANG', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_4', namaPetugas: 'IRFAN IPAENIN', noHp: '082199543549', unit: 'KP ALLANG', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_5', namaPetugas: 'HERMAN SAPAWE', noHp: '081240970275', unit: 'KP ALLANG', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_6', namaPetugas: 'LA ODE BUDI', noHp: '082198589673', unit: 'KP ALLANG', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_7', namaPetugas: 'GEMELITO C. PATTIRADJAWANE', noHp: '085354358718', unit: 'KP ALLANG', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_alg_8', namaPetugas: 'RAHMAT RENWARIN', noHp: '0813 4301 5452', unit: 'KP ALLANG', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP TULEHU ---
+  { id: 'jp_tul_1', namaPetugas: 'RAFLI LESTALUHU', noHp: '081292384069', unit: 'KP TULEHU', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_2', namaPetugas: 'PAULUS I. UBJAAN', noHp: '081248778474', unit: 'KP TULEHU', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_3', namaPetugas: 'WELHELEM A. LELEULYA', noHp: '082199425010', unit: 'KP TULEHU', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_4', namaPetugas: 'FUAD LESSY', noHp: '082239773467', unit: 'KP TULEHU', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_5', namaPetugas: 'BAKRI TUHAREA', noHp: '081344582301', unit: 'KP TULEHU', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_6', namaPetugas: 'FADEL KOTTA', noHp: '082197750459', unit: 'KP TULEHU', jadwal: PATTERN_C, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_7', namaPetugas: 'LA ERWIN', noHp: '081354110341', unit: 'KP TULEHU', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+  { id: 'jp_tul_8', namaPetugas: 'MANNLY MAPUASATTE', noHp: '082190494574', unit: 'KP TULEHU', jadwal: PATTERN_D, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP PASSO ---
+  { id: 'jp_pas_1', namaPetugas: 'SAMSUL BAHRI', noHp: '081234567893', unit: 'KP PASSO', jadwal: PATTERN_A, lastUpdate: '2026-08-01T08:00:00Z' },
+
+  // --- KP POKA ---
+  { id: 'jp_pok_1', namaPetugas: 'LA ODE DARMIN', noHp: '081234567891', unit: 'KP POKA', jadwal: PATTERN_B, lastUpdate: '2026-08-01T08:00:00Z' }
 ];
