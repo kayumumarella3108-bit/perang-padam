@@ -13,7 +13,8 @@ import {
   deleteDoc,
   query,
   limit,
-  orderBy
+  orderBy,
+  enableMultiTabIndexedDbPersistence
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
@@ -34,6 +35,13 @@ export const db = getFirestore(
   app,
   firebaseConfigData.firestoreDatabaseId || '(default)'
 );
+
+// Enable Firestore offline persistence
+if (typeof window !== 'undefined') {
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    console.warn('Firestore offline persistence could not be enabled:', err.message);
+  });
+}
 
 // Initialize Auth
 export const auth = getAuth(app);
