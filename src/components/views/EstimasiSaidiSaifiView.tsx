@@ -15,9 +15,12 @@ import {
   ChevronDown,
   RefreshCw,
   FileSpreadsheet,
-  Info
+  Info,
+  FileText,
+  X
 } from 'lucide-react';
 import { GangguanLog, Penyulang, SectionJaringan, User } from '../../types';
+import { generateSaidiSaifiPDF } from '../../utils/pdfGenerator';
 
 interface EstimasiSaidiSaifiViewProps {
   currentUser?: User | null;
@@ -43,6 +46,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   // Calculate total ULP customers from Master Data (sum of all penyulangs or sections)
   const masterDataTotalUlp = useMemo(() => {
     const sumFromPenyulang = penyulangList.reduce((acc, p) => {
@@ -274,6 +278,14 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     };
   }, [filteredLogs, totalPelangganUlp, sectionList]);
 
+  const {
+    totalSaidiMenit,
+    totalSaidiJam,
+    totalSaifi,
+    totalPelangganPadamAccum,
+    totalDurasiPadamMenit
+  } = metrics;
+
   // Group by Penyulang for Charts & Summary
   const feederBreakdown = useMemo(() => {
     const map: Record<
@@ -364,9 +376,25 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     return Object.values(map).sort((a, b) => b.saidiMenit - a.saidiMenit);
   }, [filteredLogs, totalPelangganUlp, masterDataTotalUlp]);
 
-  // Print PDF Summary
+  // Export PDF directly using jsPDF
+  const handleExportPDF = () => {
+    const selectedMonthObj = monthsList.find((m) => m.value === selectedMonth);
+    generateSaidiSaifiPDF({
+      filteredLogs,
+      totalPelangganUlp: totalPelangganUlp || masterDataTotalUlp || 88281,
+      totalSaidiMenit,
+      totalSaidiJam,
+      totalSaifi,
+      totalPelangganPadamAccum,
+      totalDurasiPadamMenit,
+      topSections: sectionBreakdown,
+      selectedMonthLabel: selectedMonthObj ? selectedMonthObj.label : 'Semua Bulan'
+    });
+  };
+
+  // Open Printable Preview Modal
   const handlePrintReport = () => {
-    window.print();
+    setShowPrintModal(true);
   };
 
   // Export CSV
@@ -472,18 +500,29 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 print:hidden">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
+            title="Export data ke format CSV Spreadsheet"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Export CSV</span>
           </button>
 
           <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer"
+            title="Unduh langsung file laporan PDF"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export PDF</span>
+          </button>
+
+          <button
             onClick={handlePrintReport}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+            title="Buka pratinjau & cetak dokumen laporan"
           >
             <Printer className="w-4 h-4" />
             <span>Cetak Laporan PDF</span>
@@ -1115,6 +1154,196 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* PRINT & PDF PREVIEW MODAL */}
+      {showPrintModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 z-50 font-sans print:p-0 print:bg-white print:static">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden print:max-h-none print:shadow-none print:border-none print:rounded-none">
+            
+            {/* Modal Control Top Bar (Hidden on print) */}
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0 print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-blue-400" />
+                <h3 className="font-bold text-sm">Pratinjau Laporan Estimasi SAIDI & SAIFI</h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportPDF}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh File PDF</span>
+                </button>
+
+                <button
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Langsung</span>
+                </button>
+
+                <button
+                  onClick={() => setShowPrintModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer transition-colors"
+                  title="Tutup"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Document Sheet */}
+            <div className="p-8 overflow-y-auto bg-white text-slate-900 printable-document space-y-6">
+              {/* Kop Surat PLN */}
+              <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
+                <div>
+                  <h2 className="text-base font-black text-blue-900 tracking-wider uppercase">
+                    PT PLN (PERSERO) UIW MMU - UP3 AMBON
+                  </h2>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    UNIT LAYANAN PELANGGAN (ULP) PASSO
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Jl. Transit Passo, Ambon - Maluku | Telp: (0311) 361-XXXX
+                  </p>
+                </div>
+                <div className="text-right text-xs">
+                  <span className="font-bold text-slate-900 block">DOKUMEN RESMI ULP</span>
+                  <span className="text-[10px] text-slate-500">
+                    Dicetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Title & Periode */}
+              <div className="text-center space-y-1">
+                <h1 className="text-base font-black text-slate-900 uppercase tracking-wide">
+                  LAPORAN ESTIMASI INDEKS KEANDALAN SAIDI & SAIFI GANGGUAN
+                </h1>
+                <p className="text-xs text-slate-600 font-medium">
+                  Periode: <span className="font-bold">{selectedMonth === 'all' ? 'Semua Bulan' : monthsList.find(m => m.value === selectedMonth)?.label}</span> | Reference Master ULP: <span className="font-mono font-bold text-blue-700">{(totalPelangganUlp || masterDataTotalUlp || 88281).toLocaleString('id-ID')} Pelanggan</span>
+                </p>
+              </div>
+
+              {/* KPI Summaries */}
+              <div className="grid grid-cols-4 gap-3 text-xs font-sans">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Estimasi SAIDI</span>
+                  <span className="text-sm font-black text-blue-900 font-mono block">{totalSaidiMenit.toFixed(3)} mnt/plg</span>
+                  <span className="text-[10px] text-slate-600 font-mono">({totalSaidiJam.toFixed(4)} jam/plg)</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Estimasi SAIFI</span>
+                  <span className="text-sm font-black text-emerald-800 font-mono block">{totalSaifi.toFixed(4)} kali/plg</span>
+                  <span className="text-[10px] text-emerald-600">Frekuensi gangguan</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Event Padam</span>
+                  <span className="text-sm font-black text-slate-900 font-mono block">{filteredLogs.length} Event</span>
+                  <span className="text-[10px] text-slate-500">Log gangguan trip</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Akumulasi Plg Padam</span>
+                  <span className="text-sm font-black text-rose-800 font-mono block">{totalPelangganPadamAccum.toLocaleString('id-ID')} Plg</span>
+                  <span className="text-[10px] text-slate-500">Total terdampak</span>
+                </div>
+              </div>
+
+              {/* Top 5 Section Padam */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wide">
+                  Top 5 Section Padam dengan Dampak SAIDI Terbesar:
+                </h4>
+                <table className="w-full text-left text-xs border border-slate-300">
+                  <thead className="bg-slate-100 font-bold text-[10px] uppercase text-slate-700">
+                    <tr>
+                      <th className="p-2 border border-slate-300">Rank</th>
+                      <th className="p-2 border border-slate-300">Section Padam</th>
+                      <th className="p-2 border border-slate-300">Penyulang</th>
+                      <th className="p-2 border border-slate-300 text-center">Jumlah Event</th>
+                      <th className="p-2 border border-slate-300 text-right">Plg Section</th>
+                      <th className="p-2 border border-slate-300 text-right">Estimasi SAIDI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sectionBreakdown.slice(0, 5).map((sec, idx) => (
+                      <tr key={sec.section} className="border-b border-slate-200">
+                        <td className="p-2 border border-slate-300 font-bold text-center">#{idx + 1}</td>
+                        <td className="p-2 border border-slate-300 font-bold">{sec.section}</td>
+                        <td className="p-2 border border-slate-300">{sec.namaPenyulang}</td>
+                        <td className="p-2 border border-slate-300 text-center">{sec.count}x Event</td>
+                        <td className="p-2 border border-slate-300 text-right font-mono">{sec.sectionCustomerCount.toLocaleString('id-ID')} Plg</td>
+                        <td className="p-2 border border-slate-300 text-right font-mono font-bold text-blue-800">{sec.saidiMenit.toFixed(3)} mnt/plg</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Event Logs Table */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wide">
+                  Detail Rincian Log Event Gangguan:
+                </h4>
+                <table className="w-full text-left text-xs border border-slate-300">
+                  <thead className="bg-slate-100 font-bold text-[10px] uppercase text-slate-700">
+                    <tr>
+                      <th className="p-1.5 border border-slate-300">No</th>
+                      <th className="p-1.5 border border-slate-300">Tanggal</th>
+                      <th className="p-1.5 border border-slate-300">Penyulang</th>
+                      <th className="p-1.5 border border-slate-300">Section</th>
+                      <th className="p-1.5 border border-slate-300 text-center">Durasi</th>
+                      <th className="p-1.5 border border-slate-300 text-right">Plg Padam</th>
+                      <th className="p-1.5 border border-slate-300 text-right">SAIDI (Mnt)</th>
+                      <th className="p-1.5 border border-slate-300 text-right">SAIFI (Kali)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.map((log, idx) => {
+                      const durasiMenit = parseDurasiMenit(log);
+                      const jmlPlg = getJumlahPelangganPadam(log);
+                      const safeUlp = totalPelangganUlp || masterDataTotalUlp || 88281;
+                      const eSaifi = jmlPlg / safeUlp;
+                      const eSaidiM = (jmlPlg * durasiMenit) / safeUlp;
+
+                      return (
+                        <tr key={log.id} className="border-b border-slate-200">
+                          <td className="p-1.5 border border-slate-300 text-center">{idx + 1}</td>
+                          <td className="p-1.5 border border-slate-300 whitespace-nowrap">{log.tanggal}</td>
+                          <td className="p-1.5 border border-slate-300 font-semibold">{log.namaPenyulang}</td>
+                          <td className="p-1.5 border border-slate-300 max-w-[150px] truncate">{log.section}</td>
+                          <td className="p-1.5 border border-slate-300 text-center font-mono">{durasiMenit} mnt</td>
+                          <td className="p-1.5 border border-slate-300 text-right font-mono">{jmlPlg.toLocaleString('id-ID')}</td>
+                          <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-blue-800">{eSaidiM.toFixed(3)}</td>
+                          <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-purple-800">{eSaifi.toFixed(4)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Tanda Tangan */}
+              <div className="pt-8 flex justify-between text-xs text-slate-800 font-serif">
+                <div className="text-center space-y-12">
+                  <p>Disiapkan Oleh,<br /><strong>Supervisor Teknik ULP Passo</strong></p>
+                  <p className="font-bold underline">( ___________________________ )</p>
+                </div>
+                <div className="text-center space-y-12">
+                  <p>Mengetahui,<br /><strong>Manager ULP Passo</strong></p>
+                  <p className="font-bold underline">( ___________________________ )</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

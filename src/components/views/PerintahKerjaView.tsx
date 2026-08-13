@@ -19,10 +19,12 @@ import {
   Building2,
   ChevronRight,
   Target,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import { PerintahKerja, Penyulang, SectionJaringan, User } from '../../types';
 import { InputSpkModal } from '../modals/InputSpkModal';
+import { generateSpkPDF } from '../../utils/spkPdfGenerator';
 
 interface PerintahKerjaViewProps {
   currentUser?: User | null;
@@ -457,6 +459,13 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                 <h3 className="font-bold text-sm">Pratinjau Surat Perintah Kerja (SPK)</h3>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => generateSpkPDF(printItem)}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh File PDF</span>
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
