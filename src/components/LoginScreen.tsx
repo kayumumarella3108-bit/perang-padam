@@ -8,6 +8,136 @@ interface LoginScreenProps {
   usersList?: User[];
 }
 
+// Helper Component: Realistic Industrial Wind Turbine (Kincir Angin EBT)
+const RealisticWindTurbine: React.FC<{
+  rotorSize: number;
+  towerHeight: number;
+  spinDuration: number; // seconds per turn
+  opacity?: number;
+  label?: string;
+}> = ({ rotorSize, towerHeight, spinDuration, opacity = 0.7, label }) => {
+  return (
+    <div className="flex flex-col items-center relative select-none pointer-events-none group" style={{ opacity }}>
+      {/* Rotating Rotor & Blades */}
+      <div
+        className="relative z-10 origin-center"
+        style={{
+          width: `${rotorSize}px`,
+          height: `${rotorSize}px`,
+          animation: `spin ${spinDuration}s linear infinite`
+        }}
+      >
+        <svg viewBox="0 0 200 200" className="w-full h-full filter drop-shadow-[0_0_10px_rgba(52,211,153,0.25)]">
+          <defs>
+            <linearGradient id={`bladeGrad-${rotorSize}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#475569" />
+              <stop offset="60%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#0f172a" />
+            </linearGradient>
+            <linearGradient id={`bladeHighlight-${rotorSize}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#34d399" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#059669" stopOpacity="0.2" />
+            </linearGradient>
+          </defs>
+
+          {/* Center Hub Nose Cone */}
+          <circle cx="100" cy="100" r="7" fill="#0f172a" stroke="#34d399" strokeWidth="1.5" />
+          <circle cx="100" cy="100" r="3.5" fill="#34d399" />
+
+          {/* Blade 1 (Top) - Realistic Aerodynamic Airfoil Taper */}
+          <path
+            d="M100 95 C97 75, 92 35, 97 8 C99 2, 101 2, 103 8 C108 35, 103 75, 100 95 Z"
+            fill={`url(#bladeGrad-${rotorSize})`}
+            stroke="rgba(52,211,153,0.4)"
+            strokeWidth="0.8"
+          />
+          {/* Leading Edge Gloss */}
+          <path
+            d="M100 95 C98 75, 94 35, 97 8 C98.5 4, 99.5 4, 100 8 C98 35, 99 75, 100 95 Z"
+            fill={`url(#bladeHighlight-${rotorSize})`}
+          />
+
+          {/* Blade 2 (120 Deg) */}
+          <g transform="rotate(120 100 100)">
+            <path
+              d="M100 95 C97 75, 92 35, 97 8 C99 2, 101 2, 103 8 C108 35, 103 75, 100 95 Z"
+              fill={`url(#bladeGrad-${rotorSize})`}
+              stroke="rgba(52,211,153,0.4)"
+              strokeWidth="0.8"
+            />
+            <path
+              d="M100 95 C98 75, 94 35, 97 8 C98.5 4, 99.5 4, 100 8 C98 35, 99 75, 100 95 Z"
+              fill={`url(#bladeHighlight-${rotorSize})`}
+            />
+          </g>
+
+          {/* Blade 3 (240 Deg) */}
+          <g transform="rotate(240 100 100)">
+            <path
+              d="M100 95 C97 75, 92 35, 97 8 C99 2, 101 2, 103 8 C108 35, 103 75, 100 95 Z"
+              fill={`url(#bladeGrad-${rotorSize})`}
+              stroke="rgba(52,211,153,0.4)"
+              strokeWidth="0.8"
+            />
+            <path
+              d="M100 95 C98 75, 94 35, 97 8 C98.5 4, 99.5 4, 100 8 C98 35, 99 75, 100 95 Z"
+              fill={`url(#bladeHighlight-${rotorSize})`}
+            />
+          </g>
+        </svg>
+      </div>
+
+      {/* Nacelle (Generator Housing) & Red Warning Beacon Light */}
+      <div
+        className="absolute z-0 flex flex-col items-center"
+        style={{ top: `${rotorSize / 2 - 8}px` }}
+      >
+        {/* Red blinking aviation safety light */}
+        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_#ef4444] -mb-1 z-20" />
+
+        {/* Nacelle Housing */}
+        <div className="w-9 h-4 bg-slate-800 rounded-sm border border-slate-700 shadow-md flex items-center justify-between px-1">
+          <div className="w-1.5 h-2 bg-emerald-400/80 rounded-xs" />
+          <div className="w-4 h-1 bg-slate-600 rounded-full" />
+        </div>
+
+        {/* Tapered Steel Tubular Tower */}
+        <svg
+          width="28"
+          height={towerHeight}
+          viewBox={`0 0 28 ${towerHeight}`}
+          className="overflow-visible"
+        >
+          <defs>
+            <linearGradient id={`towerGrad-${towerHeight}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0f172a" />
+              <stop offset="25%" stopColor="#334155" />
+              <stop offset="60%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#020617" />
+            </linearGradient>
+          </defs>
+          {/* Tower stem */}
+          <polygon
+            points={`10,0 18,0 23,${towerHeight} 5,${towerHeight}`}
+            fill={`url(#towerGrad-${towerHeight})`}
+            stroke="rgba(51,65,85,0.8)"
+            strokeWidth="1"
+          />
+          {/* Horizontal platform rings */}
+          <line x1="9" y1={towerHeight * 0.3} x2="19" y2={towerHeight * 0.3} stroke="#475569" strokeWidth="0.8" />
+          <line x1="8" y1={towerHeight * 0.6} x2="20" y2={towerHeight * 0.6} stroke="#475569" strokeWidth="0.8" />
+        </svg>
+      </div>
+
+      {label && (
+        <span className="absolute -bottom-6 text-[9px] font-mono font-bold text-emerald-400/60 uppercase tracking-widest whitespace-nowrap">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+};
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSuccess, usersList = [] }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -90,62 +220,87 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       />
 
       {/* Animated EBT Background Kincir Angin (Wind Turbines) Backdrop Layer */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 flex justify-between items-end px-10 pb-0 opacity-25">
-        {/* Left Side Wind Turbines */}
-        <div className="hidden lg:flex items-end gap-12">
-          {/* Large Turbine 1 */}
-          <div className="flex flex-col items-center">
-            <div className="animate-[spin_4s_linear_infinite] origin-center text-emerald-400 filter drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]">
-              <svg className="w-32 h-32" viewBox="0 0 100 100" fill="currentColor">
-                <circle cx="50" cy="50" r="7" fill="currentColor" />
-                <path d="M50 50 L46 5 C48 0 52 0 54 5 L50 50 Z" />
-                <path d="M50 50 L89 72 C93 70 95 66 91 63 L50 50 Z" fillOpacity="0.9" />
-                <path d="M50 50 L11 72 C7 70 5 66 9 63 L50 50 Z" fillOpacity="0.9" />
-              </svg>
-            </div>
-            <div className="w-2 h-48 bg-gradient-to-b from-emerald-400 via-slate-600 to-slate-900 rounded-b-md -mt-3" />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 flex justify-between items-end px-6 md:px-16 pb-0 opacity-40">
+        {/* Left Side Wind Turbines (Foreground & Background Perspective) */}
+        <div className="hidden lg:flex items-end gap-12 md:gap-16">
+          {/* Distant Small Turbine */}
+          <div className="-mb-2">
+            <RealisticWindTurbine
+              rotorSize={110}
+              towerHeight={130}
+              spinDuration={22}
+              opacity={0.5}
+              label="PLTB-01"
+            />
           </div>
 
-          {/* Medium Turbine 2 */}
-          <div className="flex flex-col items-center">
-            <div className="animate-[spin_6s_linear_infinite] origin-center text-cyan-300 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]">
-              <svg className="w-24 h-24" viewBox="0 0 100 100" fill="currentColor">
-                <circle cx="50" cy="50" r="7" fill="currentColor" />
-                <path d="M50 50 L46 5 C48 0 52 0 54 5 L50 50 Z" />
-                <path d="M50 50 L89 72 C93 70 95 66 91 63 L50 50 Z" fillOpacity="0.9" />
-                <path d="M50 50 L11 72 C7 70 5 66 9 63 L50 50 Z" fillOpacity="0.9" />
-              </svg>
-            </div>
-            <div className="w-1.5 h-36 bg-gradient-to-b from-cyan-300 via-slate-600 to-slate-900 rounded-b-md -mt-2" />
+          {/* Foreground Main Large Turbine */}
+          <div className="mb-0">
+            <RealisticWindTurbine
+              rotorSize={200}
+              towerHeight={240}
+              spinDuration={15}
+              opacity={0.85}
+              label="EBT-BAGUALA 3.5MW"
+            />
+          </div>
+
+          {/* Midground Medium Turbine */}
+          <div className="-mb-1">
+            <RealisticWindTurbine
+              rotorSize={150}
+              towerHeight={180}
+              spinDuration={18}
+              opacity={0.65}
+              label="PLTB-02"
+            />
           </div>
         </div>
 
-        {/* Right Side Wind Turbines */}
-        <div className="hidden lg:flex items-end gap-10">
-          {/* Medium Turbine 3 */}
-          <div className="flex flex-col items-center">
-            <div className="animate-[spin_5s_linear_infinite] origin-center text-emerald-300 filter drop-shadow-[0_0_10px_rgba(52,211,153,0.7)]">
-              <svg className="w-28 h-28" viewBox="0 0 100 100" fill="currentColor">
-                <circle cx="50" cy="50" r="7" fill="currentColor" />
-                <path d="M50 50 L46 5 C48 0 52 0 54 5 L50 50 Z" />
-                <path d="M50 50 L89 72 C93 70 95 66 91 63 L50 50 Z" fillOpacity="0.9" />
-                <path d="M50 50 L11 72 C7 70 5 66 9 63 L50 50 Z" fillOpacity="0.9" />
-              </svg>
-            </div>
-            <div className="w-2 h-40 bg-gradient-to-b from-emerald-300 via-slate-600 to-slate-900 rounded-b-md -mt-2.5" />
+        {/* Center Wind Stream Lines Overlay */}
+        <div className="absolute inset-x-0 bottom-12 h-32 pointer-events-none opacity-20">
+          <svg className="w-full h-full" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path
+              d="M0 40 Q 300 10, 600 50 T 1200 30"
+              fill="none"
+              stroke="#34d399"
+              strokeWidth="1.5"
+              strokeDasharray="12 8"
+              className="animate-[pulse_3s_infinite]"
+            />
+            <path
+              d="M0 80 Q 400 100, 800 60 T 1200 90"
+              fill="none"
+              stroke="#22d3ee"
+              strokeWidth="1.2"
+              strokeDasharray="16 10"
+              className="animate-[pulse_4s_infinite]"
+            />
+          </svg>
+        </div>
+
+        {/* Right Side Wind Turbines (Foreground & Midground) */}
+        <div className="hidden lg:flex items-end gap-10 md:gap-14">
+          {/* Midground Medium Turbine */}
+          <div className="-mb-1">
+            <RealisticWindTurbine
+              rotorSize={160}
+              towerHeight={190}
+              spinDuration={17}
+              opacity={0.7}
+              label="PLTB-03"
+            />
           </div>
 
-          {/* Large Turbine 4 */}
-          <div className="flex flex-col items-center">
-            <div className="animate-[spin_3.8s_linear_infinite] origin-center text-teal-400 filter drop-shadow-[0_0_12px_rgba(45,212,191,0.8)]">
-              <svg className="w-36 h-36" viewBox="0 0 100 100" fill="currentColor">
-                <circle cx="50" cy="50" r="7" fill="currentColor" />
-                <path d="M50 50 L46 5 C48 0 52 0 54 5 L50 50 Z" />
-                <path d="M50 50 L89 72 C93 70 95 66 91 63 L50 50 Z" fillOpacity="0.9" />
-                <path d="M50 50 L11 72 C7 70 5 66 9 63 L50 50 Z" fillOpacity="0.9" />
-              </svg>
-            </div>
-            <div className="w-2.5 h-56 bg-gradient-to-b from-teal-400 via-slate-600 to-slate-900 rounded-b-md -mt-3.5" />
+          {/* Foreground Large Turbine */}
+          <div className="mb-0">
+            <RealisticWindTurbine
+              rotorSize={210}
+              towerHeight={250}
+              spinDuration={14}
+              opacity={0.85}
+              label="EBT-RE-GREEN 4.0MW"
+            />
           </div>
         </div>
       </div>

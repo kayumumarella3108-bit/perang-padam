@@ -31,7 +31,8 @@ import {
   Sparkles,
   Share2,
   MessageCircle,
-  Send
+  Send,
+  BatteryCharging
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 import { canManageUsers } from '../utils/permissions';
@@ -140,6 +141,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <MapPin className="w-4 h-4" />
             </div>
             <span>Peta Penyulang GIS</span>
+          </button>
+
+          {/* 2b. SPKLU */}
+          <button
+            onClick={() => onSelectView('spklu')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+              activeView === 'spklu'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div className="flex items-center justify-between flex-1">
+              <span>SPKLU</span>
+            </div>
           </button>
 
           {/* 3. Master Data Aset Baguala (ACCORDION) */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Zap, Cloud, User, LogOut, ChevronDown, ShieldCheck, Search, Eye, AlertTriangle, X, MessageCircle, Send, Share2 } from 'lucide-react';
+import { Menu, Zap, Cloud, User, LogOut, ChevronDown, ShieldCheck, Search, Eye, AlertTriangle, X, MessageCircle, Send, Share2, Car, Sun, BatteryCharging } from 'lucide-react';
 import { User as UserType, ViewType } from '../types';
 import { canEditData } from '../utils/permissions';
 
@@ -14,6 +14,7 @@ interface TopHeaderProps {
 
 const VIEW_NAMES: Record<ViewType, string> = {
   dashboard: 'Dashboard Utama Keandalan 20kV',
+  spklu: 'Monitoring Lokasi SPKLU',
   peta_penyulang: 'Peta Penyulang GIS & Feeder',
   master_data: 'Master Data Penyulang',
   aset_jaringan: 'Aset Jaringan JTM / JTR',
@@ -49,6 +50,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   user,
   onLogout,
   activeView,
+  onSelectView,
   sidebarOpen,
   onToggleSidebar
 }) => {
@@ -127,27 +129,77 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Center Section: Active Menu Name & Mode Indicator Badge */}
-      <div className="hidden lg:flex items-center gap-3">
-        <div className="px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          <span>{activeViewTitle}</span>
+      {/* Center Section: Wind Turbine (Kincir Angin) & Power Plant (Pembangkit Listrik) Visualization */}
+      <div
+        onClick={() => onSelectView && onSelectView('spklu')}
+        className="hidden lg:flex items-center gap-3 px-4 py-1.5 rounded-2xl bg-slate-900/90 border border-emerald-500/40 hover:border-emerald-400 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer group hover:bg-slate-900"
+        title="Klik untuk melihat SPKLU"
+      >
+        {/* Spinning Wind Turbine (Kincir Angin Realistis) */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            {/* Red Aviation Warning Beacon */}
+            <div className="absolute top-1.5 w-1 h-1 rounded-full bg-rose-500 animate-ping z-20" />
+            
+            {/* Rotating Blades */}
+            <div className="w-7 h-7 animate-[spin_3.5s_linear_infinite] origin-center text-emerald-400 filter drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] z-10">
+              <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
+                <circle cx="50" cy="50" r="7" fill="#34d399" />
+                {/* Blade 1 */}
+                <path d="M50 45 C47 25, 43 5, 49 1 C52 1, 54 5, 51 25 Z" />
+                {/* Blade 2 */}
+                <g transform="rotate(120 50 50)">
+                  <path d="M50 45 C47 25, 43 5, 49 1 C52 1, 54 5, 51 25 Z" />
+                </g>
+                {/* Blade 3 */}
+                <g transform="rotate(240 50 50)">
+                  <path d="M50 45 C47 25, 43 5, 49 1 C52 1, 54 5, 51 25 Z" />
+                </g>
+              </svg>
+            </div>
+
+            {/* Turbine Tower Pole */}
+            <div className="absolute bottom-0 w-1 h-4 bg-gradient-to-b from-slate-400 to-slate-800 rounded-b-xs" />
+          </div>
+
+          <div className="text-left">
+            <span className="text-[9px] font-extrabold text-emerald-400 tracking-wider block uppercase leading-tight">
+              KINCIR ANGIN
+            </span>
+            <span className="text-[10px] font-black text-white block leading-tight">
+              PLTB EBT
+            </span>
+          </div>
         </div>
 
-        {isEditMode ? (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Mode Edit ({user.role})</span>
+        {/* Transmission Power Cable with Flowing Electricity Animation */}
+        <div className="flex items-center gap-1.5 px-1">
+          <div className="w-3 h-0.5 bg-emerald-400/80 rounded-full" />
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shadow-[0_0_8px_#34d399]" />
+          <div className="w-6 h-1 bg-slate-800 rounded-full overflow-hidden relative">
+            <div className="w-3 h-full bg-gradient-to-r from-emerald-400 to-amber-300 rounded-full animate-[shimmer_1.2s_infinite]" />
           </div>
-        ) : (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold shadow-xs">
-            <Eye className="w-3.5 h-3.5 text-amber-400" />
-            <span>Read-Only ({user.role})</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]" />
+          <div className="w-3 h-0.5 bg-amber-400/80 rounded-full" />
+        </div>
+
+        {/* Pembangkit Listrik (Power Station / Substation Graphic) */}
+        <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 group-hover:border-amber-500/50 transition-colors">
+          <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <Zap className="w-4 h-4 fill-amber-400 stroke-amber-400 animate-bounce" />
           </div>
-        )}
+          <div className="text-left">
+            <span className="text-[9px] font-extrabold text-slate-400 block leading-tight uppercase">
+              GRID SISTEM 20KV
+            </span>
+            <span className="text-[10px] font-black text-amber-300 block leading-tight">
+              PEMBANGKIT LISTRIK
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Right Section: Cloud status, User Profile */}
+      {/* Right Section: Cloud status, User Profile & Mode Badge */}
       <div className="flex items-center gap-3">
         {/* Cloud Active Badge */}
         {isOnline ? (
@@ -162,7 +214,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </div>
         )}
 
-        {/* User Profile Badge */}
+        {/* User Profile & Role/Mode Badge */}
         <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
           <div className="flex items-center gap-2.5">
             {user?.avatarUrl ? (
@@ -170,25 +222,38 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 src={user.avatarUrl}
                 alt={user?.name || 'User'}
                 referrerPolicy="no-referrer"
-                className="w-9 h-9 rounded-full object-cover border-2 border-slate-700 shadow-sm"
+                className="w-10 h-10 rounded-full object-cover border-2 border-slate-700 shadow-sm"
               />
             ) : (
-              <div className={`w-9 h-9 rounded-full border-2 border-slate-700 shadow-sm flex items-center justify-center font-extrabold text-xs ${
+              <div className={`w-10 h-10 rounded-full border-2 border-slate-700 shadow-sm flex items-center justify-center font-extrabold text-xs ${
                 isEditMode ? 'bg-emerald-500 text-slate-950' : 'bg-amber-400 text-slate-950'
               }`}>
                 {user?.name ? user.name.substring(0, 2).toUpperCase() : 'US'}
               </div>
             )}
-            <div className="text-left hidden md:block">
+            <div className="text-left hidden md:flex flex-col justify-center">
               <span className="text-[10px] font-medium text-slate-400 block leading-tight">
                 Selamat datang,
               </span>
               <div className="text-xs font-black text-white flex items-center gap-1 leading-tight">
                 {user?.name || 'User'}
               </div>
-              <span className="text-[10px] font-bold text-amber-400 uppercase block leading-tight">
-                {user?.role || 'Guest'}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] font-bold text-amber-400 uppercase leading-none">
+                  {user?.role || 'Guest'}
+                </span>
+                {isEditMode ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold leading-none shadow-xs">
+                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <span>Mode Edit</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold leading-none shadow-xs">
+                    <Eye className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                    <span>Read-Only</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

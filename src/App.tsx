@@ -83,6 +83,7 @@ import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiVie
 import { FormatSuratView } from './components/views/FormatSuratView';
 import { TopologiJaringanView } from './components/views/TopologiJaringanView';
 import { ShareLaporanView } from './components/views/ShareLaporanView';
+import { SpkluView } from './components/views/SpkluView';
 
 export default function App() {
   // Authentication state
@@ -1345,6 +1346,10 @@ export default function App() {
               spkList={spkList}
               onSelectView={setActiveView}
             />
+          )}
+
+          {activeView === 'spklu' && (
+            <SpkluView currentUser={user} />
           )}
 
           {(activeView === 'peta_penyulang' || activeView === 'peta') && (

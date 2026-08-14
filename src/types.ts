@@ -1,5 +1,6 @@
 export type ViewType = 
   | 'dashboard'
+  | 'spklu'
   | 'peta_penyulang'
   | 'health_index'
   | 'matriks_gangguan'
