@@ -12,7 +12,8 @@ import {
   X,
   SlidersHorizontal,
   CheckSquare,
-  Square
+  Square,
+  Camera
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -62,6 +63,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [selectedPenyulang, setSelectedPenyulang] = useState('all');
   const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('trip_pangkal');
   const [penyulangChartType, setPenyulangChartType] = useState<'bar' | 'line'>('bar');
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Preset handlers
   const handlePresetToday = () => {
@@ -821,7 +823,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       </div>
 
       {/* Analytics Visuals Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Donut Chart */}
         <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -879,64 +881,6 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                 <Bar dataKey="gangguan" fill="#0284c7" radius={[4, 4, 0, 0]} name="Kejadian" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Bar/Line Chart - Per Penyulang */}
-        <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-xs font-bold text-slate-900">
-              ⚡ Frekuensi Gangguan Per Penyulang
-            </h3>
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
-              <button
-                onClick={() => setPenyulangChartType('bar')}
-                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
-                  penyulangChartType === 'bar'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Bar
-              </button>
-              <button
-                onClick={() => setPenyulangChartType('line')}
-                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
-                  penyulangChartType === 'line'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Line
-              </button>
-            </div>
-          </div>
-
-          <div className="h-52 w-full">
-            {penyulangChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                Belum ada data gangguan
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                {penyulangChartType === 'bar' ? (
-                  <BarChart data={penyulangChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={9} interval={0} angle={-15} textAnchor="end" height={30} />
-                    <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="gangguan" fill="#e11d48" radius={[4, 4, 0, 0]} name="Kejadian" />
-                  </BarChart>
-                ) : (
-                  <LineChart data={penyulangChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={9} interval={0} angle={-15} textAnchor="end" height={30} />
-                    <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Line type="monotone" dataKey="gangguan" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4, fill: '#e11d48' }} activeDot={{ r: 6 }} name="Kejadian" />
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
-            )}
           </div>
         </div>
       </div>
@@ -1191,7 +1135,17 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="font-semibold text-slate-900">{g.penyebab}</div>
-                      <span className="text-[10px] text-slate-400">{g.detailLokasi}</span>
+                      <span className="text-[10px] text-slate-400 block">{g.detailLokasi}</span>
+                      {g.fotoPenyebab && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPhoto(g.fotoPenyebab!)}
+                          className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-md text-[10px] font-bold transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Camera className="w-3 h-3 text-blue-600" />
+                          <span>Lihat Dokumentasi Foto</span>
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -1234,6 +1188,56 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
         sectionList={sectionList}
         editItem={editingGangguan}
       />
+
+      {/* Modal Preview Dokumentasi Foto Penyebab Gangguan */}
+      {selectedPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xl max-w-2xl w-full flex flex-col space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">Dokumentasi Penyebab Gangguan</h3>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Foto Dokumentasi Lapangan</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPhoto(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center max-h-[65vh] p-2 border border-slate-800">
+              <img
+                src={selectedPhoto}
+                alt="Dokumentasi Penyebab Gangguan"
+                className="max-h-[60vh] w-auto object-contain rounded-xl"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <a
+                href={selectedPhoto}
+                download="dokumentasi-penyebab-gangguan.png"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh File Foto</span>
+              </a>
+              <button
+                onClick={() => setSelectedPhoto(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

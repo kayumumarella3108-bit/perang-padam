@@ -449,7 +449,7 @@ export const SldVisioView: React.FC = () => {
 
     const newTie: TieSwitchData = {
       id: `tie-${Date.now()}`,
-      nama: tieName.toUpperCase() || `TIE SWITCH (${fA?.namaFeeder || 'A'} - ${fB?.namaFeeder || 'B'})`,
+      nama: (tieName || '').toUpperCase() || `TIE SWITCH (${fA?.namaFeeder || 'A'} - ${fB?.namaFeeder || 'B'})`,
       substationAId: fA?.subId || '',
       feederAId: tieFeederA,
       substationBId: fB?.subId || '',

@@ -418,7 +418,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0 ${
                               isEdit ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                             }`}>
-                              {u.name.substring(0, 2).toUpperCase()}
+                              {u.name ? u.name.substring(0, 2).toUpperCase() : 'US'}
                             </div>
                           )}
                           <div>

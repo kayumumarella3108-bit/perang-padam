@@ -108,7 +108,7 @@ export const InputTopologiBatchModal: React.FC<InputTopologiBatchModalProps> = (
 
   // Helper to generate items based on quantities
   const regenerateItemsFromQuantities = (qtyMap: EquipmentConfigQty) => {
-    const feederCode = activeFeeder.kodeId || activeFeeder.namaPenyulang.slice(0, 3).toUpperCase();
+    const feederCode = activeFeeder.kodeId || (activeFeeder.namaPenyulang || 'FEEDER').slice(0, 3).toUpperCase();
     const feederName = activeFeeder.namaPenyulang;
     const feederId = activeFeeder.id;
 

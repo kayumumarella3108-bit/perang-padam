@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter } from 'lucide-react';
+import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter, Camera, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
 
 interface InputGangguanModalProps {
@@ -95,6 +95,26 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const [kodeGangguan, setKodeGangguan] = useState('E-3');
   const [detailLokasi, setDetailLokasi] = useState('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
   const [catatan, setCatatan] = useState('Keterangan tindakan penanganan gangguan...');
+  const [fotoPenyebab, setFotoPenyebab] = useState<string>('');
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.match(/^image\/(jpeg|jpg|png)$/i)) {
+        alert('Format file tidak didukung. Harap pilih foto berformat .JPG, .JPEG, atau .PNG');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran foto terlalu besar. Maksimal 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFotoPenyebab(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // SAIDI SAIFI estimation inputs
   const [jumlahPelangganPadam, setJumlahPelangganPadam] = useState<number>(2450);
@@ -185,6 +205,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setKodeGangguan(editItem.kodeGangguan || 'E-3');
       setDetailLokasi(editItem.detailLokasi || '');
       setCatatan(editItem.catatan || '');
+      setFotoPenyebab(editItem.fotoPenyebab || '');
       setJumlahPelangganPadam(editItem.jumlahPelangganPadam || feederTotalCustomers);
       setTotalPelangganUlp(editItem.totalPelangganUlp || safeMasterUlp);
     } else {
@@ -206,6 +227,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setKodeGangguan('E-3');
       setDetailLokasi('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
       setCatatan('Keterangan tindakan penanganan gangguan...');
+      setFotoPenyebab('');
       setTotalPelangganUlp(safeMasterUlp);
     }
   }, [editItem, isOpen, initialPenyulangId]);
@@ -329,6 +351,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       kodeGangguan,
       detailLokasi,
       catatan,
+      fotoPenyebab: fotoPenyebab || undefined,
       // SAIDI SAIFI calculation values
       jumlahPelangganPadam: Number(jumlahPelangganPadam) || 0,
       totalPelangganUlp: Number(safeTotalUlp),
@@ -580,7 +603,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
             {/* Clickable Preset Relay Chips */}
             <div className="flex flex-wrap gap-1.5 pb-0.5">
               {['OCR', 'GFR', 'RECLOSER', 'UFR', 'REF', 'SSO'].map((relay) => {
-                const isSelected = relayBekerja
+                const isSelected = (relayBekerja || '')
                   .toUpperCase()
                   .split('/')
                   .map((s) => s.trim())
@@ -591,13 +614,13 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
                     type="button"
                     onClick={() => {
                       if (isSelected) {
-                        const parts = relayBekerja
+                        const parts = (relayBekerja || '')
                           .split('/')
                           .map((p) => p.trim())
                           .filter((p) => p && p.toUpperCase() !== relay);
                         setRelayBekerja(parts.join(' / '));
                       } else {
-                        const parts = relayBekerja
+                        const parts = (relayBekerja || '')
                           .split('/')
                           .map((p) => p.trim())
                           .filter(Boolean);
@@ -620,7 +643,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
 
               {/* Combo Preset Options */}
               {['OCR / GFR', 'OCR / GFR / RECLOSER'].map((combo) => {
-                const isMatch = relayBekerja.trim().toUpperCase() === combo.toUpperCase();
+                const isMatch = (relayBekerja || '').trim().toUpperCase() === combo.toUpperCase();
                 return (
                   <button
                     key={combo}
@@ -852,6 +875,68 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               placeholder="Keterangan tindakan penanganan gangguan..."
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
+          </div>
+
+          {/* Foto Dokumentasi Penyebab Gangguan (JPG / JPEG / PNG) */}
+          <div className="space-y-1.5 p-3.5 bg-blue-50/50 border border-blue-200 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-blue-600" />
+                <span>Foto Dokumentasi Penyebab Gangguan</span>
+              </label>
+              <span className="text-[10px] text-blue-600 font-bold bg-blue-100 px-2 py-0.5 rounded-full">
+                JPG / JPEG / PNG
+              </span>
+            </div>
+
+            {fotoPenyebab ? (
+              <div className="relative rounded-xl overflow-hidden border border-slate-200 group bg-slate-900 flex flex-col items-center">
+                <img
+                  src={fotoPenyebab}
+                  alt="Dokumentasi Penyebab Gangguan"
+                  className="w-full max-h-48 object-contain bg-slate-950"
+                />
+                <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                  <label className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow-md flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Ganti</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFotoPenyebab('')}
+                    className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow-md flex items-center gap-1"
+                    title="Hapus Foto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-300 rounded-xl bg-white hover:bg-blue-50/50 transition-colors cursor-pointer text-center group">
+                <div className="p-2.5 rounded-full bg-blue-100 text-blue-600 group-hover:scale-110 transition-transform mb-2">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  Upload Foto Dokumentasi Penyebab
+                </span>
+                <span className="text-[10px] text-slate-500 mt-0.5">
+                  Klik untuk memilih file foto (Format JPG, JPEG, PNG • Maks 5MB)
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+              </label>
+            )}
           </div>
 
           {/* Submit Button */}

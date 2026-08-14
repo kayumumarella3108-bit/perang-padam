@@ -321,7 +321,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 
     // Extract name
     const docNameNode = xmlDoc.querySelector('Document > name');
-    const feederName = docNameNode?.textContent?.trim() || fileName.replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
+    const feederName = docNameNode?.textContent?.trim() || (fileName || 'LAYER').replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
 
     const placemarks = xmlDoc.getElementsByTagName('Placemark');
     const parsedCoords: [number, number][] = [];

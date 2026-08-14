@@ -417,7 +417,7 @@ export const InspeksiTier1GTTView: React.FC<InspeksiTier1GTTViewProps> = ({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                        {item.pelaksana?.substring(0, 2).toUpperCase()}
+                        {item.pelaksana ? item.pelaksana.substring(0, 2).toUpperCase() : 'US'}
                       </div>
                       <span className="text-xs font-semibold text-slate-600">{item.pelaksana}</span>
                     </div>

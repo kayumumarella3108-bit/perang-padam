@@ -70,7 +70,7 @@ export const HealthIndexView: React.FC<HealthIndexViewProps> = ({
       const feederLogs = gangguanList.filter((g) => {
         const matchesPenyulang =
           g.penyulangId === p.id ||
-          (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase());
+          (g.namaPenyulang && p.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase());
         
         if (!matchesPenyulang) return false;
 

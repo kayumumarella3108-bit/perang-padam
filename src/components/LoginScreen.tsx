@@ -153,48 +153,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-xl px-4 py-8 my-auto flex flex-col items-center text-center">
         
-        {/* HardHat Icon & Support Badge */}
-        <div className="mb-3 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3 border border-emerald-400/40">
-            <HardHat className="w-9 h-9 text-white stroke-[1.8]" />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-xs">
-              <Leaf className="w-3.5 h-3.5 text-emerald-400" />
-              <span>SISTEM EBT RE-GREEN 20kV</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-semibold backdrop-blur-md shadow-xs">
-              <Zap className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />
-              <span>Support by THE TUKIMEN</span>
-            </div>
-          </div>
-        </div>
-
         {/* Title & Subtitle */}
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2 drop-shadow-md">
           Perang Padam Baguala
         </h1>
-        <p className="text-xs md:text-sm text-slate-300 max-w-lg mb-4 leading-relaxed font-medium">
+        <p className="text-xs md:text-sm text-slate-300 max-w-lg mb-6 leading-relaxed font-medium">
           Digitalisasi Monitoring PLN ULP Baguala
         </p>
-
-        {/* Running Text Pesan Keselamatan Kerja K3 (Updated Daily) */}
-        <div className="w-full max-w-xl mb-6 bg-gradient-to-r from-amber-500/20 via-slate-900/90 to-amber-500/20 border border-amber-500/40 rounded-2xl p-3 backdrop-blur-md text-amber-300 overflow-hidden text-xs font-bold shadow-xl">
-          <div className="flex items-center justify-between mb-1.5 px-1">
-            <div className="flex items-center gap-2 text-amber-400 font-extrabold uppercase text-[10px] tracking-wider">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
-              <span>PESAN KESELAMATAN K3 HARIAN ({dailySafetyInfo.dayName.toUpperCase()})</span>
-            </div>
-            <span className="text-[10px] text-amber-300/80 font-mono">
-              {dailySafetyInfo.formattedDate}
-            </span>
-          </div>
-          <div className="overflow-hidden whitespace-nowrap bg-slate-950/80 rounded-xl p-2 border border-amber-500/30">
-            <div className="animate-marquee text-[11px] font-bold text-amber-200">
-              {dailySafetyInfo.fullMessage}
-            </div>
-          </div>
-        </div>
 
         {/* Centered Login Form Card */}
         <div className="w-full max-w-md bg-white/95 rounded-2xl p-7 shadow-2xl border border-emerald-500/20 backdrop-blur-md text-left">
@@ -274,8 +239,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
           </div>
         </div>
 
+        {/* Support Badges moved below login form */}
+        <div className="mt-6 flex items-center gap-2 flex-wrap justify-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-xs">
+            <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+            <span>SISTEM EBT RE-GREEN 20kV</span>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-semibold backdrop-blur-md shadow-xs">
+            <Zap className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />
+            <span>Support by THE TUKIMEN</span>
+          </div>
+        </div>
+
         {/* Footer Slogans */}
-        <div className="mt-8">
+        <div className="mt-4">
           <div className="flex items-center justify-center gap-2 text-blue-400 font-black tracking-wider text-xs uppercase">
             <Zap className="w-3.5 h-3.5 fill-blue-400" />
             <span>PANTANG PULANG SEBELUM TERANG</span>

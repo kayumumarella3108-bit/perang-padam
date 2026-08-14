@@ -164,7 +164,7 @@ export const JadwalPiketView: React.FC<JadwalPiketViewProps> = ({
       // Unit Header Row
       tableBody.push([
         {
-          content: `UNIT / KP: ${u.toUpperCase()}`,
+          content: `UNIT / KP: ${(u || 'ULP BAGUALA').toUpperCase()}`,
           colSpan: daysInMonth + 4,
           styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42], halign: 'left' }
         }

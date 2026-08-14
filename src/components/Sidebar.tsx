@@ -28,7 +28,10 @@ import {
   FolderTree,
   Activity,
   Layers,
-  Sparkles
+  Sparkles,
+  Share2,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 import { ViewType, User } from '../types';
 import { canManageUsers } from '../utils/permissions';
@@ -574,7 +577,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* 11. Kelola User & Hak Akses */}
+          {/* 11. Share Laporan (WhatsApp Web & Telegram) */}
+          <button
+            onClick={() => onSelectView('share_laporan')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+              activeView === 'share_laporan'
+                ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+                <Share2 className="w-4 h-4" />
+              </div>
+              <span>Share Laporan</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-black uppercase">
+              WA & TG
+            </span>
+          </button>
+
+          {/* 12. Kelola User & Hak Akses */}
           {(() => {
             const hasUserMgmtAccess = canManageUsers(currentUser);
             return (

@@ -82,14 +82,27 @@ import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2Ult
 import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
 import { FormatSuratView } from './components/views/FormatSuratView';
 import { TopologiJaringanView } from './components/views/TopologiJaringanView';
+import { ShareLaporanView } from './components/views/ShareLaporanView';
 
 export default function App() {
   // Authentication state
   const [user, setUser] = useState<User | null>(null);
 
   // Active view & navigation state
-  const [activeView, setActiveView] = useState<ViewType>('dashboard');
+  const [activeView, setActiveView] = useState<ViewType>('matriks_gangguan');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Telegram WebApp Initialization
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+      if (tg.setHeaderColor) {
+        tg.setHeaderColor('#0058a8');
+      }
+    }
+  }, []);
 
   // Domain data states
   const [penyulangList, setPenyulangList] = useState<Penyulang[]>(() => filterDeleted(INITIAL_PENYULANG));
@@ -738,7 +751,7 @@ export default function App() {
       const feederLogs = gangguanList.filter(
         (g) =>
           g.penyulangId === p.id ||
-          (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase())
+          (g.namaPenyulang && p.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === p.namaPenyulang.trim().toUpperCase())
       );
 
       const frekuensiGangguan = feederLogs.length;
@@ -801,11 +814,11 @@ export default function App() {
       
       // Recalculate health index for the affected feeder and save to Firestore
       const affectedPenyulang = penyulangList.find(
-        (p) => p.id === log.penyulangId || (log.namaPenyulang && p.namaPenyulang.toUpperCase() === log.namaPenyulang.toUpperCase())
+        (p) => p.id === log.penyulangId || (log.namaPenyulang && p.namaPenyulang && p.namaPenyulang.toUpperCase() === log.namaPenyulang.toUpperCase())
       );
       if (affectedPenyulang) {
         const updatedLogs = [...gangguanList.filter((g) => g.id !== log.id), log].filter(
-          (g) => g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase())
+          (g) => g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && affectedPenyulang.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase())
         );
         const newFreq = updatedLogs.length;
         let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
@@ -845,11 +858,11 @@ export default function App() {
       
       if (logToDelete) {
         const affectedPenyulang = penyulangList.find(
-          (p) => p.id === logToDelete.penyulangId || (logToDelete.namaPenyulang && p.namaPenyulang.toUpperCase() === logToDelete.namaPenyulang.toUpperCase())
+          (p) => p.id === logToDelete.penyulangId || (logToDelete.namaPenyulang && p.namaPenyulang && p.namaPenyulang.toUpperCase() === logToDelete.namaPenyulang.toUpperCase())
         );
         if (affectedPenyulang) {
           const remainingLogs = gangguanList.filter(
-            (g) => g.id !== id && (g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase()))
+            (g) => g.id !== id && (g.penyulangId === affectedPenyulang.id || (g.namaPenyulang && affectedPenyulang.namaPenyulang && g.namaPenyulang.trim().toUpperCase() === affectedPenyulang.namaPenyulang.trim().toUpperCase()))
           );
           const newFreq = remainingLogs.length;
           let newStatus: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis' = 'Sempurna';
@@ -1545,6 +1558,17 @@ export default function App() {
               ultrasoundList={ultrasoundList}
               penyulangList={syncedPenyulangList}
               sectionList={sectionList}
+            />
+          )}
+
+          {activeView === 'share_laporan' && (
+            <ShareLaporanView
+              user={user}
+              gangguanList={gangguanList}
+              penyulangList={syncedPenyulangList}
+              saidiData={saidiList}
+              jadwalPiket={jadwalPiketList}
+              perintahKerja={spkList}
             />
           )}
 

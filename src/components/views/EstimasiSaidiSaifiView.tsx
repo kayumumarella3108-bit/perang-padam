@@ -209,7 +209,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
         if (selPenyulang) {
           if (
             log.penyulangId !== selectedPenyulangId &&
-            log.namaPenyulang?.toLowerCase() !== selPenyulang.namaPenyulang.toLowerCase()
+            log.namaPenyulang?.toLowerCase() !== (selPenyulang?.namaPenyulang || '').toLowerCase()
           ) {
             return false;
           }
@@ -224,11 +224,11 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchFeeder = log.namaPenyulang?.toLowerCase().includes(q);
-        const matchSec = log.section?.toLowerCase().includes(q);
-        const matchLokasi = log.detailLokasi?.toLowerCase().includes(q);
-        const matchPenyebab = log.penyebab?.toLowerCase().includes(q);
-        const matchKode = log.kodeGangguan?.toLowerCase().includes(q);
+        const matchFeeder = (log.namaPenyulang || '').toLowerCase().includes(q);
+        const matchSec = (log.section || '').toLowerCase().includes(q);
+        const matchLokasi = (log.detailLokasi || '').toLowerCase().includes(q);
+        const matchPenyebab = (log.penyebab || '').toLowerCase().includes(q);
+        const matchKode = (log.kodeGangguan || '').toLowerCase().includes(q);
         if (!matchFeeder && !matchSec && !matchLokasi && !matchPenyebab && !matchKode) {
           return false;
         }

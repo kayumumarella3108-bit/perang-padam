@@ -1396,7 +1396,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {activeTab === 'row' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {rowList.map((item) => {
-              const tiangId = item.tiangId || `T-${item.id.substring(0, 4).toUpperCase()}`;
+              const tiangId = item.tiangId || `T-${(item.id || '').substring(0, 4).toUpperCase()}`;
               const prioritas = item.prioritas || (Number(item.pohonBesar) > 0 ? 'Tinggi' : 'Sedang');
               const namaPenyulang = item.namaPenyulang || item.penyulang || 'UNKNOWN';
               const lokasi = item.lokasi || item.section || 'General Section';

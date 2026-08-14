@@ -27,7 +27,8 @@ export type ViewType =
   | 'aset_jaringan'
   | 'jadwal_piket'
   | 'gangguan'
-  | 'topologi_jaringan';
+  | 'topologi_jaringan'
+  | 'share_laporan';
 
 export type TipeNodeTopologi = 'GI' | 'GH' | 'PERCABANGAN' | 'LBS' | 'REC' | 'FCO' | 'GTT' | 'PMCB' | 'DS' | 'SECTION' | 'INCOMING' | 'OUTGOING' | 'COUPLING';
 
@@ -95,6 +96,7 @@ export interface GangguanLog {
   kodeGangguan: string;
   detailLokasi: string;
   catatan: string;
+  fotoPenyebab?: string; // Base64 or Data URL photo documentation
   // SAIDI SAIFI Estimation per section event
   jumlahPelangganPadam?: number;
   totalPelangganUlp?: number;
