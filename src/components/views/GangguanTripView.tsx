@@ -60,7 +60,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedPenyulang, setSelectedPenyulang] = useState('all');
-  const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('semua');
+  const [activeGangguanTab, setActiveGangguanTab] = useState<'semua' | 'trip_pangkal'>('trip_pangkal');
   const [penyulangChartType, setPenyulangChartType] = useState<'bar' | 'line'>('bar');
 
   // Preset handlers
@@ -109,7 +109,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const [showExportOptions, setShowExportOptions] = useState(false);
 
   const isSectionFromGi = (sectionStr: string): boolean => {
-    if (!sectionStr) return false;
+    if (!sectionStr) return true;
     const s = sectionStr.trim().toUpperCase();
     return (
       s.startsWith('GI') ||
@@ -117,6 +117,9 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       s.startsWith('G.I') ||
       s.startsWith('PMT') ||
       s.startsWith('GARDU INDUK') ||
+      s.includes('PANGKAL') ||
+      s.includes('OUTGOING') ||
+      s.includes('GI ') ||
       /\bGI\b/.test(s) ||
       /\bGIS\b/.test(s)
     );
@@ -446,34 +449,120 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
       
-      {/* Top Banner */}
-      <HealthIndexBanner
-        totalCount={penyulangList.length}
-        sempurnaCount={penyulangList.filter((p) => p.healthIndexStatus === 'Sempurna').length}
-        sehatCount={penyulangList.filter((p) => p.healthIndexStatus === 'Sehat').length}
-        sakitCount={penyulangList.filter((p) => p.healthIndexStatus === 'Sakit').length}
-        kronisCount={penyulangList.filter((p) => p.healthIndexStatus === 'Kronis').length}
-      />
+      {/* Dashboard Trip Pangkal Banner */}
+      <div className="p-5 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-3xl text-white shadow-xl border border-slate-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-2xl text-rose-400">
+              <Zap className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-black text-base text-white tracking-wide uppercase">
+                  DASHBOARD TRIP PANGKAL FEEDER 20kV
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-extrabold text-[10px] uppercase">
+                  GANGGUAN TRIP FEEDER
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 font-medium mt-0.5">
+                Monitoring, rekapitulasi, dan analisis frekuensi Trip Pangkal (PMT GI 20kV) ULP Baguala
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+            <span className="px-3 py-1 bg-slate-800/80 border border-slate-700 rounded-xl">
+              Total Feeder: <strong className="text-white">{penyulangList.length} Penyulang</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="p-3.5 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Trip Pangkal</div>
+              <div className="text-2xl font-black text-rose-400 mt-1">{tripPangkalList.length} <span className="text-xs font-semibold text-slate-300">Kali</span></div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Filter aktif: {totalTrip} Event</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <Zap className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Penyulang Paling Rawan</div>
+              <div className="text-base font-black text-amber-300 mt-1 truncate max-w-[150px]">{rawanPenyulang}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">{maxPenyulangCount} Kali Trip Pangkal</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Penyebab Dominan</div>
+              <div className="text-sm font-black text-blue-300 mt-1 truncate max-w-[150px]">{dominantCode}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">{maxCodeCount} Kejadian Terdaftar</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <SlidersHorizontal className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Status Keandalan Feeder</div>
+              <div className="flex items-center gap-1.5 mt-1 text-[11px] font-extrabold">
+                <span className="text-emerald-400">{penyulangList.filter((p) => p.healthIndexStatus === 'Sempurna').length} Sempurna</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-blue-400">{penyulangList.filter((p) => p.healthIndexStatus === 'Sehat').length} Sehat</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-rose-400">{penyulangList.filter((p) => p.healthIndexStatus === 'Sakit' || p.healthIndexStatus === 'Kronis').length} Sakit/Kronis</span>
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Berdasarkan Health Index 20kV</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <CheckSquare className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Header & Filter Bar */}
       <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-              DASHBOARD MATRIKS GANGGUAN PENYULANG
+            <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4 text-rose-600" />
+              <span>DASHBOARD GANGGUAN TRIP PANGKAL PENYULANG</span>
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] uppercase">
               LIVE SCADA
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Analisis frekuensi, jenis kode gangguan, dan matriks distribusi bulanan
+            Monitoring frekuensi, jenis kode, dan matriks distribusi bulanan khusus Gangguan Trip Pangkal (PMT GI 20kV)
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Tab Selector */}
           <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 mr-2">
+            <button
+              onClick={() => setActiveGangguanTab('trip_pangkal')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeGangguanTab === 'trip_pangkal'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Trip Pangkal ({tripPangkalList.length})</span>
+            </button>
             <button
               onClick={() => setActiveGangguanTab('semua')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -483,17 +572,6 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
               }`}
             >
               Semua ({gangguanList.length})
-            </button>
-            <button
-              onClick={() => setActiveGangguanTab('trip_pangkal')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                activeGangguanTab === 'trip_pangkal'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Trip Pangkal ({tripPangkalList.length})</span>
             </button>
           </div>
 

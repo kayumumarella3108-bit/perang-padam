@@ -26,7 +26,29 @@ export type ViewType =
   | 'peta'
   | 'aset_jaringan'
   | 'jadwal_piket'
-  | 'gangguan';
+  | 'gangguan'
+  | 'topologi_jaringan';
+
+export type TipeNodeTopologi = 'GI' | 'GH' | 'PERCABANGAN' | 'LBS' | 'REC' | 'FCO' | 'GTT' | 'PMCB' | 'DS' | 'SECTION' | 'INCOMING' | 'OUTGOING' | 'COUPLING';
+
+export interface NodeTopologi {
+  id: string;
+  penyulangId: string;
+  namaPenyulang: string;
+  sectionId?: string;
+  namaSection?: string;
+  kodeNode: string;
+  namaNode: string;
+  tipe: TipeNodeTopologi;
+  parentId?: string | null; // Node induk tempat percabangan / sambungan
+  statusOperasi: 'CLOSED' | 'OPEN' | 'TRIP' | 'PEMELIHARAAN';
+  lokasiTiangOrAlamat?: string;
+  keterangan?: string;
+  jumlahPelangganTerdampak?: number;
+  kapasitasOrAmpere?: string; // e.g., '100A', '630A', '25A Fuse Link', '160 kVA'
+  merekPeralatan?: string;
+  isScadaRemote?: boolean;
+}
 
 export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'petugas' | 'log_aktivitas';
 

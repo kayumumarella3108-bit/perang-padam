@@ -21,7 +21,9 @@ import {
   Target,
   X,
   Download,
-  MessageSquare
+  MessageSquare,
+  QrCode,
+  Camera
 } from 'lucide-react';
 import { PerintahKerja, Penyulang, SectionJaringan, User } from '../../types';
 import { InputSpkModal } from '../modals/InputSpkModal';
@@ -52,6 +54,27 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
   const [editItem, setEditItem] = useState<PerintahKerja | null>(null);
   const [printItem, setPrintItem] = useState<PerintahKerja | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  
+  // QR Code & scanning states
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [selectedSpkForQrUpdate, setSelectedSpkForQrUpdate] = useState<PerintahKerja | null>(null);
+
+  // Deep-link check on load / update
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const spkId = params.get('spkId');
+    if (action === 'update-spk-status' && spkId) {
+      const spk = spkList.find(s => s.id === spkId);
+      if (spk) {
+        setSelectedSpkForQrUpdate(spk);
+        // Clear search query parameters to avoid re-triggering on reload
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [spkList]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,13 +225,23 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Input SPK Baru</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all border border-slate-200 flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-sm"
+          >
+            <QrCode className="w-4.5 h-4.5 text-blue-600" />
+            <span>Pindai QR Code SPK</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddModal}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Input SPK Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats Bar */}
@@ -616,9 +649,27 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                 )}
               </div>
 
-              {/* Signatures */}
-              <div className="flex justify-end pt-6 border-t border-slate-300 font-sans text-xs text-center mt-8 pr-12">
-                <div className="flex flex-col justify-between min-h-[110px] items-center w-64">
+              {/* Signatures & QR Code */}
+              <div className="flex flex-col sm:flex-row justify-between items-end pt-6 border-t border-slate-300 font-sans text-xs mt-8 px-4 gap-6">
+                {/* QR Code Section */}
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-xs max-w-sm">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+                      window.location.origin + '?action=update-spk-status&spkId=' + printItem.id
+                    )}`}
+                    alt="QR Code SPK"
+                    className="w-20 h-20 bg-white border border-slate-300 p-1 rounded-lg shrink-0"
+                  />
+                  <div>
+                    <span className="text-[10px] font-extrabold text-blue-800 uppercase tracking-wider block">QR Code Unik SPK</span>
+                    <p className="text-[10px] text-slate-500 font-bold leading-normal mt-0.5">
+                      Pindai QR ini di lapangan untuk memperbarui status pekerjaan secara otomatis ke <strong className="text-blue-700">Dalam Proses</strong> atau <strong className="text-emerald-700">Selesai</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manager Signature Block */}
+                <div className="flex flex-col justify-between min-h-[110px] items-center w-64 shrink-0">
                   <p className="font-semibold text-slate-600 mb-1">Manager PLN ULP Baguala</p>
 
                   {printItem.isApproved ?? true ? (
@@ -643,7 +694,7 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                   )}
 
                   <div className="mt-1">
-                    <p className="font-bold text-slate-900 uppercase underline text-xs">
+                    <p className="font-bold text-slate-900 uppercase underline text-xs text-center">
                       ( {printItem.namaManager || 'DWI SURYA PERMANA'} )
                     </p>
                   </div>
@@ -681,6 +732,171 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
               >
                 Ya, Hapus
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Scanner / Simulator Modal */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50 font-sans">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-4 bg-slate-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-blue-400 animate-pulse" />
+                <h3 className="font-bold text-sm">Pindai / Simulasi QR Code SPK</h3>
+              </div>
+              <button
+                onClick={() => setIsScannerOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+              {/* Animated Scan Target Grid */}
+              <div className="relative aspect-video bg-slate-950 rounded-2xl border-2 border-slate-800 overflow-hidden flex flex-col items-center justify-center shadow-inner group">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                
+                {/* Laser scan line anim */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_10px_#3b82f6] animate-[bounce_3s_infinite]" />
+
+                {/* Corner Bracket Reticles */}
+                <div className="absolute top-4 left-4 w-5 h-5 border-t-2 border-l-2 border-blue-400 rounded-tl-md"></div>
+                <div className="absolute top-4 right-4 w-5 h-5 border-t-2 border-r-2 border-blue-400 rounded-tr-md"></div>
+                <div className="absolute bottom-4 left-4 w-5 h-5 border-b-2 border-l-2 border-blue-400 rounded-bl-md"></div>
+                <div className="absolute bottom-4 right-4 w-5 h-5 border-b-2 border-r-2 border-blue-400 rounded-br-md"></div>
+
+                <div className="z-10 text-center space-y-2 px-6">
+                  <QrCode className="w-12 h-12 text-blue-400 mx-auto animate-pulse" />
+                  <p className="text-xs font-black text-slate-300 tracking-wider uppercase">Mencari QR Code SPK...</p>
+                  <p className="text-[10px] text-slate-500 font-semibold max-w-xs mx-auto">
+                    Arahkan kamera ke lembar cetak SPK ULP Baguala atau gunakan simulator instan di bawah ini.
+                  </p>
+                </div>
+              </div>
+
+              {/* Instant SPK Scan Selector Simulator */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                  <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                    Simulator Pindai Lapangan (Rekomendasi)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                  Karena keterbatasan izin kamera browser di dalam sandbox, Anda dapat mensimulasikan pemindaian fisik dengan memilih salah satu SPK aktif di bawah ini:
+                </p>
+
+                <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50">
+                  {spkList.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                      Belum ada data SPK terdaftar.
+                    </div>
+                  ) : (
+                    spkList.map((spk) => (
+                      <button
+                        key={spk.id}
+                        onClick={() => {
+                          setSelectedSpkForQrUpdate(spk);
+                          setIsScannerOpen(false);
+                        }}
+                        className="w-full text-left p-3 hover:bg-blue-50/70 active:bg-blue-100/50 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                      >
+                        <div>
+                          <div className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {spk.noSpk}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                            {spk.namaPenyulang} • {spk.section}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-700 font-bold rounded-md">
+                            {spk.status}
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Action Dialog Modal (After Scanned) */}
+      {selectedSpkForQrUpdate && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-4 bg-blue-900 text-white flex items-center gap-2.5">
+              <QrCode className="w-5 h-5 text-blue-300" />
+              <h3 className="font-bold text-sm">QR Code Berhasil Dipindai!</h3>
+            </div>
+
+            <div className="p-6 space-y-4 text-slate-900">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  SURAT PERINTAH KERJA (SPK) DETECTED
+                </div>
+                <div className="text-sm font-black text-slate-900 font-mono">
+                  {selectedSpkForQrUpdate.noSpk}
+                </div>
+                <div className="grid grid-cols-3 text-xs gap-y-1.5 pt-2 border-t border-slate-200/60 font-semibold text-slate-600">
+                  <span>Pekerjaan:</span>
+                  <span className="col-span-2 text-slate-900">{selectedSpkForQrUpdate.jenisPekerjaan}</span>
+                  <span>Feeder:</span>
+                  <span className="col-span-2 text-slate-900">{selectedSpkForQrUpdate.namaPenyulang}</span>
+                  <span>Target:</span>
+                  <span className="col-span-2 text-slate-900 line-clamp-1">{selectedSpkForQrUpdate.target}</span>
+                  <span>Tim:</span>
+                  <span className="col-span-2 text-slate-900">{selectedSpkForQrUpdate.timAtauPetugas || 'Yantek Baguala'}</span>
+                  <span>Status:</span>
+                  <span className="col-span-2">{getStatusBadge(selectedSpkForQrUpdate.status)}</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-500 font-semibold leading-relaxed text-center">
+                Pilih status terbaru pekerjaan untuk memperbarui sistem keandalan secara otomatis:
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    handleStatusChange(selectedSpkForQrUpdate, 'Dalam Proses');
+                    setSelectedSpkForQrUpdate(null);
+                  }}
+                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <Clock className="w-5 h-5 animate-spin-slow" />
+                  <span>Mulai Bekerja</span>
+                  <span className="text-[9px] opacity-75 font-medium">(Dalam Proses)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleStatusChange(selectedSpkForQrUpdate, 'Selesai');
+                    setSelectedSpkForQrUpdate(null);
+                  }}
+                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>Selesaikan</span>
+                  <span className="text-[9px] opacity-75 font-medium">(Pekerjaan Selesai)</span>
+                </button>
+              </div>
+
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => setSelectedSpkForQrUpdate(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
             </div>
           </div>
         </div>

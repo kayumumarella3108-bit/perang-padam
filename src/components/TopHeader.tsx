@@ -20,6 +20,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   const isEditMode = canEditData(user);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updateOnlineStatus = () => setIsOnline(window.navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
@@ -75,12 +87,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Right Section: Cloud status, User Profile, Logout */}
       <div className="flex items-center gap-3">
         {/* Cloud Active Badge */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <Cloud className="w-3.5 h-3.5 text-blue-600" />
-          <span>Cloud Active</span>
-          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold">Online</span>
-        </div>
+        {isOnline ? (
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Sistem Terhubung</span>
+            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase">Online</span>
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-850 text-xs font-bold shadow-xs">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <Cloud className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mode Cache Lokal</span>
+            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black uppercase">Offline</span>
+          </div>
+        )}
 
         {/* User Profile Badge */}
         <div className="flex items-center gap-3 pl-3 border-l border-slate-200">

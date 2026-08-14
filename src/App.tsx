@@ -81,6 +81,7 @@ import { InspeksiTier2ThermovisionView } from './components/views/InspeksiTier2T
 import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2UltrasoundView';
 import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
 import { FormatSuratView } from './components/views/FormatSuratView';
+import { TopologiJaringanView } from './components/views/TopologiJaringanView';
 
 export default function App() {
   // Authentication state
@@ -1340,6 +1341,16 @@ export default function App() {
               onDeleteLayer={handleDeleteMapLayer}
               onAddLayer={handleAddMapLayer}
               onUpdateLayer={handleUpdateMapLayer}
+            />
+          )}
+
+          {activeView === 'topologi_jaringan' && (
+            <TopologiJaringanView
+              currentUser={user}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+              onAddSection={handleAddSection}
+              onDeleteSection={handleDeleteSection}
             />
           )}
 

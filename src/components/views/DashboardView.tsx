@@ -937,7 +937,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                Tren Frekuensi Gangguan Bulanan (Overhead Trip Feeder)
+                Tren Frekuensi Gangguan Bulanan (Gangguan Trip Pangkal)
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Monitoring jumlah pemadaman / trip pada jaringan SUTM 20kV PLN ULP Baguala periode tahun {selectedTimeframe}

@@ -99,7 +99,7 @@ export const INITIAL_GANGGUAN: GangguanLog[] = [
     tanggal: '2026-01-05',
     penyulangId: '17',
     namaPenyulang: 'TULEHU',
-    section: 'GH Asten - Ujung Jaring',
+    section: 'GI Passo - GH Asten - Ujung Jaring',
     jamKeluar: '08:00',
     jamMasuk: '09:30',
     durasi: '1j 30m',
