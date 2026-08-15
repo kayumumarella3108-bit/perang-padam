@@ -459,6 +459,14 @@
     "surat_keluar": {
       "schema": "SuratItem",
       "description": "Generated official letters and requests (Cuti, Alker, CMC, Panggilan, Material)"
+    },
+    "pohon_gis": {
+      "schema": "PohonGisItem",
+      "description": "GIS locations of trees and ROW clearance hazards"
+    },
+    "konstruksi_gis": {
+      "schema": "KonstruksiGisItem",
+      "description": "GIS locations and status of 20kV construction and asset projects"
     }
   }
 }

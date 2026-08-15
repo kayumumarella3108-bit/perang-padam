@@ -6,16 +6,6 @@
   100% { transform: translateX(-100%); }
 }
 
-@keyframes dash-flow {
-  to {
-    stroke-dashoffset: -50;
-  }
-}
-
-.animated-flow-line path {
-  animation: dash-flow 1.5s linear infinite;
-}
-
 .animate-marquee {
   display: inline-block;
   white-space: nowrap;

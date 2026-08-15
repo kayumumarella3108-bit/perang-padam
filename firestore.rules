@@ -143,5 +143,15 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /pohon_gis/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
+
+    match /konstruksi_gis/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   MapPin,
+  Map,
+  HardHat,
   TrendingUp,
   Zap,
   Wrench,
@@ -52,6 +54,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser
 }) => {
   // Accordion open/close states
+  const [petaOpen, setPetaOpen] = useState(
+    ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView)
+  );
+
   const [pemeliharaanOpen, setPemeliharaanOpen] = useState(
     ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView)
   );
@@ -74,6 +80,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Auto expand active accordion on activeView change
   useEffect(() => {
+    if (['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView)) {
+      setPetaOpen(true);
+    }
     if (['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView)) {
       setPemeliharaanOpen(true);
     }
@@ -93,6 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (!isOpen) return null;
 
+  const isPetaActive = ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView);
   const isPemeliharaanActive = ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView);
   const isSuratSpkActive = ['perintah_kerja', 'format_surat'].includes(activeView);
   const isMasterAsetActive = ['master_data', 'aset_jaringan', 'topologi_jaringan'].includes(activeView);
@@ -128,37 +138,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Dashboard Utama</span>
           </button>
 
-          {/* 2. Peta */}
-          <button
-            onClick={() => onSelectView('peta_penyulang')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-              activeView === 'peta_penyulang'
-                ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <span>Peta</span>
-          </button>
+          {/* 2. Peta (ACCORDION: Peta Penyulang, Peta Pohon, Peta Konstruksi) */}
+          <div>
+            <button
+              onClick={() => setPetaOpen(!petaOpen)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                isPetaActive && !petaOpen
+                  ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+                  <Map className="w-4 h-4" />
+                </div>
+                <span>Peta</span>
+              </div>
+              <div>
+                {petaOpen ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </div>
+            </button>
 
-          {/* 2b. SPKLU */}
-          <button
-            onClick={() => onSelectView('spklu')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-              activeView === 'spklu'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div className="flex items-center justify-between flex-1">
-              <span>SPKLU</span>
-            </div>
-          </button>
+            {petaOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l-2 border-emerald-500/30 ml-5">
+                <button
+                  onClick={() => onSelectView('peta_penyulang')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                    activeView === 'peta_penyulang' || activeView === 'peta'
+                      ? 'bg-emerald-600/20 text-emerald-300 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Peta Penyulang</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('peta_pohon')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                    activeView === 'peta_pohon'
+                      ? 'bg-emerald-600/20 text-emerald-300 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Peta Pohon</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('peta_konstruksi')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                    activeView === 'peta_konstruksi'
+                      ? 'bg-amber-600/20 text-amber-300 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <HardHat className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Peta Konstruksi</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 3. Master Data Aset Baguala (ACCORDION) */}
           <div>

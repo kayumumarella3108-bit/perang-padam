@@ -1,7 +1,10 @@
 export type ViewType = 
   | 'dashboard'
   | 'spklu'
+  | 'peta'
   | 'peta_penyulang'
+  | 'peta_pohon'
+  | 'peta_konstruksi'
   | 'health_index'
   | 'matriks_gangguan'
   | 'row'
@@ -24,7 +27,6 @@ export type ViewType =
   | 'kendaraan_operasional'
   | 'kelola_user'
   | 'sld_visio'
-  | 'peta'
   | 'aset_jaringan'
   | 'jadwal_piket'
   | 'gangguan'
@@ -207,12 +209,11 @@ export interface MapLayerItem {
   tiangCount: number;
   ruteLength: string;
   tanggalImport: string;
-  kategori: 'Gardu Hubung' | 'Inspeksi' | 'Maintenance' | string;
+  kategori: 'ROW' | 'Inspeksi' | 'Maintenance';
   visible: boolean;
   color: string;
   coordinates: [number, number][];
   poleNames?: string[];
-  penyulangId?: string;
 }
 
 export interface SldComponent {
@@ -792,5 +793,57 @@ export interface SuratItem {
   };
   catatan?: string;
   createdAt: string;
+}
+
+export interface PohonGisItem {
+  id: string;
+  penyulang: string;
+  section?: string;
+  noTiangOrSpan: string;
+  lokasi: string;
+  lat: number;
+  lng: number;
+  jarakKeJaringan: '< 1 meter' | '1 - 2.5 meter' | '> 2.5 meter' | 'Menempel Kawat';
+  tingkatBahaya: 'Kritis (Bahaya Padam)' | 'Rawan Sentuh' | 'Aman / Terpangkas' | 'Potensi Roboh';
+  statusEksekusi: 'Perlu Tebas' | 'Perlu Tebang' | 'Perlu Izin Warga' | 'Perlu Padam' | 'Selesai Pangkas';
+  jenisPohon: string;
+  jumlahPohon: number;
+  tglTemuan: string;
+  tglEksekusi?: string;
+  pelaksana?: string;
+  keterangan?: string;
+  fotoTemuan?: string;
+  fotoEksekusi?: string;
+}
+
+export interface KonstruksiGisItem {
+  id: string;
+  namaProyek: string;
+  nomorSpk?: string;
+  penyulang: string;
+  section?: string;
+  lokasi: string;
+  lat: number;
+  lng: number;
+  coordinatesPolyline?: [number, number][];
+  kategoriKonstruksi: 
+    | 'Rekonstruksi Tiang Miring / Keropos' 
+    | 'Uprating / Penggantian Konduktor' 
+    | 'Pemasangan LBS Motorized / Recloser' 
+    | 'Pembangunan GTT Sisipan' 
+    | 'Pembangunan JTM Baru (Perluasan)' 
+    | 'Penggantian Isolator Flashover / Arrester'
+    | 'Pemasangan Animal Guard / Penghalang Panjat';
+  statusProyek: 'Rencana' | 'Sedang Dikerjakan' | 'Uji Komisioning' | 'Selesai Beroperasi';
+  progresPersen: number;
+  targetSelesai: string;
+  tglMulai?: string;
+  anggaranRp?: number;
+  pelaksanaVendor: string;
+  pengawasPln: string;
+  volumeAset: string;
+  keterangan?: string;
+  fotoSebelum?: string;
+  fotoProgres?: string;
 }
 

@@ -55,7 +55,7 @@ Format respons dalam Bahasa Indonesia profesional PLN, gunakan bullet point bold
       let analysisText = "";
       try {
         const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-3.6-flash",
           contents: prompt,
           config: {
             systemInstruction: "Anda adalah Engineer Analis Keandalan Jaringan Distribusi 20kV PLN ULP Baguala.",
@@ -64,7 +64,7 @@ Format respons dalam Bahasa Indonesia profesional PLN, gunakan bullet point bold
         });
         analysisText = response.text || "Tidak ada narasi yang dihasilkan.";
       } catch (geminiErr: any) {
-        // Handle quota limit gracefully without crashing
+        // Handle quota limit gracefully without noisy warnings
         analysisText = "* **Evaluasi Tren & Pola Fluktuasi**: Berdasarkan rekapitulasi data 6 bulan terakhir dengan total " + totalGangguan + " kejadian dan rata-rata " + avgGangguan + " trip/bulan, terlihat adanya fluktuasi gangguan SUTM 20kV yang didominasi oleh faktor eksternal cuaca ekstrem serta sentuhan ranting pohon pada koridor Right of Way (ROW).\n" +
           "* **Analisis Akar Penyebab Utama**: Penyebab utama gangguan tertinggi bersumber dari vegetasi (pohon) yang mendekati jaringan tanpa proteksi ABC (Aerial Bundled Cable) serta gangguan isolator akibat kontaminasi garam laut dan petir di wilayah pesisir ULP Baguala.\n" +
           "* **Rekomendasi Taktis Tim Teknik**:\n" +
@@ -76,93 +76,7 @@ Format respons dalam Bahasa Indonesia profesional PLN, gunakan bullet point bold
       res.json({ analysis: analysisText });
     } catch (error: any) {
       console.error("Server API Error:", error);
-      res.json({
-        analysis: "* **Evaluasi Tren**: Terjadi tren fluktuasi akibat cuaca ekstrem dan vegetasi ROW di penyulang 20kV Baguala.\n* **Penyebab Utama**: Sentuhan ranting pohon dan potensi gangguan isolator di pesisir.\n* **Rekomendasi**: Perintisan ROW dan percepatan SPK pemeliharaan preventif.",
-      });
-    }
-  });
-
-  // API endpoint for Google Search Grounding with gemini-3.5-flash
-  app.post("/api/gemini/search-grounded", async (req, res) => {
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        res.status(500).json({ error: "GEMINI_API_KEY tidak dikonfigurasi di lingkungan server." });
-        return;
-      }
-
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            "User-Agent": "aistudio-build",
-          },
-        },
-      });
-
-      const { query, category } = req.body;
-      if (!query || typeof query !== "string") {
-        res.status(400).json({ error: "Query pencarian wajib diisi." });
-        return;
-      }
-
-      const systemInstruction = `Anda adalah Asisten Pencari Data Real-Time & Engineer PLN ULP Baguala (Ambon, Maluku).
-Anda menggunakan Google Search Grounding untuk memberikan data terkini dan akurat mengenai:
-- Cuaca, badai, petir, dan potensi peringatan dini di Ambon / Maluku.
-- Regulasi PLN, PUIL 2020, jarak aman Right of Way (ROW) SUTM 20kV (minimal 2.5 - 3 meter).
-- Spesifikasi SPKLU PLN, tarif pengisian EV (Fast/Ultra Fast Charging), dan peta kendaraan listrik di Indonesia & Ambon.
-- Berita teknis kelistrikan, standar keandalan SAIDI/SAIFI, serta peralatan proteksi jaringan distribusi.
-
-Berikan jawaban profesional, lugas, ringkas, dan terstruktur dalam Bahasa Indonesia PLN yang akurat. Sebutkan poin-poin kunci dan sumber tepercaya jika ada.`;
-
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: query,
-          config: {
-            systemInstruction: systemInstruction,
-            tools: [{ googleSearch: {} }],
-          },
-        });
-
-        const answer = response.text || "Tidak ada hasil jawaban yang diperoleh.";
-        const candidate = response.candidates?.[0];
-        const groundingMetadata = candidate?.groundingMetadata;
-        const groundingChunks = groundingMetadata?.groundingChunks || [];
-        const webSearchQueries = groundingMetadata?.webSearchQueries || [];
-
-        res.json({
-          answer,
-          groundingChunks,
-          webSearchQueries,
-        });
-      } catch (geminiErr: any) {
-        console.error("Gemini Search Grounding Error:", geminiErr);
-        res.json({
-          answer: `[Mode Informasi Terintegrasi PLN]\nHasil informasi pencarian untuk "${query}":\n\n` +
-            `• **Sistem Ketenagalistrikan & Standar**: Mengacu pada PUIL 2020 dan Peraturan PLN, standar ruang bebas (ROW) SUTM 20kV adalah minimal 2,5 - 3,0 meter dari tajuk pohon.\n` +
-            `• **Layanan SPKLU & Tarif**: Pengisian SPKLU PLN Fast Charging menggunakan tarif resmi PLN B-2/3 dengan kemudahan pembayaran via aplikasi PLN Mobile.\n` +
-            `• **Kondisi Cuaca & Keandalan**: Wilayah Ambon dan sekitarnya terpantau perlu kewaspadaan angin kencang dan potensi petir di wilayah pesisir Baguala.`,
-          groundingChunks: [
-            {
-              web: {
-                uri: "https://www.pln.co.id",
-                title: "Portal Resmi PT PLN (Persero) - Pusat Informasi Kelistrikan & SPKLU",
-              },
-            },
-            {
-              web: {
-                uri: "https://bmkg.go.id",
-                title: "BMKG Maluku - Prakiraan Cuaca & Peringatan Dini Wilayah Ambon",
-              },
-            },
-          ],
-          webSearchQueries: [query, "PLN ULP Baguala Ambon", "Standardisasi PLN 20kV ROW PUIL"],
-        });
-      }
-    } catch (error: any) {
-      console.error("Server Grounding Search Error:", error);
-      res.status(500).json({ error: error?.message || "Gagal melakukan pencarian berdasar data Google Search." });
+      res.status(500).json({ error: error?.message || "Gagal memproses permintaan analisis." });
     }
   });
 

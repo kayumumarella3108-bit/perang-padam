@@ -26,7 +26,9 @@ import {
   InspeksiTier1GTT,
   InspeksiTier1Switching,
   InspeksiTier2Thermovision,
-  InspeksiTier2Ultrasound
+  InspeksiTier2Ultrasound,
+  PohonGisItem,
+  KonstruksiGisItem
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -49,7 +51,9 @@ import {
   INITIAL_PENGUKURAN_GARDU,
   INITIAL_KENDARAAN_OPERASIONAL,
   INITIAL_ASET_JARINGAN,
-  INITIAL_JADWAL_PIKET
+  INITIAL_JADWAL_PIKET,
+  INITIAL_POHON_GIS,
+  INITIAL_KONSTRUKSI_GIS
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { sendWaNotification } from './utils/whatsappNotifier';
@@ -83,7 +87,8 @@ import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiVie
 import { FormatSuratView } from './components/views/FormatSuratView';
 import { TopologiJaringanView } from './components/views/TopologiJaringanView';
 import { ShareLaporanView } from './components/views/ShareLaporanView';
-import { SpkluView } from './components/views/SpkluView';
+import { PetaPohonView } from './components/views/PetaPohonView';
+import { PetaKonstruksiView } from './components/views/PetaKonstruksiView';
 
 export default function App() {
   // Authentication state
@@ -237,6 +242,10 @@ export default function App() {
   const [asetJaringanList, setAsetJaringanList] = useState<AsetJaringan[]>(() => filterDeleted(INITIAL_ASET_JARINGAN));
   const [jadwalPiketList, setJadwalPiketList] = useState<JadwalPiket[]>(() => filterDeleted(INITIAL_JADWAL_PIKET));
 
+  // Peta Pohon & Peta Konstruksi GIS States
+  const [pohonGisList, setPohonGisList] = useState<PohonGisItem[]>(() => filterDeleted(INITIAL_POHON_GIS));
+  const [konstruksiGisList, setKonstruksiGisList] = useState<KonstruksiGisItem[]>(() => filterDeleted(INITIAL_KONSTRUKSI_GIS));
+
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
     { id: 'usr_1', username: 'koordinator_baguala', name: 'Bpk. Ahmad Fauzi', role: 'Koordinator', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
@@ -382,6 +391,16 @@ export default function App() {
         // Seed jadwal piket
         for (const item of INITIAL_JADWAL_PIKET) {
           await setDoc(doc(db, 'jadwal_piket', item.id), item);
+        }
+
+        // Seed pohon GIS
+        for (const item of INITIAL_POHON_GIS) {
+          await setDoc(doc(db, 'pohon_gis', item.id), item);
+        }
+
+        // Seed konstruksi GIS
+        for (const item of INITIAL_KONSTRUKSI_GIS) {
+          await setDoc(doc(db, 'konstruksi_gis', item.id), item);
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -629,6 +648,24 @@ export default function App() {
       setJadwalPiketList(filterDeleted(list));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'jadwal_piket'));
 
+    // Pohon GIS Sync
+    const unsubPohonGis = onSnapshot(collection(db, 'pohon_gis'), (snapshot) => {
+      const items: PohonGisItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as PohonGisItem));
+      setPohonGisList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'pohon_gis');
+    });
+
+    // Konstruksi GIS Sync
+    const unsubKonstruksiGis = onSnapshot(collection(db, 'konstruksi_gis'), (snapshot) => {
+      const items: KonstruksiGisItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as KonstruksiGisItem));
+      setKonstruksiGisList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'konstruksi_gis');
+    });
+
     return () => {
       unsubStok();
       unsubPemakaian();
@@ -655,6 +692,8 @@ export default function App() {
       unsubUltrasound();
       unsubscribeAset();
       unsubscribeJadwal();
+      unsubPohonGis();
+      unsubKonstruksiGis();
     };
   }, []);
 
@@ -1309,6 +1348,96 @@ export default function App() {
     logActivity('Menghapus data Jadwal Piket', 'Jadwal Piket');
   };
 
+  // Handlers for Peta Pohon GIS
+  const handleAddPohonGis = async (item: PohonGisItem) => {
+    setPohonGisList((prev) => [item, ...prev.filter((p) => p.id !== item.id)]);
+    try {
+      await setDoc(doc(db, 'pohon_gis', item.id), item);
+    } catch (err) {
+      console.error('Error saving Pohon GIS to Firestore:', err);
+    }
+    logActivity(`Tambah titik potensi pohon rawan GIS: ${item.jenisPohon} di ${item.penyulang} (${item.lokasi})`, 'Peta Pohon GIS');
+  };
+
+  const handleBatchAddPohonGis = async (items: PohonGisItem[]) => {
+    const itemIds = new Set(items.map((i) => i.id));
+    setPohonGisList((prev) => [...items, ...prev.filter((p) => !itemIds.has(p.id))]);
+    try {
+      for (const item of items) {
+        await setDoc(doc(db, 'pohon_gis', item.id), item);
+      }
+    } catch (err) {
+      console.error('Error saving batch Pohon GIS to Firestore:', err);
+    }
+    logActivity(`Import ${items.length} titik pohon GIS dari file`, 'Peta Pohon GIS');
+  };
+
+  const handleUpdatePohonGis = async (item: PohonGisItem) => {
+    setPohonGisList((prev) => prev.map((p) => (p.id === item.id ? item : p)));
+    try {
+      await setDoc(doc(db, 'pohon_gis', item.id), item);
+    } catch (err) {
+      console.error('Error updating Pohon GIS in Firestore:', err);
+    }
+    logActivity(`Update titik pohon GIS: ${item.jenisPohon} (${item.statusEksekusi})`, 'Peta Pohon GIS');
+  };
+
+  const handleDeletePohonGis = async (id: string) => {
+    registerDeletedId(id);
+    setPohonGisList((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await deleteDoc(doc(db, 'pohon_gis', id));
+    } catch (err) {
+      console.error('Error deleting Pohon GIS from Firestore:', err);
+    }
+    logActivity('Menghapus titik peta pohon GIS', 'Peta Pohon GIS');
+  };
+
+  // Handlers for Peta Konstruksi GIS
+  const handleAddKonstruksiGis = async (item: KonstruksiGisItem) => {
+    setKonstruksiGisList((prev) => [item, ...prev.filter((k) => k.id !== item.id)]);
+    try {
+      await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+    } catch (err) {
+      console.error('Error saving Konstruksi GIS to Firestore:', err);
+    }
+    logActivity(`Tambah proyek konstruksi GIS: ${item.namaProyek} (${item.penyulang})`, 'Peta Konstruksi GIS');
+  };
+
+  const handleBatchAddKonstruksiGis = async (items: KonstruksiGisItem[]) => {
+    const itemIds = new Set(items.map((k) => k.id));
+    setKonstruksiGisList((prev) => [...items, ...prev.filter((k) => !itemIds.has(k.id))]);
+    try {
+      for (const item of items) {
+        await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+      }
+    } catch (err) {
+      console.error('Error saving batch Konstruksi GIS to Firestore:', err);
+    }
+    logActivity(`Import ${items.length} proyek konstruksi GIS dari file`, 'Peta Konstruksi GIS');
+  };
+
+  const handleUpdateKonstruksiGis = async (item: KonstruksiGisItem) => {
+    setKonstruksiGisList((prev) => prev.map((k) => (k.id === item.id ? item : k)));
+    try {
+      await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+    } catch (err) {
+      console.error('Error updating Konstruksi GIS in Firestore:', err);
+    }
+    logActivity(`Update progres proyek konstruksi GIS: ${item.namaProyek} (${item.progresPersen}%)`, 'Peta Konstruksi GIS');
+  };
+
+  const handleDeleteKonstruksiGis = async (id: string) => {
+    registerDeletedId(id);
+    setKonstruksiGisList((prev) => prev.filter((k) => k.id !== id));
+    try {
+      await deleteDoc(doc(db, 'konstruksi_gis', id));
+    } catch (err) {
+      console.error('Error deleting Konstruksi GIS from Firestore:', err);
+    }
+    logActivity('Menghapus titik proyek konstruksi GIS', 'Peta Konstruksi GIS');
+  };
+
   // If not logged in, display Login Screen
   if (!user) {
     return <LoginScreen onLogin={handleLogin} usersList={usersList} />;
@@ -1348,22 +1477,37 @@ export default function App() {
             />
           )}
 
-          {activeView === 'spklu' && (
-            <SpkluView currentUser={user} />
-          )}
-
           {(activeView === 'peta_penyulang' || activeView === 'peta') && (
             <PetaPenyulangView
               layers={mapLayers}
-              penyulangList={syncedPenyulangList}
-              sectionList={sectionList}
-              masterGarduList={masterGarduList}
               onToggleLayer={handleToggleMapLayer}
               onDeleteLayer={handleDeleteMapLayer}
               onAddLayer={handleAddMapLayer}
               onUpdateLayer={handleUpdateMapLayer}
-              onAddGardu={handleAddMasterGardu}
-              onDeleteGardu={handleDeleteMasterGardu}
+            />
+          )}
+
+          {activeView === 'peta_pohon' && (
+            <PetaPohonView
+              currentUser={user}
+              pohonList={pohonGisList}
+              penyulangList={syncedPenyulangList}
+              onAddPohon={handleAddPohonGis}
+              onImportBatch={handleBatchAddPohonGis}
+              onUpdatePohon={handleUpdatePohonGis}
+              onDeletePohon={handleDeletePohonGis}
+            />
+          )}
+
+          {activeView === 'peta_konstruksi' && (
+            <PetaKonstruksiView
+              currentUser={user}
+              konstruksiList={konstruksiGisList}
+              penyulangList={syncedPenyulangList}
+              onAddKonstruksi={handleAddKonstruksiGis}
+              onImportBatch={handleBatchAddKonstruksiGis}
+              onUpdateKonstruksi={handleUpdateKonstruksiGis}
+              onDeleteKonstruksi={handleDeleteKonstruksiGis}
             />
           )}
 
