@@ -1363,6 +1363,7 @@ export default function App() {
               onAddLayer={handleAddMapLayer}
               onUpdateLayer={handleUpdateMapLayer}
               onAddGardu={handleAddMasterGardu}
+              onDeleteGardu={handleDeleteMasterGardu}
             />
           )}
 

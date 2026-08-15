@@ -35,7 +35,46 @@ interface PetaPenyulangViewProps {
   onAddLayer: (layer: MapLayerItem) => void;
   onUpdateLayer?: (layer: MapLayerItem) => void;
   onAddGardu?: (gardu: any) => void;
+  onDeleteGardu?: (id: string) => void;
 }
+
+// Global helper to render beautiful custom SVG icons on the map
+const getIconHtml = (iconName: string, color: string) => {
+  let svgContent = '';
+  switch (iconName) {
+    case 'Zap':
+      svgContent = `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>`;
+      break;
+    case 'MapPin':
+      svgContent = `<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>`;
+      break;
+    case 'Activity':
+      svgContent = `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>`;
+      break;
+    case 'Target':
+      svgContent = `<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>`;
+      break;
+    case 'Wrench':
+      svgContent = `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>`;
+      break;
+    case 'Trees':
+      svgContent = `<path d="M12 2L4.5 12h15L12 2z M12 6L7.5 12h9L12 6z M12 12l-7.5 8h15L12 12z M12 22V20"></path>`;
+      break;
+    case 'Cpu':
+      svgContent = `<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"></path>`;
+      break;
+    default:
+      svgContent = `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>`;
+  }
+
+  return `
+    <div class="relative flex items-center justify-center w-8 h-8 rounded-full shadow-lg border-2 border-white transition-all transform hover:scale-110" style="background-color: ${color};">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${iconName.toLowerCase()}">
+        ${svgContent}
+      </svg>
+    </div>
+  `;
+};
 
 export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   layers,
@@ -46,7 +85,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   onDeleteLayer,
   onAddLayer,
   onUpdateLayer,
-  onAddGardu
+  onAddGardu,
+  onDeleteGardu
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'Semua' | 'ROW' | 'Inspeksi' | 'Maintenance'>('Semua');
@@ -58,6 +98,9 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const [newGarduPenyulang, setNewGarduPenyulang] = useState('');
   const [newGarduLat, setNewGarduLat] = useState('-3.632');
   const [newGarduLng, setNewGarduLng] = useState('128.210');
+  const [newGarduIcon, setNewGarduIcon] = useState<string>('Zap');
+  const [editingGardu, setEditingGardu] = useState<any | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
   const [showFlowAnimation, setShowFlowAnimation] = useState(true);
   const [importPenyulangId, setImportPenyulangId] = useState<string>('');
@@ -105,6 +148,10 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const clickMarkerRef = useRef<L.Marker | null>(null);
+  const masterGarduListRef = useRef(masterGarduList);
+  masterGarduListRef.current = masterGarduList;
+  const onDeleteGarduRef = useRef(onDeleteGardu);
+  onDeleteGarduRef.current = onDeleteGardu;
 
   // Attach global window handler for manual tiang status selection
   useEffect(() => {
@@ -148,6 +195,61 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     tileLayerRef.current = tileLayer;
     featureGroupRef.current = L.featureGroup().addTo(map);
     mapInstanceRef.current = map;
+
+    // Event delegation for dynamically loaded popups (prevents iframe click interception & stale closure issues)
+    map.on('popupopen', (e) => {
+      const container = e.popup.getElement();
+      if (!container) return;
+
+      // 1. Edit Master Gardu Popup Action
+      const editBtn = container.querySelector('.btn-edit-popup') as HTMLElement | null;
+      if (editBtn) {
+        const id = editBtn.getAttribute('data-id');
+        editBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const latestList = masterGarduListRef.current;
+          const gardu = latestList.find(g => g.id === id);
+          if (gardu) {
+            setEditingGardu(gardu);
+          }
+          map.closePopup();
+        });
+      }
+
+      // 2. Delete Master Gardu Popup Action
+      const deleteBtn = container.querySelector('.btn-delete-popup') as HTMLElement | null;
+      if (deleteBtn) {
+        const id = deleteBtn.getAttribute('data-id');
+        deleteBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const latestList = masterGarduListRef.current;
+          const gardu = latestList.find(g => g.id === id);
+          if (gardu) {
+            setEditingGardu(gardu);
+            setShowDeleteConfirm(true);
+          }
+          map.closePopup();
+        });
+      }
+
+      // 3. Tiang Manual Status Actions
+      const tiangButtons = container.querySelectorAll('.btn-tiang-status-popup');
+      tiangButtons.forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const layerId = btn.getAttribute('data-layer-id');
+          const nodeIdx = parseInt(btn.getAttribute('data-node-idx') || '0', 10);
+          const status = btn.getAttribute('data-status') as any;
+          if ((window as any).setTiangManualStatus) {
+            (window as any).setTiangManualStatus(layerId, nodeIdx, status);
+          }
+          map.closePopup();
+        });
+      });
+    });
 
     return () => {
       if (clickMarkerRef.current && map) {
@@ -307,14 +409,27 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           `;
         }
 
-        const circle = L.circleMarker(coord, {
-          radius: radius,
-          fillColor: markerColor,
-          color: borderColor,
-          weight: weight,
-          opacity: 1,
-          fillOpacity: 0.95
-        });
+        const iconName = (layer as any).icon;
+        let circle: L.Layer;
+
+        if (iconName && iconName !== 'Circle') {
+          const customDivIcon = L.divIcon({
+            className: 'custom-tiang-marker-layer',
+            html: getIconHtml(iconName, markerColor),
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+          });
+          circle = L.marker(coord, { icon: customDivIcon });
+        } else {
+          circle = L.circleMarker(coord, {
+            radius: radius,
+            fillColor: markerColor,
+            color: borderColor,
+            weight: weight,
+            opacity: 1,
+            fillOpacity: 0.95
+          });
+        }
 
         const popupContent = `
           <div class="p-2 text-slate-900 font-sans min-w-[220px]">
@@ -343,7 +458,10 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               <div class="grid grid-cols-1 gap-1">
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PENYULANG')"
-                  class="w-full py-1.5 px-2 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all hover:brightness-110"
+                  data-layer-id="${layer.id}"
+                  data-node-idx="${idx}"
+                  data-status="PENYULANG"
+                  class="btn-tiang-status-popup w-full py-1.5 px-2 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all hover:brightness-110"
                   style="background-color: ${layer.color || '#3b82f6'}"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
@@ -351,28 +469,40 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'POHON')"
-                  class="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  data-layer-id="${layer.id}"
+                  data-node-idx="${idx}"
+                  data-status="POHON"
+                  class="btn-tiang-status-popup w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
                   🌳 Pohon / ROW (Hijau)
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'KONSTRUKSI')"
-                  class="w-full py-1.5 px-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  data-layer-id="${layer.id}"
+                  data-node-idx="${idx}"
+                  data-status="KONSTRUKSI"
+                  class="btn-tiang-status-popup w-full py-1.5 px-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
                   🏗️ Temuan Konstruksi (Ungu)
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'GANGGUAN')"
-                  class="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  data-layer-id="${layer.id}"
+                  data-node-idx="${idx}"
+                  data-status="GANGGUAN"
+                  class="btn-tiang-status-popup w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
                   ⚡ Lokasi Gangguan (Merah)
                 </button>
                 <button
                   onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PEMELIHARAAN')"
-                  class="w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  data-layer-id="${layer.id}"
+                  data-node-idx="${idx}"
+                  data-status="PEMELIHARAAN"
+                  class="btn-tiang-status-popup w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
                 >
                   <span class="w-2 h-2 rounded-full bg-white"></span>
                   🔧 Lokasi Pemeliharaan (Oranye)
@@ -380,7 +510,10 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 ${manualStatus !== 'NORMAL' ? `
                   <button
                     onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'NORMAL')"
-                    class="w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
+                    data-layer-id="${layer.id}"
+                    data-node-idx="${idx}"
+                    data-status="NORMAL"
+                    class="btn-tiang-status-popup w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
                   >
                     ✓ Reset Ke Default File
                   </button>
@@ -418,30 +551,69 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           else if (status === 'Kronis') gColor = '#ef4444'; // red
           else if (status === 'Sempurna') gColor = '#10b981'; // green
 
-          const garduMarker = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: gColor,
-            color: '#ffffff',
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 0.95
+          // Determine custom icon from data
+          const iconName = gardu.icon || 'Zap';
+
+          const customDivIcon = L.divIcon({
+            className: 'custom-gardu-marker',
+            html: getIconHtml(iconName, gColor),
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
           });
 
+          const garduMarker = L.marker([lat, lng], {
+            icon: customDivIcon
+          });
+
+          const getEmoji = (icon: string) => {
+            switch (icon) {
+              case 'Zap': return '⚡';
+              case 'MapPin': return '📍';
+              case 'Activity': return '📈';
+              case 'Target': return '🎯';
+              case 'Wrench': return '🛠️';
+              case 'Trees': return '🌲';
+              case 'Cpu': return '💻';
+              default: return '⚡';
+            }
+          };
+
           const garduPopup = `
-            <div class="p-2.5 text-slate-900 font-sans min-w-[230px]">
-              <div class="font-black text-xs text-blue-900 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
-                <span class="flex items-center gap-1.5">
-                  ⚡ GARDU HUBUNG / DISTRIBUSI
+            <div class="p-3 text-slate-900 font-sans min-w-[245px]">
+              <div class="font-black text-xs text-blue-900 flex items-center justify-between gap-2 mb-1.5 border-b border-slate-100 pb-1.5">
+                <span class="flex items-center gap-1">
+                  📌 DETAIL TAGGING KOORDINAT
                 </span>
               </div>
-              <div class="text-xs font-black text-slate-900">${gardu.namaGardu || gardu.noGarduBaru || 'Gardu Hubung'}</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">ID: ${gardu.id || gardu.noGarduBaru}</div>
+              <div class="text-xs font-black text-slate-900 flex items-center gap-1.5 mb-1">
+                <span class="p-1 rounded bg-slate-100 text-slate-700 leading-none">${getEmoji(iconName)}</span>
+                <span>${gardu.namaGardu || 'Tagging Baru'}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-semibold">ID: ${gardu.noGarduBaru || gardu.id.substring(0, 8)}</div>
               <div class="text-[10px] text-slate-600 font-semibold mt-0.5">Penyulang: ${gardu.penyulang || 'Utama'}</div>
-              <div class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1.5 inline-block">Status: ${status}</div>
+              <div class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1.5 inline-block border border-emerald-100">Status: ${status}</div>
+              
+              <!-- Quick Actions -->
+              <div class="grid grid-cols-2 gap-1.5 mt-3 pt-2 border-t border-slate-100">
+                <button 
+                  onclick="window.editMasterGarduAction('${gardu.id}')"
+                  data-id="${gardu.id}"
+                  class="btn-edit-popup flex items-center justify-center gap-1 py-1 px-2 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 text-[10px] font-black cursor-pointer transition-colors"
+                >
+                  ✏️ Edit
+                </button>
+                <button 
+                  onclick="window.deleteMasterGarduAction('${gardu.id}')"
+                  data-id="${gardu.id}"
+                  class="btn-delete-popup flex items-center justify-center gap-1 py-1 px-2 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 text-[10px] font-black cursor-pointer transition-colors"
+                >
+                  🗑️ Hapus
+                </button>
+              </div>
             </div>
           `;
           garduMarker.bindPopup(garduPopup);
-          garduMarker.bindTooltip(`⚡ ${gardu.namaGardu || gardu.noGarduBaru || 'Gardu'}`, {
+          garduMarker.bindTooltip(`${getEmoji(iconName)} ${gardu.namaGardu || gardu.noGarduBaru || 'Gardu'}`, {
             permanent: false,
             direction: 'top',
             className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-sky-900/90 text-white border-none shadow-sm'
@@ -728,6 +900,56 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // Attach global window handlers for Gardu Hubung edit and delete actions
+  useEffect(() => {
+    (window as any).editMasterGarduAction = (id: string) => {
+      const latestList = masterGarduListRef.current;
+      const gardu = latestList.find(g => g.id === id);
+      if (gardu) {
+        setEditingGardu(gardu);
+      }
+    };
+
+    (window as any).deleteMasterGarduAction = (id: string) => {
+      const latestList = masterGarduListRef.current;
+      const gardu = latestList.find(g => g.id === id);
+      if (gardu) {
+        setEditingGardu(gardu);
+        setShowDeleteConfirm(true);
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.closePopup();
+      }
+    };
+
+    return () => {
+      delete (window as any).editMasterGarduAction;
+      delete (window as any).deleteMasterGarduAction;
+    };
+  }, [onDeleteGardu]);
+
+  const handleSaveEditGardu = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGardu || !onAddGardu) return;
+
+    // Automatically recalculate status from matched penyulang's health index status
+    const matchedP = penyulangList.find((p: any) => 
+      (p.namaPenyulang && editingGardu.penyulang && p.namaPenyulang.trim().toUpperCase() === editingGardu.penyulang.trim().toUpperCase()) ||
+      (p.nama && editingGardu.penyulang && p.nama.trim().toUpperCase() === editingGardu.penyulang.trim().toUpperCase())
+    );
+    const determinedStatus = matchedP ? matchedP.healthIndexStatus : 'Sempurna';
+
+    const updatedGardu = {
+      ...editingGardu,
+      statusKesehatan: determinedStatus,
+      status: determinedStatus
+    };
+
+    onAddGardu(updatedGardu);
+    setEditingGardu(null);
+    alert('Perubahan tagging berhasil disimpan!');
+  };
+
   const handleSaveGardu = (e: React.FormEvent) => {
     e.preventDefault();
     if (!onAddGardu) return;
@@ -747,7 +969,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
       latitude: Number(newGarduLat) || -3.63,
       longitude: Number(newGarduLng) || 128.21,
       statusKesehatan: determinedStatus,
-      status: determinedStatus
+      status: determinedStatus,
+      icon: newGarduIcon
     };
     onAddGardu(garduItem);
     setNewGarduNama('');
@@ -1329,6 +1552,40 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 </div>
               </div>
 
+              {/* Pilihan Icon untuk Seluruh Titik */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                  Pilihan Icon Titik Peta
+                </label>
+                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+                  {[
+                    { id: 'Circle', icon: '🔵', label: 'Bulat' },
+                    { id: 'Zap', icon: '⚡', label: 'Petir' },
+                    { id: 'MapPin', icon: '📍', label: 'Pin' },
+                    { id: 'Activity', icon: '📈', label: 'Grafik' },
+                    { id: 'Target', icon: '🎯', label: 'Target' },
+                    { id: 'Wrench', icon: '🛠️', label: 'Alat' },
+                    { id: 'Trees', icon: '🌲', label: 'Pohon' },
+                    { id: 'Cpu', icon: '💻', label: 'Komputer' }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setEditingLayer({ ...editingLayer, icon: item.id })}
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-sm transition-all cursor-pointer ${
+                        (editingLayer.icon || 'Circle') === item.id
+                          ? 'bg-blue-50 border-blue-400 text-blue-600 font-bold shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                      title={item.label}
+                    >
+                      <span className="text-base leading-none">{item.icon}</span>
+                      <span className="text-[8px] mt-1 text-slate-500 scale-90 leading-none whitespace-nowrap">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Detail Rute / Tiang */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -1343,21 +1600,37 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               </div>
 
               {/* Form Buttons */}
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setEditingLayer(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  onClick={() => {
+                    const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus layer peta "${editingLayer.nama}" beserta seluruh datanya?`);
+                    if (confirmed) {
+                      onDeleteLayer(editingLayer.id);
+                      setEditingLayer(null);
+                    }
+                  }}
+                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
                 >
-                  Batal
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus</span>
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Simpan Perubahan</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLayer(null)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Simpan Perubahan</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1499,6 +1772,37 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                       />
                     </div>
                   </div>
+                  {/* Pilihan Icon */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1.5 uppercase tracking-wider">Pilihan Icon Tagging:</label>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {[
+                        { id: 'Zap', icon: '⚡', label: 'Petir' },
+                        { id: 'MapPin', icon: '📍', label: 'Pin' },
+                        { id: 'Activity', icon: '📈', label: 'Grafik' },
+                        { id: 'Target', icon: '🎯', label: 'Target' },
+                        { id: 'Wrench', icon: '🛠️', label: 'Alat' },
+                        { id: 'Trees', icon: '🌲', label: 'Pohon' },
+                        { id: 'Cpu', icon: '💻', label: 'Komputer' }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setNewGarduIcon(item.id)}
+                          className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border text-sm transition-all cursor-pointer ${
+                            newGarduIcon === item.id
+                              ? 'bg-blue-50 border-blue-400 text-blue-600 font-bold shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                          title={item.label}
+                        >
+                          <span className="text-base">{item.icon}</span>
+                          <span className="text-[8px] mt-0.5 text-slate-500 scale-90 leading-none">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Status Kesehatan & Daya kVA are automatically synchronized with the disturbance data of the selected Penyulang */}
                   <div className="text-[10px] text-slate-500 font-semibold bg-blue-50/50 p-2.5 rounded-lg border border-blue-100 flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -1573,6 +1877,175 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 <span>Simpan</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Tagging Modal */}
+      {editingGardu && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                <Pencil className="w-4 h-4 text-blue-600" />
+                EDIT DETAIL TAGGING
+              </h3>
+              <button
+                onClick={() => {
+                  setEditingGardu(null);
+                  setShowDeleteConfirm(false);
+                }}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditGardu} className="space-y-3.5">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-wide">
+                  Nama Tagging / Gardu
+                </label>
+                <input
+                  type="text"
+                  value={editingGardu.namaGardu || ''}
+                  onChange={(e) => setEditingGardu({ ...editingGardu, namaGardu: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-wide">
+                  No Tagging / ID
+                </label>
+                <input
+                  type="text"
+                  value={editingGardu.noGarduBaru || ''}
+                  onChange={(e) => setEditingGardu({ ...editingGardu, noGarduBaru: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-wide">
+                  Penyulang Terkait
+                </label>
+                <select
+                  value={editingGardu.penyulang || ''}
+                  onChange={(e) => setEditingGardu({ ...editingGardu, penyulang: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">-- Pilih Penyulang --</option>
+                  {penyulangList.map((p: any) => (
+                    <option key={p.id || p.kodeId} value={p.namaPenyulang || p.nama}>
+                      {p.namaPenyulang || p.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Icon Selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                  PILIH ICON TAGGING:
+                </label>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {[
+                    { id: 'Zap', icon: '⚡', label: 'Petir' },
+                    { id: 'MapPin', icon: '📍', label: 'Pin' },
+                    { id: 'Activity', icon: '📈', label: 'Grafik' },
+                    { id: 'Target', icon: '🎯', label: 'Target' },
+                    { id: 'Wrench', icon: '🛠️', label: 'Alat' },
+                    { id: 'Trees', icon: '🌲', label: 'Pohon' },
+                    { id: 'Cpu', icon: '💻', label: 'Komputer' }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setEditingGardu({ ...editingGardu, icon: item.id })}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl border text-sm transition-all cursor-pointer ${
+                        (editingGardu.icon || 'Zap') === item.id
+                          ? 'bg-blue-50 border-blue-400 text-blue-600 font-bold shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                      title={item.label}
+                    >
+                      <span className="text-base">{item.icon}</span>
+                      <span className="text-[8px] mt-0.5 text-slate-500 scale-90 leading-none">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {showDeleteConfirm ? (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-2xl flex flex-col gap-2.5 animate-fade-in w-full">
+                  <div className="text-red-950 text-xs font-black flex items-center gap-1.5 uppercase tracking-wider">
+                    <Trash2 className="w-4 h-4 text-red-600 animate-pulse" />
+                    <span>HAPUS KOORDINAT TAGGING?</span>
+                  </div>
+                  <p className="text-[10px] text-red-700 font-bold leading-relaxed">
+                    Apakah Anda yakin ingin menghapus tagging "{editingGardu.namaGardu || editingGardu.noGarduBaru}"? Tindakan ini permanen dan tidak dapat dibatalkan.
+                  </p>
+                  <div className="flex items-center justify-end gap-2 font-bold text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer font-bold"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onDeleteGardu) {
+                          onDeleteGardu(editingGardu.id);
+                        }
+                        setEditingGardu(null);
+                        setShowDeleteConfirm(false);
+                        if (mapInstanceRef.current) {
+                          mapInstanceRef.current.closePopup();
+                        }
+                      }}
+                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md shadow-red-600/20 transition-all cursor-pointer font-bold flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Ya, Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100 font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-xs transition-all cursor-pointer font-bold flex items-center gap-1 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingGardu(null);
+                        setShowDeleteConfirm(false);
+                      }}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs transition-all cursor-pointer font-bold"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5 font-bold"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </form>
           </div>
         </div>
       )}
