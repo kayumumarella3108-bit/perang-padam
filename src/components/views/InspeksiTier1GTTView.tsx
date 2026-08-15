@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { User, InspeksiTier1GTT, Penyulang, SectionJaringan, MasterGardu } from '../../types';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
+import { sanitizeForFirestore } from '../../utils/firestoreHelper';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -172,7 +173,7 @@ export const InspeksiTier1GTTView: React.FC<InspeksiTier1GTTViewProps> = ({
     const newItem: InspeksiTier1GTT = { id, ...formData };
 
     try {
-      await setDoc(doc(db, 'inspeksi_tier1_gtt', id), newItem);
+      await setDoc(doc(db, 'inspeksi_tier1_gtt', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setFormData(INITIAL_FORM_STATE);

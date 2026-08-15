@@ -56,6 +56,7 @@ import {
   INITIAL_KONSTRUKSI_GIS
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
+import { sanitizeForFirestore } from './utils/firestoreHelper';
 import { sendWaNotification } from './utils/whatsappNotifier';
 import { Lock } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
@@ -395,12 +396,12 @@ export default function App() {
 
         // Seed pohon GIS
         for (const item of INITIAL_POHON_GIS) {
-          await setDoc(doc(db, 'pohon_gis', item.id), item);
+          await setDoc(doc(db, 'pohon_gis', item.id), sanitizeForFirestore(item));
         }
 
         // Seed konstruksi GIS
         for (const item of INITIAL_KONSTRUKSI_GIS) {
-          await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+          await setDoc(doc(db, 'konstruksi_gis', item.id), sanitizeForFirestore(item));
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -650,8 +651,7 @@ export default function App() {
 
     // Pohon GIS Sync
     const unsubPohonGis = onSnapshot(collection(db, 'pohon_gis'), (snapshot) => {
-      const items: PohonGisItem[] = [];
-      snapshot.forEach((docSnap) => items.push(docSnap.data() as PohonGisItem));
+      const items: PohonGisItem[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as PohonGisItem));
       setPohonGisList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pohon_gis');
@@ -659,8 +659,7 @@ export default function App() {
 
     // Konstruksi GIS Sync
     const unsubKonstruksiGis = onSnapshot(collection(db, 'konstruksi_gis'), (snapshot) => {
-      const items: KonstruksiGisItem[] = [];
-      snapshot.forEach((docSnap) => items.push(docSnap.data() as KonstruksiGisItem));
+      const items: KonstruksiGisItem[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as KonstruksiGisItem));
       setKonstruksiGisList(filterDeleted(items));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'konstruksi_gis');
@@ -942,7 +941,7 @@ export default function App() {
       return [p, ...prev];
     });
     try {
-      await setDoc(doc(db, 'penyulang_list', p.id), p);
+      await setDoc(doc(db, 'penyulang_list', p.id), sanitizeForFirestore(p));
       logActivity(
         isEdit
           ? `Mengubah data master penyulang: ${p.namaPenyulang} (${p.kodeId})`
@@ -975,7 +974,7 @@ export default function App() {
       return [s, ...prev];
     });
     try {
-      await setDoc(doc(db, 'section_list', s.id), s);
+      await setDoc(doc(db, 'section_list', s.id), sanitizeForFirestore(s));
       logActivity(
         isEdit
           ? `Mengubah data master section jaringan: ${s.namaSection}`
@@ -1002,7 +1001,7 @@ export default function App() {
   const handleAddSaidi = async (data: SaidiSaifiData) => {
     setSaidiList((prev) => [data, ...prev]);
     try {
-      await setDoc(doc(db, 'saidi_saifi_logs', data.id), data);
+      await setDoc(doc(db, 'saidi_saifi_logs', data.id), sanitizeForFirestore(data));
     } catch (err) {
       console.error('Error saving SAIDI to Firestore:', err);
     }
@@ -1024,7 +1023,7 @@ export default function App() {
   const handleAddStok = async (item: MaterialStokItem) => {
     setStokList((prev) => [item, ...prev]);
     try {
-      await setDoc(doc(db, 'material_stok', item.id), item);
+      await setDoc(doc(db, 'material_stok', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error saving Material Stok to Firestore:', err);
     }
@@ -1034,7 +1033,7 @@ export default function App() {
   const handleUpdateStok = async (item: MaterialStokItem) => {
     setStokList((prev) => prev.map((s) => (s.id === item.id ? item : s)));
     try {
-      await setDoc(doc(db, 'material_stok', item.id), item);
+      await setDoc(doc(db, 'material_stok', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error updating Material Stok in Firestore:', err);
     }
@@ -1056,7 +1055,7 @@ export default function App() {
   const handleAddPemakaian = async (item: MaterialPemakaianItem) => {
     setPemakaianList((prev) => [item, ...prev]);
     try {
-      await setDoc(doc(db, 'material_pemakaian', item.id), item);
+      await setDoc(doc(db, 'material_pemakaian', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error saving Pemakaian Material to Firestore:', err);
     }
@@ -1066,7 +1065,7 @@ export default function App() {
   const handleUpdatePemakaian = async (item: MaterialPemakaianItem) => {
     setPemakaianList((prev) => prev.map((p) => (p.id === item.id ? item : p)));
     try {
-      await setDoc(doc(db, 'material_pemakaian', item.id), item);
+      await setDoc(doc(db, 'material_pemakaian', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error updating Pemakaian Material in Firestore:', err);
     }
@@ -1088,7 +1087,7 @@ export default function App() {
   const handleAddAlkerApd = async (item: AlkerApdItem) => {
     setAlkerApdList((prev) => [item, ...prev]);
     try {
-      await setDoc(doc(db, 'alkerdan_apd', item.id), item);
+      await setDoc(doc(db, 'alkerdan_apd', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error saving Alat Kerja / APD to Firestore:', err);
     }
@@ -1098,7 +1097,7 @@ export default function App() {
   const handleUpdateAlkerApd = async (item: AlkerApdItem) => {
     setAlkerApdList((prev) => prev.map((a) => (a.id === item.id ? item : a)));
     try {
-      await setDoc(doc(db, 'alkerdan_apd', item.id), item);
+      await setDoc(doc(db, 'alkerdan_apd', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error updating Alat Kerja / APD in Firestore:', err);
     }
@@ -1121,7 +1120,7 @@ export default function App() {
     setUsersList((prev) => [newUser, ...prev]);
     try {
       const docId = newUser.id || newUser.username;
-      await setDoc(doc(db, 'app_users', docId), newUser);
+      await setDoc(doc(db, 'app_users', docId), sanitizeForFirestore(newUser));
     } catch (err) {
       console.error('Error saving user to Firestore:', err);
     }
@@ -1132,7 +1131,7 @@ export default function App() {
     setUsersList((prev) => prev.map((u) => (u.username === updatedUser.username ? updatedUser : u)));
     try {
       const docId = updatedUser.id || updatedUser.username;
-      await setDoc(doc(db, 'app_users', docId), updatedUser);
+      await setDoc(doc(db, 'app_users', docId), sanitizeForFirestore(updatedUser));
     } catch (err) {
       console.error('Error updating user in Firestore:', err);
     }
@@ -1154,7 +1153,7 @@ export default function App() {
   const handleAddSpk = async (newSpk: PerintahKerja) => {
     setSpkList((prev) => [newSpk, ...prev]);
     try {
-      await setDoc(doc(db, 'perintah_kerja_harian', newSpk.id), JSON.parse(JSON.stringify(newSpk)));
+      await setDoc(doc(db, 'perintah_kerja_harian', newSpk.id), sanitizeForFirestore(newSpk));
       // Kirim notifikasi WhatsApp ke petugas pelaksana segera setelah SPK baru disimpan ke database
       await sendWaNotification(newSpk);
     } catch (err) {
@@ -1166,7 +1165,7 @@ export default function App() {
   const handleUpdateSpk = async (updatedSpk: PerintahKerja) => {
     setSpkList((prev) => prev.map((s) => (s.id === updatedSpk.id ? updatedSpk : s)));
     try {
-      await setDoc(doc(db, 'perintah_kerja_harian', updatedSpk.id), JSON.parse(JSON.stringify(updatedSpk)));
+      await setDoc(doc(db, 'perintah_kerja_harian', updatedSpk.id), sanitizeForFirestore(updatedSpk));
     } catch (err) {
       console.error('Error updating SPK in Firestore:', err);
     }
@@ -1194,7 +1193,7 @@ export default function App() {
       return [gardu, ...prev];
     });
     try {
-      await setDoc(doc(db, 'master_gardu', gardu.id), gardu);
+      await setDoc(doc(db, 'master_gardu', gardu.id), sanitizeForFirestore(gardu));
     } catch (err) {
       console.error('Error saving Master Gardu to Firestore:', err);
     }
@@ -1222,7 +1221,7 @@ export default function App() {
       return [pkg, ...prev];
     });
     try {
-      await setDoc(doc(db, 'pengukuran_gardu', pkg.id), pkg);
+      await setDoc(doc(db, 'pengukuran_gardu', pkg.id), sanitizeForFirestore(pkg));
     } catch (err) {
       console.error('Error saving Pengukuran Gardu to Firestore:', err);
     }
@@ -1244,7 +1243,7 @@ export default function App() {
   const handleAddKendaraan = async (kendaraan: KendaraanOperasional) => {
     setKendaraanList((prev) => [kendaraan, ...prev]);
     try {
-      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), kendaraan);
+      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), sanitizeForFirestore(kendaraan));
     } catch (err) {
       console.error('Error saving Kendaraan Operasional to Firestore:', err);
     }
@@ -1254,7 +1253,7 @@ export default function App() {
   const handleUpdateKendaraan = async (kendaraan: KendaraanOperasional) => {
     setKendaraanList((prev) => prev.map((k) => (k.id === kendaraan.id ? kendaraan : k)));
     try {
-      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), kendaraan);
+      await setDoc(doc(db, 'kendaraan_operasional', kendaraan.id), sanitizeForFirestore(kendaraan));
     } catch (err) {
       console.error('Error updating Kendaraan Operasional to Firestore:', err);
     }
@@ -1278,7 +1277,7 @@ export default function App() {
     const newAset = { id, ...data };
     setAsetJaringanList(prev => [newAset, ...prev]);
     try {
-      await setDoc(doc(db, 'aset_jaringan', id), newAset);
+      await setDoc(doc(db, 'aset_jaringan', id), sanitizeForFirestore(newAset));
     } catch (err) {
       console.error('Error saving Aset Jaringan to Firestore:', err);
     }
@@ -1291,7 +1290,7 @@ export default function App() {
       const docRef = doc(db, 'aset_jaringan', id);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        await setDoc(docRef, { ...snap.data(), ...data });
+        await setDoc(docRef, sanitizeForFirestore({ ...snap.data(), ...data }));
       }
     } catch (err) {
       console.error('Error updating Aset Jaringan to Firestore:', err);
@@ -1316,7 +1315,7 @@ export default function App() {
     const newJadwal = { id, ...data };
     setJadwalPiketList(prev => [newJadwal, ...prev]);
     try {
-      await setDoc(doc(db, 'jadwal_piket', id), newJadwal);
+      await setDoc(doc(db, 'jadwal_piket', id), sanitizeForFirestore(newJadwal));
     } catch (err) {
       console.error('Error saving Jadwal Piket to Firestore:', err);
     }
@@ -1329,7 +1328,7 @@ export default function App() {
       const docRef = doc(db, 'jadwal_piket', id);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        await setDoc(docRef, { ...snap.data(), ...data });
+        await setDoc(docRef, sanitizeForFirestore({ ...snap.data(), ...data }));
       }
     } catch (err) {
       console.error('Error updating Jadwal Piket in Firestore:', err);
@@ -1352,7 +1351,7 @@ export default function App() {
   const handleAddPohonGis = async (item: PohonGisItem) => {
     setPohonGisList((prev) => [item, ...prev.filter((p) => p.id !== item.id)]);
     try {
-      await setDoc(doc(db, 'pohon_gis', item.id), item);
+      await setDoc(doc(db, 'pohon_gis', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error saving Pohon GIS to Firestore:', err);
     }
@@ -1364,7 +1363,7 @@ export default function App() {
     setPohonGisList((prev) => [...items, ...prev.filter((p) => !itemIds.has(p.id))]);
     try {
       for (const item of items) {
-        await setDoc(doc(db, 'pohon_gis', item.id), item);
+        await setDoc(doc(db, 'pohon_gis', item.id), sanitizeForFirestore(item));
       }
     } catch (err) {
       console.error('Error saving batch Pohon GIS to Firestore:', err);
@@ -1375,7 +1374,7 @@ export default function App() {
   const handleUpdatePohonGis = async (item: PohonGisItem) => {
     setPohonGisList((prev) => prev.map((p) => (p.id === item.id ? item : p)));
     try {
-      await setDoc(doc(db, 'pohon_gis', item.id), item);
+      await setDoc(doc(db, 'pohon_gis', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error updating Pohon GIS in Firestore:', err);
     }
@@ -1383,12 +1382,14 @@ export default function App() {
   };
 
   const handleDeletePohonGis = async (id: string) => {
+    if (!id) return;
     registerDeletedId(id);
     setPohonGisList((prev) => prev.filter((p) => p.id !== id));
     try {
       await deleteDoc(doc(db, 'pohon_gis', id));
     } catch (err) {
       console.error('Error deleting Pohon GIS from Firestore:', err);
+      handleFirestoreError(err, OperationType.DELETE, `pohon_gis/${id}`);
     }
     logActivity('Menghapus titik peta pohon GIS', 'Peta Pohon GIS');
   };
@@ -1397,7 +1398,7 @@ export default function App() {
   const handleAddKonstruksiGis = async (item: KonstruksiGisItem) => {
     setKonstruksiGisList((prev) => [item, ...prev.filter((k) => k.id !== item.id)]);
     try {
-      await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+      await setDoc(doc(db, 'konstruksi_gis', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error saving Konstruksi GIS to Firestore:', err);
     }
@@ -1409,7 +1410,7 @@ export default function App() {
     setKonstruksiGisList((prev) => [...items, ...prev.filter((k) => !itemIds.has(k.id))]);
     try {
       for (const item of items) {
-        await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+        await setDoc(doc(db, 'konstruksi_gis', item.id), sanitizeForFirestore(item));
       }
     } catch (err) {
       console.error('Error saving batch Konstruksi GIS to Firestore:', err);
@@ -1420,7 +1421,7 @@ export default function App() {
   const handleUpdateKonstruksiGis = async (item: KonstruksiGisItem) => {
     setKonstruksiGisList((prev) => prev.map((k) => (k.id === item.id ? item : k)));
     try {
-      await setDoc(doc(db, 'konstruksi_gis', item.id), item);
+      await setDoc(doc(db, 'konstruksi_gis', item.id), sanitizeForFirestore(item));
     } catch (err) {
       console.error('Error updating Konstruksi GIS in Firestore:', err);
     }
@@ -1428,12 +1429,14 @@ export default function App() {
   };
 
   const handleDeleteKonstruksiGis = async (id: string) => {
+    if (!id) return;
     registerDeletedId(id);
     setKonstruksiGisList((prev) => prev.filter((k) => k.id !== id));
     try {
       await deleteDoc(doc(db, 'konstruksi_gis', id));
     } catch (err) {
       console.error('Error deleting Konstruksi GIS from Firestore:', err);
+      handleFirestoreError(err, OperationType.DELETE, `konstruksi_gis/${id}`);
     }
     logActivity('Menghapus titik proyek konstruksi GIS', 'Peta Konstruksi GIS');
   };

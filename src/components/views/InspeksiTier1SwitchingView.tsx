@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { User, InspeksiTier1Switching, Penyulang, SectionJaringan } from '../../types';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
+import { sanitizeForFirestore } from '../../utils/firestoreHelper';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -152,7 +153,7 @@ export const InspeksiTier1SwitchingView: React.FC<InspeksiTier1SwitchingViewProp
     const newItem: InspeksiTier1Switching = { id, ...formData };
 
     try {
-      await setDoc(doc(db, 'inspeksi_tier1_switching', id), newItem);
+      await setDoc(doc(db, 'inspeksi_tier1_switching', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setFormData(INITIAL_FORM_STATE);

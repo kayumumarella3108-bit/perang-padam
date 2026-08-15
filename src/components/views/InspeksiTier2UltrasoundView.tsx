@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { User, InspeksiTier2Ultrasound, Penyulang, SectionJaringan } from '../../types';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
+import { sanitizeForFirestore } from '../../utils/firestoreHelper';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -104,7 +105,7 @@ export const InspeksiTier2UltrasoundView: React.FC<InspeksiTier2UltrasoundViewPr
     const newItem: InspeksiTier2Ultrasound = { id, ...formData };
 
     try {
-      await setDoc(doc(db, 'inspeksi_tier2_ultrasound', id), newItem);
+      await setDoc(doc(db, 'inspeksi_tier2_ultrasound', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setFormData(INITIAL_FORM_STATE);

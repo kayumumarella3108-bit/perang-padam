@@ -63,6 +63,7 @@ export const PetaKonstruksiView: React.FC<PetaKonstruksiViewProps> = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<KonstruksiGisItem | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<KonstruksiGisItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<KonstruksiGisItem | null>(null);
 
   // Form State
   const [formNamaProyek, setFormNamaProyek] = useState('');
@@ -708,38 +709,6 @@ export const PetaKonstruksiView: React.FC<PetaKonstruksiViewProps> = ({
         {activeTab === 'peta' && (
           <div className="w-full h-full relative">
             <div ref={mapContainerRef} className="w-full h-full z-10" />
-
-            {/* Floating Legend */}
-            <div className="absolute top-4 left-4 z-20 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-xl p-3 shadow-xl max-w-xs text-xs space-y-2 pointer-events-auto">
-              <div className="font-black text-slate-200 flex items-center justify-between pb-1 border-b border-slate-800">
-                <span className="flex items-center gap-1.5">
-                  <HardHat className="w-3.5 h-3.5 text-amber-400" />
-                  LEGENDA PETA KONSTRUKSI
-                </span>
-                <span className="text-[10px] text-slate-400">{filteredList.length} Proyek</span>
-              </div>
-              <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-amber-500 inline-block"></span>
-                  <span className="text-slate-300"><strong>Sedang Dikerjakan</strong> (On Progress)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-purple-500 inline-block"></span>
-                  <span className="text-slate-300"><strong>Uji Komisioning</strong> (Testing)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-emerald-500 inline-block"></span>
-                  <span className="text-slate-300"><strong>Selesai Beroperasi</strong> (Energized)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-blue-500 inline-block"></span>
-                  <span className="text-slate-300"><strong>Rencana</strong> (Planned)</span>
-                </div>
-              </div>
-              <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-800/80">
-                Garis putus-putus menunjukkan trase penarikan kabel / rekonstruksi span JTM.
-              </div>
-            </div>
           </div>
         )}
 
@@ -858,13 +827,9 @@ export const PetaKonstruksiView: React.FC<PetaKonstruksiViewProps> = ({
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (confirm(`Hapus temuan / proyek ${item.namaProyek}?`)) {
-                                      onDeleteKonstruksi(item.id);
-                                    }
-                                  }}
+                                  onClick={() => setDeletingItem(item)}
                                   className="p-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg transition-all cursor-pointer"
-                                  title="Hapus"
+                                  title="Hapus Temuan"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1293,7 +1258,64 @@ export const PetaKonstruksiView: React.FC<PetaKonstruksiViewProps> = ({
                 >
                   Edit Temuan
                 </button>
+                <button
+                  onClick={() => {
+                    const itemToDelete = selectedDetail;
+                    setSelectedDetail(null);
+                    setDeletingItem(itemToDelete);
+                  }}
+                  className="p-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-bold rounded-xl transition-all cursor-pointer"
+                  title="Hapus Temuan"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Temuan Konstruksi */}
+      {deletingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden text-slate-100 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/20 text-rose-400 rounded-xl">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">Hapus Proyek Konstruksi?</h3>
+                <p className="text-xs text-slate-400">Data anomali/konstruksi ini akan dihapus permanen.</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1.5 text-slate-300">
+              <div><strong className="text-slate-400">Nama Temuan:</strong> {deletingItem.namaProyek}</div>
+              <div><strong className="text-slate-400">Penyulang / Tiang:</strong> {deletingItem.penyulang} - {deletingItem.noTiang || '-'}</div>
+              <div><strong className="text-slate-400">Kategori:</strong> {deletingItem.kategoriKonstruksi}</div>
+              <div><strong className="text-slate-400">Lokasi:</strong> {deletingItem.lokasi}</div>
+              <div><strong className="text-slate-400">Status:</strong> {deletingItem.statusProyek} ({deletingItem.progresPersen}%)</div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingItem(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteKonstruksi(deletingItem.id);
+                  setDeletingItem(null);
+                }}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-900/40 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Hapus Sekarang
+              </button>
             </div>
           </div>
         </div>

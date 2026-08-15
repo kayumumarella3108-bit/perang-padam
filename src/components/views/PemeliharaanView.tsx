@@ -16,6 +16,7 @@ import autoTable from 'jspdf-autotable';
 import { ROWItem, InspeksiItem, ViewType, Tier1Item, Tier2Item, MonitoringPemeliharaanItem } from '../../types';
 import { exportToCSV } from '../../utils/exportCsv';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
+import { sanitizeForFirestore } from '../../utils/firestoreHelper';
 
 interface PemeliharaanViewProps {
   currentSubView: ViewType;
@@ -261,7 +262,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         prioritas: 'Sedang',
         tanggalTemuan: rTanggal || '-'
       };
-      await setDoc(doc(db, 'pemeliharaan_row', id), newItem);
+      await setDoc(doc(db, 'pemeliharaan_row', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       // Reset
@@ -290,7 +291,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         temuanRow: t1TemuanRow || '-',
         konstruksi: t1Konstruksi || '-'
       };
-      await setDoc(doc(db, 'pemeliharaan_tier1', id), newItem);
+      await setDoc(doc(db, 'pemeliharaan_tier1', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setT1Penyulang('');
@@ -314,7 +315,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         jenisTier2: t2Jenis,
         temuanThermoUltrasound: t2Temuan || '-'
       };
-      await setDoc(doc(db, 'pemeliharaan_tier2', id), newItem);
+      await setDoc(doc(db, 'pemeliharaan_tier2', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setT2Penyulang('');
@@ -337,7 +338,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         jenisPemeliharaan: mJenisList.length > 0 ? mJenisList : ['SUTM'],
         keterangan: mKeterangan || '-'
       };
-      await setDoc(doc(db, 'pemeliharaan_monitoring', id), newItem);
+      await setDoc(doc(db, 'pemeliharaan_monitoring', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setMPenyulang('');

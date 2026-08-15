@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { User, InspeksiTier2Thermovision, Penyulang, SectionJaringan, ThermovisionPoint } from '../../types';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
+import { sanitizeForFirestore } from '../../utils/firestoreHelper';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -134,7 +135,7 @@ export const InspeksiTier2ThermovisionView: React.FC<InspeksiTier2ThermovisionVi
     const newItem: InspeksiTier2Thermovision = { id, ...formData };
 
     try {
-      await setDoc(doc(db, 'inspeksi_tier2_thermovision', id), newItem);
+      await setDoc(doc(db, 'inspeksi_tier2_thermovision', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
       setEditingId(null);
       setFormData(INITIAL_FORM_STATE);
