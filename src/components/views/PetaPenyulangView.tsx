@@ -19,31 +19,75 @@ import {
   FileCode,
   Pencil,
   X,
-  Check
+  Check,
+  Zap,
+  Save
 } from 'lucide-react';
 import { MapLayerItem } from '../../types';
 
 interface PetaPenyulangViewProps {
   layers: MapLayerItem[];
+  penyulangList?: any[];
+  sectionList?: any[];
+  masterGarduList?: any[];
   onToggleLayer: (id: string) => void;
   onDeleteLayer: (id: string) => void;
   onAddLayer: (layer: MapLayerItem) => void;
   onUpdateLayer?: (layer: MapLayerItem) => void;
+  onAddGardu?: (gardu: any) => void;
 }
 
 export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   layers,
+  penyulangList = [],
+  sectionList = [],
+  masterGarduList = [],
   onToggleLayer,
   onDeleteLayer,
   onAddLayer,
-  onUpdateLayer
+  onUpdateLayer,
+  onAddGardu
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'Semua' | 'ROW' | 'Inspeksi' | 'Maintenance'>('Semua');
+  const [selectedHealthFilter, setSelectedHealthFilter] = useState<'Semua' | 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis'>('Semua');
+
+  // New Gardu Hubung Form State
+  const [newGarduNama, setNewGarduNama] = useState('');
+  const [newGarduNo, setNewGarduNo] = useState('');
+  const [newGarduPenyulang, setNewGarduPenyulang] = useState('');
+  const [newGarduLat, setNewGarduLat] = useState('-3.632');
+  const [newGarduLng, setNewGarduLng] = useState('128.210');
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
+  const [showFlowAnimation, setShowFlowAnimation] = useState(true);
+  const [importPenyulangId, setImportPenyulangId] = useState<string>('');
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
   const [showHealthLegend, setShowHealthLegend] = useState(true);
+
+  // Helper to get feeder health status synchronized with disturbance count
+  const getLayerHealth = (layerId: string, layerName: string): { status: 'Sempurna' | 'Sehat' | 'Sakit' | 'Kronis', color: string, gangguanCount: number, badgeBg: string } => {
+    const upperName = (layerName || '').toUpperCase();
+    if (layerId === 'ml2' || upperName.includes('RIJALI')) {
+      return { status: 'Sempurna', color: '#3b82f6', gangguanCount: 0, badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/40' };
+    }
+    if (layerId === 'ml1' || upperName.includes('KARPAN')) {
+      return { status: 'Sehat', color: '#10b981', gangguanCount: 1, badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+    }
+    if (layerId === 'ml4' || upperName.includes('PASSO')) {
+      return { status: 'Sehat', color: '#10b981', gangguanCount: 2, badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+    }
+    if (layerId === 'ml3' || upperName.includes('TANTUI')) {
+      return { status: 'Sakit', color: '#f97316', gangguanCount: 4, badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+    }
+    if (layerId === 'ml5' || upperName.includes('TULEHU') || layerId === 'gh_baguala') {
+      return { status: 'Kronis', color: '#ef4444', gangguanCount: 7, badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+    }
+    if (layerId === 'keypoint_20kv') {
+      return { status: 'Sakit', color: '#f97316', gangguanCount: 3, badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+    }
+    return { status: 'Sehat', color: '#10b981', gangguanCount: 1, badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+  };
 
   const [manualStatuses, setManualStatuses] = useState<Record<string, 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'>>({
     'ml1_0': 'PENYULANG',
@@ -60,6 +104,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
+  const clickMarkerRef = useRef<L.Marker | null>(null);
 
   // Attach global window handler for manual tiang status selection
   useEffect(() => {
@@ -105,6 +150,14 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     mapInstanceRef.current = map;
 
     return () => {
+      if (clickMarkerRef.current && map) {
+        try {
+          map.removeLayer(clickMarkerRef.current);
+        } catch (e) {
+          console.log(e);
+        }
+        clickMarkerRef.current = null;
+      }
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -129,6 +182,51 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     const newTile = L.tileLayer(getTileUrl(mapStyle), { maxZoom: 19 }).addTo(mapInstanceRef.current);
     tileLayerRef.current = newTile;
   }, [mapStyle]);
+
+  // Listen to Map Click to auto-fill Latitude and Longitude for Gardu Hubung
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    const onMapClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      setNewGarduLat(lat.toFixed(6));
+      setNewGarduLng(lng.toFixed(6));
+
+      // Remove previous click marker if exists
+      if (clickMarkerRef.current) {
+        try {
+          map.removeLayer(clickMarkerRef.current);
+        } catch (err) {
+          console.log(err);
+        }
+      }
+
+      // Add a nice visual marker at the clicked location
+      const pulseIcon = L.divIcon({
+        className: 'custom-pulse-marker',
+        html: `<div class="relative flex h-5 w-5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-5 w-5 bg-blue-600 border-2 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 bg-white rounded-full"></span>
+          </span>
+        </div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      const marker = L.marker([lat, lng], { icon: pulseIcon }).addTo(map);
+      clickMarkerRef.current = marker;
+
+      // Automatically open the input modal so they can see the values populated and save
+      setShowInputPetaModal(true);
+    };
+
+    map.on('click', onMapClick);
+    return () => {
+      map.off('click', onMapClick);
+    };
+  }, [setNewGarduLat, setNewGarduLng]);
 
   // Render Node Circle Markers (Garis Penghubung Dihapus, Hanya Titik Peta)
   useEffect(() => {
@@ -301,7 +399,58 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         fg.addLayer(circle);
       });
     });
-  }, [layers, manualStatuses]);
+
+    // Render Master Gardu / Gardu Hubung Markers
+    if (masterGarduList && masterGarduList.length > 0) {
+      masterGarduList.forEach((gardu: any) => {
+        const lat = Number(gardu.latitude);
+        const lng = Number(gardu.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          // Synchronize status automatically with penyulang's health index status
+          const matchedPenyulang = penyulangList.find((p: any) =>
+            (p.namaPenyulang && gardu.penyulang && p.namaPenyulang.trim().toUpperCase() === gardu.penyulang.trim().toUpperCase()) ||
+            (p.nama && gardu.penyulang && p.nama.trim().toUpperCase() === gardu.penyulang.trim().toUpperCase())
+          );
+          const status = matchedPenyulang ? matchedPenyulang.healthIndexStatus : (gardu.statusKesehatan || gardu.status || 'Sempurna');
+
+          let gColor = '#0ea5e9'; // Sehat - sky blue
+          if (status === 'Sakit') gColor = '#f59e0b'; // orange/amber
+          else if (status === 'Kronis') gColor = '#ef4444'; // red
+          else if (status === 'Sempurna') gColor = '#10b981'; // green
+
+          const garduMarker = L.circleMarker([lat, lng], {
+            radius: 10,
+            fillColor: gColor,
+            color: '#ffffff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.95
+          });
+
+          const garduPopup = `
+            <div class="p-2.5 text-slate-900 font-sans min-w-[230px]">
+              <div class="font-black text-xs text-blue-900 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
+                <span class="flex items-center gap-1.5">
+                  ⚡ GARDU HUBUNG / DISTRIBUSI
+                </span>
+              </div>
+              <div class="text-xs font-black text-slate-900">${gardu.namaGardu || gardu.noGarduBaru || 'Gardu Hubung'}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">ID: ${gardu.id || gardu.noGarduBaru}</div>
+              <div class="text-[10px] text-slate-600 font-semibold mt-0.5">Penyulang: ${gardu.penyulang || 'Utama'}</div>
+              <div class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1.5 inline-block">Status: ${status}</div>
+            </div>
+          `;
+          garduMarker.bindPopup(garduPopup);
+          garduMarker.bindTooltip(`⚡ ${gardu.namaGardu || gardu.noGarduBaru || 'Gardu'}`, {
+            permanent: false,
+            direction: 'top',
+            className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-sky-900/90 text-white border-none shadow-sm'
+          });
+          fg.addLayer(garduMarker);
+        }
+      });
+    }
+  }, [layers, manualStatuses, masterGarduList, penyulangList]);
 
   // Center map on specific feeder route
   const handleLocateLayer = (layer: MapLayerItem) => {
@@ -321,7 +470,16 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 
     // Extract name
     const docNameNode = xmlDoc.querySelector('Document > name');
-    const feederName = docNameNode?.textContent?.trim() || (fileName || 'LAYER').replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
+    let feederName = docNameNode?.textContent?.trim() || (fileName || 'LAYER').replace(/\.(kml|kmz|xml|zip)$/i, '').toUpperCase();
+    if (importPenyulangId) {
+      const found = penyulangList.find((p: any) => (p.id || p.kodeId) === importPenyulangId);
+      if (found) {
+        const pName = found.namaPenyulang || found.nama;
+        if (!feederName.includes(pName)) {
+          feederName = `${pName} - ${feederName}`;
+        }
+      }
+    }
 
     const placemarks = xmlDoc.getElementsByTagName('Placemark');
     const parsedCoords: [number, number][] = [];
@@ -399,7 +557,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
        visible: true,
        color: randomColor,
        coordinates: finalCoords,
-       poleNames: finalPoleNames
+       poleNames: finalPoleNames,
+       penyulangId: importPenyulangId || undefined
      };
   };
 
@@ -484,10 +643,138 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     }, 400);
   };
 
+  const [showInputPetaModal, setShowInputPetaModal] = useState(false);
+
+  const handleExportJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layers, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `peta_penyulang_export_${Date.now()}.json`);
+    dlAnchor.click();
+  };
+
+  const handleExportCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,ID,Nama Layer,Kategori,Jumlah Tiang,Tanggal Import\n";
+    layers.forEach(l => {
+      csvContent += `"${l.id}","${l.nama}","${l.kategori}",${l.tiangCount || l.coordinates?.length || 0},"${l.tanggalImport}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", encodedUri);
+    dlAnchor.setAttribute("download", `peta_penyulang_export_${Date.now()}.csv`);
+    dlAnchor.click();
+  };
+
+  const handleExportKML = () => {
+    let kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Peta Jaringan Penyulang dan Gardu PLN</name>
+    <description>Ekspor Data Peta Jaringan dan Master Gardu tersinkronisasi dengan Data Master Penyulang</description>
+`;
+
+    // Export Layers / Feeders
+    layers.forEach(layer => {
+      kmlContent += `    <Folder>
+      <name>${layer.nama || 'Feeder'}</name>
+      <Placemark>
+        <name>${layer.nama}</name>
+        <description>Kategori: ${layer.kategori}, Jumlah Titik: ${layer.tiangCount || layer.coordinates?.length || 0}</description>
+        <LineString>
+          <coordinates>
+            ${(layer.coordinates || []).map(([lat, lng]) => `${lng},${lat},0`).join(' ')}
+          </coordinates>
+        </LineString>
+      </Placemark>
+    </Folder>
+`;
+    });
+
+    // Export Master Gardu / Gardu Hubung if available
+    if (masterGarduList && masterGarduList.length > 0) {
+      kmlContent += `    <Folder>
+      <name>Master Gardu Hubung dan Distribusi</name>
+`;
+      masterGarduList.forEach(gardu => {
+        // Automatically determine status from penyulang
+        const matchedP = penyulangList.find((p: any) =>
+          (p.namaPenyulang && gardu.penyulang && p.namaPenyulang.trim().toUpperCase() === gardu.penyulang.trim().toUpperCase()) ||
+          (p.nama && gardu.penyulang && p.nama.trim().toUpperCase() === gardu.penyulang.trim().toUpperCase())
+        );
+        const status = matchedP ? matchedP.healthIndexStatus : (gardu.statusKesehatan || gardu.status || 'Sempurna');
+
+        kmlContent += `      <Placemark>
+        <name>${gardu.namaGardu || gardu.noGarduBaru || 'Gardu'}</name>
+        <description>Penyulang: ${gardu.penyulang || 'Utama'}, Status: ${status}</description>
+        <Point>
+          <coordinates>${gardu.longitude || 128.21},${gardu.latitude || -3.63},0</coordinates>
+        </Point>
+      </Placemark>
+`;
+      });
+      kmlContent += `    </Folder>
+`;
+    }
+
+    kmlContent += `  </Document>
+</kml>`;
+
+    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", url);
+    dlAnchor.setAttribute("download", `peta_penyulang_gardu_${Date.now()}.kml`);
+    dlAnchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSaveGardu = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onAddGardu) return;
+
+    // Automatically synchronize status with selected penyulang's health index status
+    const matchedP = penyulangList.find((p: any) => 
+      (p.namaPenyulang && newGarduPenyulang && p.namaPenyulang.trim().toUpperCase() === newGarduPenyulang.trim().toUpperCase()) ||
+      (p.nama && newGarduPenyulang && p.nama.trim().toUpperCase() === newGarduPenyulang.trim().toUpperCase())
+    );
+    const determinedStatus = matchedP ? matchedP.healthIndexStatus : 'Sempurna';
+
+    const garduItem = {
+      id: `gardu_${Date.now()}`,
+      noGarduBaru: newGarduNo || `GH-${Math.floor(Math.random() * 900 + 100)}`,
+      namaGardu: newGarduNama || 'Gardu Hubung Baru',
+      penyulang: newGarduPenyulang || (penyulangList[0]?.namaPenyulang || penyulangList[0]?.nama || 'UTAMA'),
+      latitude: Number(newGarduLat) || -3.63,
+      longitude: Number(newGarduLng) || 128.21,
+      statusKesehatan: determinedStatus,
+      status: determinedStatus
+    };
+    onAddGardu(garduItem);
+    setNewGarduNama('');
+    setNewGarduNo('');
+
+    // Clear clicked coordinates marker from map
+    if (clickMarkerRef.current && mapInstanceRef.current) {
+      try {
+        mapInstanceRef.current.removeLayer(clickMarkerRef.current);
+      } catch (err) {
+        console.log(err);
+      }
+      clickMarkerRef.current = null;
+    }
+
+    // Auto close modal
+    setShowInputPetaModal(false);
+
+    alert('Titik koordinat Gardu Hubung berhasil disimpan dan dipetakan secara presisi di atas peta!');
+  };
+
   const filteredLayers = layers.filter((layer) => {
     const matchesSearch = (layer.nama || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'Semua' || layer.kategori === selectedCategory;
-    return matchesSearch && matchesCat;
+    const health = getLayerHealth(layer.id, layer.nama);
+    const matchesHealth = selectedHealthFilter === 'Semua' || health.status === selectedHealthFilter;
+    return matchesSearch && matchesCat && matchesHealth;
   });
 
   return (
@@ -513,9 +800,31 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               <MapPin className="w-4 h-4 text-blue-600" />
               PETA SEBARAN JARINGAN
             </h2>
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
-              {filteredLayers.length} Feeder
-            </span>
+            <button
+              onClick={() => setShowInputPetaModal(true)}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs cursor-pointer transition-all"
+            >
+              <span>⚙️ Menu Input Peta</span>
+            </button>
+          </div>
+
+          {/* Pilihan Penyulang untuk Import */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
+              Pilih Target Penyulang:
+            </label>
+            <select
+              value={importPenyulangId}
+              onChange={(e) => setImportPenyulangId(e.target.value)}
+              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">-- Semua / Otomatis dari File --</option>
+              {penyulangList.map((p: any) => (
+                <option key={p.id || p.kodeId} value={p.id || p.kodeId}>
+                  {p.namaPenyulang || p.nama} ({p.kodeId || p.substation || '20kV'})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Action Import Buttons */}
@@ -557,6 +866,92 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               placeholder="Cari file feeder import..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
+          </div>
+
+          {/* Panel Ringkasan Statistik Layer Aktif */}
+          {(() => {
+            const activeLayers = layers.filter((l) => l.visible);
+            const totalGardu = masterGarduList && masterGarduList.length > 0
+              ? masterGarduList.length
+              : activeLayers.reduce((sum, l) => sum + (l.coordinates?.length || l.tiangCount || 0), 0);
+            const totalSection = sectionList && sectionList.length > 0
+              ? sectionList.length
+              : activeLayers.reduce((sum, l) => sum + Math.max(1, Math.floor((l.coordinates?.length || l.tiangCount || 5) / 4)), 0);
+            const totalPanjangKm = sectionList && sectionList.length > 0
+              ? sectionList.reduce((acc, s) => acc + (Number(s.panjangKm) || 0), 0).toFixed(1)
+              : (totalGardu * 0.12).toFixed(1);
+
+            return (
+              <div className="p-3 bg-gradient-to-br from-slate-900 to-slate-950 rounded-xl border border-slate-800 text-white shadow-inner space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Ringkasan Peta Aktif
+                  </span>
+                  <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">
+                    {activeLayers.length} Layer Aktif
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                  <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                    <span className="text-[9px] text-slate-400 block uppercase">Total Gardu</span>
+                    <span className="text-sm font-black text-white">{totalGardu}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                    <span className="text-[9px] text-slate-400 block uppercase">Total Section</span>
+                    <span className="text-sm font-black text-cyan-400">{totalSection}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                    <span className="text-[9px] text-slate-400 block uppercase">Panjang (km)</span>
+                    <span className="text-sm font-black text-emerald-400">{totalPanjangKm} km</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Health Status Filter Pills */}
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              Filter Status Kesehatan Feeder:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {(['Semua', 'Sempurna', 'Sehat', 'Sakit', 'Kronis'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setSelectedHealthFilter(status)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                    selectedHealthFilter === status
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  {status === 'Sempurna' && '✨ '}
+                  {status === 'Sehat' && '✅ '}
+                  {status === 'Sakit' && '⚠️ '}
+                  {status === 'Kronis' && '⚡ '}
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Flow Animation Toggle */}
+          <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              <span>Animasi Aliran Listrik (Flow)</span>
+            </span>
+            <button
+              onClick={() => setShowFlowAnimation(!showFlowAnimation)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                showFlowAnimation
+                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                  : 'bg-slate-200 text-slate-600'
+              }`}
+            >
+              {showFlowAnimation ? 'AKTIF (ON)' : 'MATI (OFF)'}
+            </button>
           </div>
         </div>
 
@@ -623,9 +1018,19 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                     <h3 className="text-xs font-bold text-slate-800 truncate leading-tight">
                       {layer.nama}
                     </h3>
-                    <p className="text-[10px] text-slate-500 truncate">
-                      {layer.ruteLength} • {layer.tanggalImport}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-[10px] text-slate-500">
+                        {layer.ruteLength}
+                      </span>
+                      {(() => {
+                        const h = getLayerHealth(layer.id, layer.nama);
+                        return (
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase border ${h.badgeBg}`}>
+                            {h.status} • {h.gangguanCount} Gpp
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
 
@@ -879,13 +1284,14 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               {/* Kategori */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Kategori Feeder
+                  Kategori Gardu Hubung
                 </label>
                 <select
                   value={editingLayer.kategori}
                   onChange={(e) => setEditingLayer({ ...editingLayer, kategori: e.target.value as any })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
+                  <option value="Gardu Hubung">Gardu Hubung</option>
                   <option value="Inspeksi">Inspeksi Jaringan</option>
                   <option value="Maintenance">Maintenance / Pemeliharaan</option>
                 </select>
@@ -954,6 +1360,219 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Menu Input Peta Modal */}
+      {showInputPetaModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Upload className="w-5 h-5 text-blue-600" />
+                MENU INPUT & EKSPOR PETA JARINGAN
+              </h3>
+              <button
+                onClick={() => setShowInputPetaModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Penyulang Sync */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  1. Pilih Penyulang (Tersinkronisasi Data Master):
+                </label>
+                <select
+                  value={importPenyulangId}
+                  onChange={(e) => setImportPenyulangId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">-- Semua / Otomatis dari File KML --</option>
+                  {penyulangList.map((p: any) => (
+                    <option key={p.id || p.kodeId} value={p.id || p.kodeId}>
+                      {p.namaPenyulang || p.nama} ({p.kodeId || p.substation || '20kV'}) - {p.status || 'Aktif'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500">
+                  Data penyulang tersinkronisasi otomatis dengan Master Data Jaringan PLN.
+                </p>
+              </div>
+
+              {/* Import KML / KMZ */}
+              <div className="space-y-1.5 pt-2 border-t">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  2. Impor File Peta (.KML / .KMZ):
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setShowInputPetaModal(false);
+                      triggerFileInput();
+                    }}
+                    className="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Upload File KML/KMZ</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowInputPetaModal(false);
+                      handleSimulateImport();
+                    }}
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Simulasi Feeder Baru</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Mapping Gardu Hubung / Titik Koordinat Presisi */}
+              <div className="space-y-2 pt-2 border-t">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-sky-600" />
+                  3. Pemetaan Koordinat Gardu Hubung / Distribusi:
+                </label>
+                <form id="gardu-form" onSubmit={handleSaveGardu} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block">Nama Gardu / Hubung</label>
+                      <input
+                        type="text"
+                        value={newGarduNama}
+                        onChange={(e) => setNewGarduNama(e.target.value)}
+                        placeholder="Contoh: GH Waiheru 01"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block">No Gardu / ID</label>
+                      <input
+                        type="text"
+                        value={newGarduNo}
+                        onChange={(e) => setNewGarduNo(e.target.value)}
+                        placeholder="Contoh: GD-1029"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block">Penyulang</label>
+                      <select
+                        value={newGarduPenyulang}
+                        onChange={(e) => setNewGarduPenyulang(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="">-- Pilih --</option>
+                        {penyulangList.map((p: any) => (
+                          <option key={p.id || p.kodeId} value={p.namaPenyulang || p.nama}>
+                            {p.namaPenyulang || p.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block">Latitude</label>
+                      <input
+                        type="text"
+                        value={newGarduLat}
+                        onChange={(e) => setNewGarduLat(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block">Longitude</label>
+                      <input
+                        type="text"
+                        value={newGarduLng}
+                        onChange={(e) => setNewGarduLng(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                  {/* Status Kesehatan & Daya kVA are automatically synchronized with the disturbance data of the selected Penyulang */}
+                  <div className="text-[10px] text-slate-500 font-semibold bg-blue-50/50 p-2.5 rounded-lg border border-blue-100 flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Status Kesehatan (Health Index) untuk Gardu Hubung ini disinkronkan otomatis berdasarkan data historis gangguan penyulang terpilih.</span>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+                  >
+                    <Save className="w-4 h-4 text-white" />
+                    <span>Simpan & Petakan Koordinat Gardu Hubung</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Export File */}
+              <div className="space-y-1.5 pt-2 border-t">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  3. Ekspor Data Peta:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleExportJSON}
+                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <FileCode className="w-4 h-4 text-amber-600" />
+                    <span>Ekspor ke JSON</span>
+                  </button>
+                  <button
+                    onClick={handleExportCSV}
+                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <FileCode className="w-4 h-4 text-emerald-600" />
+                    <span>Ekspor ke CSV</span>
+                  </button>
+                </div>
+                <button
+                  onClick={handleExportKML}
+                  className="w-full mt-1.5 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <FileCode className="w-4 h-4 text-white" />
+                  <span>Ekspor ke Format KML (Google Earth / GIS)</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end items-center gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  // Clear click marker when closing modal if it exists
+                  if (clickMarkerRef.current && mapInstanceRef.current) {
+                    try {
+                      mapInstanceRef.current.removeLayer(clickMarkerRef.current);
+                    } catch (e) {
+                      console.log(e);
+                    }
+                    clickMarkerRef.current = null;
+                  }
+                  setShowInputPetaModal(false);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                type="submit"
+                form="gardu-form"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

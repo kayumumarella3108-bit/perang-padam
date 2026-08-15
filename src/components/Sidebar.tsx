@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Dashboard Utama</span>
           </button>
 
-          {/* 2. Peta Penyulang GIS */}
+          {/* 2. Peta */}
           <button
             onClick={() => onSelectView('peta_penyulang')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
@@ -140,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
               <MapPin className="w-4 h-4" />
             </div>
-            <span>Peta Penyulang GIS</span>
+            <span>Peta</span>
           </button>
 
           {/* 2b. SPKLU */}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, Zap, Cloud, User, LogOut, ChevronDown, ShieldCheck, Search, Eye, AlertTriangle, X, MessageCircle, Send, Share2, Car, Sun, BatteryCharging } from 'lucide-react';
+import { Menu, Zap, Cloud, User, LogOut, ChevronDown, ShieldCheck, Search, Eye, AlertTriangle, X, MessageCircle, Send, Share2, Car, Sun, BatteryCharging, Globe, Sparkles } from 'lucide-react';
 import { User as UserType, ViewType } from '../types';
 import { canEditData } from '../utils/permissions';
+import { SearchGroundedModal } from './modals/SearchGroundedModal';
 
 interface TopHeaderProps {
   user: UserType;
@@ -15,7 +16,7 @@ interface TopHeaderProps {
 const VIEW_NAMES: Record<ViewType, string> = {
   dashboard: 'Dashboard Utama Keandalan 20kV',
   spklu: 'Monitoring Lokasi SPKLU',
-  peta_penyulang: 'Peta Penyulang GIS & Feeder',
+  peta_penyulang: 'Peta (Penyulang, Gardu Hubung & Keypoint)',
   master_data: 'Master Data Penyulang',
   aset_jaringan: 'Aset Jaringan JTM / JTR',
   topologi_jaringan: 'Topologi Jaringan Feeder',
@@ -56,6 +57,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   const isEditMode = canEditData(user);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
 
   React.useEffect(() => {
@@ -201,6 +203,19 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
       {/* Right Section: Cloud status, User Profile & Mode Badge */}
       <div className="flex items-center gap-3">
+        {/* Google Search AI Grounded Button */}
+        <button
+          onClick={() => setIsSearchModalOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/20 to-emerald-600/20 hover:from-blue-600/30 hover:to-emerald-600/30 border border-blue-500/40 hover:border-emerald-400 text-blue-300 hover:text-emerald-300 text-xs font-bold transition-all shadow-md cursor-pointer group"
+          title="Buka Pencarian Data Real-Time Google Search Grounded"
+        >
+          <Globe className="w-4 h-4 text-emerald-400 group-hover:rotate-12 transition-transform animate-pulse" />
+          <span className="hidden sm:inline">Cari Data Real-Time</span>
+          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-black uppercase tracking-wider border border-emerald-500/30">
+            Google AI
+          </span>
+        </button>
+
         {/* Cloud Active Badge */}
         {isOnline ? (
           <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-bold">
@@ -309,6 +324,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </div>
         </div>
       )}
+      {/* Modal Search Grounding Google AI */}
+      <SearchGroundedModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+      />
     </header>
   );
 };

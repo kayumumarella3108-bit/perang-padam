@@ -1355,10 +1355,14 @@ export default function App() {
           {(activeView === 'peta_penyulang' || activeView === 'peta') && (
             <PetaPenyulangView
               layers={mapLayers}
+              penyulangList={syncedPenyulangList}
+              sectionList={sectionList}
+              masterGarduList={masterGarduList}
               onToggleLayer={handleToggleMapLayer}
               onDeleteLayer={handleDeleteMapLayer}
               onAddLayer={handleAddMapLayer}
               onUpdateLayer={handleUpdateMapLayer}
+              onAddGardu={handleAddMasterGardu}
             />
           )}
 

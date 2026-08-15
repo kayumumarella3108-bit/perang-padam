@@ -207,11 +207,12 @@ export interface MapLayerItem {
   tiangCount: number;
   ruteLength: string;
   tanggalImport: string;
-  kategori: 'ROW' | 'Inspeksi' | 'Maintenance';
+  kategori: 'Gardu Hubung' | 'Inspeksi' | 'Maintenance' | string;
   visible: boolean;
   color: string;
   coordinates: [number, number][];
   poleNames?: string[];
+  penyulangId?: string;
 }
 
 export interface SldComponent {

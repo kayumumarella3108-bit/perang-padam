@@ -230,6 +230,39 @@ export const INITIAL_MAP_LAYERS: MapLayerItem[] = [
       [-3.580, 128.330],
       [-3.570, 128.345]
     ]
+  },
+  {
+    id: 'gh_baguala',
+    nama: 'GARDU HUBUNG (GH) BAGUALA & PASSO',
+    tiangCount: 12,
+    ruteLength: '12 Gardu Hubung',
+    tanggalImport: '5/8/2026',
+    kategori: 'Maintenance',
+    visible: true,
+    color: '#f59e0b',
+    coordinates: [
+      [-3.632, 128.225],
+      [-3.622, 128.245],
+      [-3.612, 128.280],
+      [-3.585, 128.320]
+    ]
+  },
+  {
+    id: 'keypoint_20kv',
+    nama: 'KEYPOINT (LBS / REC / FCO / GTT 20kV)',
+    tiangCount: 28,
+    ruteLength: '28 Titik Keypoint',
+    tanggalImport: '5/8/2026',
+    kategori: 'Inspeksi',
+    visible: true,
+    color: '#ec4899',
+    coordinates: [
+      [-3.637, 128.212],
+      [-3.627, 128.232],
+      [-3.617, 128.258],
+      [-3.592, 128.305],
+      [-3.575, 128.340]
+    ]
   }
 ];
 
