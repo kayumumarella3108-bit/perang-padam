@@ -294,68 +294,95 @@ export function convertToKonstruksiItems(
 ): KonstruksiGisItem[] {
   return features.map((feat, idx) => {
     const p = feat.properties;
-    const rawNamaProyek = p.namaproyek || p.proyek || feat.name || `Proyek Konstruksi 20kV ${defaultPenyulang}`;
-    const rawSpk = p.nomorspk || p.nospk || p.spk || `SPK/KONST/${new Date().getFullYear()}/${Math.floor(Math.random() * 800 + 100)}`;
+    const rawNamaProyek = p.namaproyek || p.judul || p.temuan || p.proyek || feat.name || `Temuan Konstruksi JTM ${defaultPenyulang}`;
+    const rawSpk = p.nomorspk || p.nospk || p.nolaporan || p.spk || `INSP/KNST/${new Date().getFullYear()}/${Math.floor(Math.random() * 800 + 100)}`;
+    const rawNoTiang = p.notiang || p.tiang || p.gardu || p.nogardu || `TG-${Math.floor(Math.random() * 80 + 10)}`;
     const rawPenyulang = p.penyulang || p.feeder || defaultPenyulang;
     const rawLokasi = p.lokasi || p.alamat || feat.description || `Jalur 20kV ${rawPenyulang}`;
 
-    // Kategori
-    let kategori: KonstruksiGisItem['kategoriKonstruksi'] = 'Rekonstruksi Tiang Miring / Keropos';
+    // Kategori Deteksi
     const combinedText = `${rawNamaProyek} ${feat.description || ''} ${JSON.stringify(p)}`.toLowerCase();
-    if (combinedText.includes('uprating') || combinedText.includes('konduktor') || combinedText.includes('a3c') || combinedText.includes('kabel')) {
-      kategori = 'Uprating / Penggantian Konduktor';
-    } else if (combinedText.includes('lbs') || combinedText.includes('recloser') || combinedText.includes('motorized')) {
-      kategori = 'Pemasangan LBS Motorized / Recloser';
-    } else if (combinedText.includes('gtt') || combinedText.includes('sisipan') || combinedText.includes('trafo')) {
-      kategori = 'Pembangunan GTT Sisipan';
-    } else if (combinedText.includes('jtm baru') || combinedText.includes('perluasan') || combinedText.includes('jaringan baru')) {
-      kategori = 'Pembangunan JTM Baru (Perluasan)';
-    } else if (combinedText.includes('isolator') || combinedText.includes('arrester')) {
-      kategori = 'Penggantian Isolator Flashover / Arrester';
+    let kategori: KonstruksiGisItem['kategoriKonstruksi'] = 'TRAVERS / Cross Arm';
+
+    if (combinedText.includes('travers') || combinedText.includes('cross arm') || combinedText.includes('crossarm') || combinedText.includes('arm tie')) {
+      kategori = 'TRAVERS / Cross Arm';
+    } else if (combinedText.includes('beugel') || combinedText.includes('bugel') || combinedText.includes('baut') || combinedText.includes('guy wire') || combinedText.includes('trekschoor') || combinedText.includes('skur')) {
+      kategori = 'BEUGEL & Aksesoris Tiang';
+    } else if (combinedText.includes('gardu') || combinedText.includes('gtt') || combinedText.includes('trafo') || combinedText.includes('phb-tr') || combinedText.includes('phb tr') || combinedText.includes('bushing')) {
+      kategori = 'GARDU DISTRIBUSI & GTT';
+    } else if (combinedText.includes('kabel') || combinedText.includes('konduktor') || combinedText.includes('jumper') || combinedText.includes('cco') || combinedText.includes('rantas') || combinedText.includes('andongan') || combinedText.includes('a3c') || combinedText.includes('aaac')) {
+      kategori = 'KABEL, Konduktor & Jumper';
+    } else if (combinedText.includes('isolator') || combinedText.includes('arrester') || combinedText.includes('la') || combinedText.includes('flashover') || combinedText.includes('pin post')) {
+      kategori = 'ISOLATOR & Arrester';
+    } else if (combinedText.includes('tiang') || combinedText.includes('miring') || combinedText.includes('pondasi') || combinedText.includes('ambles') || combinedText.includes('retak')) {
+      kategori = 'TIANG DISTRIBUSI';
+    } else if (combinedText.includes('lbs') || combinedText.includes('fco') || combinedText.includes('cut out') || combinedText.includes('recloser') || combinedText.includes('ds') || combinedText.includes('saklar')) {
+      kategori = 'PERALATAN HUBUNG (LBS/FCO/DS)';
+    } else if (combinedText.includes('grounding') || combinedText.includes('pembumian') || combinedText.includes('animal guard') || combinedText.includes('anti climbing') || combinedText.includes('penghalang panjat')) {
+      kategori = 'GROUNDING & Animal Guard';
+    } else {
+      kategori = 'MATERIAL / Konstruksi Lainnya';
+    }
+
+    // Tingkat Bahaya Detection
+    let bahaya: KonstruksiGisItem['tingkatBahaya'] = 'Tinggi (Perlu Tindak Lanjut Cepat)';
+    if (combinedText.includes('kritis') || combinedText.includes('segera') || combinedText.includes('padam') || combinedText.includes('putus') || combinedText.includes('patah') || combinedText.includes('meledak') || combinedText.includes('terbakar')) {
+      bahaya = 'Kritis (Potensi Gangguan Segera)';
+    } else if (combinedText.includes('sedang') || combinedText.includes('terjadwal') || combinedText.includes('berkala')) {
+      bahaya = 'Sedang (Perbaikan Terjadwal)';
+    } else if (combinedText.includes('ringan') || combinedText.includes('monitoring') || combinedText.includes('aman')) {
+      bahaya = 'Ringan (Monitoring)';
     }
 
     // Status & Progres
     let status: KonstruksiGisItem['statusProyek'] = 'Sedang Dikerjakan';
-    let progres = parseInt(p.progres || p.progrespersen || '50') || 50;
-    if (combinedText.includes('selesai') || combinedText.includes('operasi') || progres === 100) {
-      status = 'Selesai Beroperasi';
+    let progres = parseInt(p.progres || p.progrespersen || '40') || 40;
+    if (combinedText.includes('selesai') || combinedText.includes('tuntas') || progres === 100) {
+      status = 'Selesai Diperbaiki';
       progres = 100;
-    } else if (combinedText.includes('uji') || combinedText.includes('komisioning') || combinedText.includes('testing')) {
-      status = 'Uji Komisioning';
-      if (progres < 80) progres = 90;
-    } else if (combinedText.includes('rencana') || combinedText.includes('survey') || progres === 0) {
-      status = 'Rencana';
+    } else if (combinedText.includes('belum') || combinedText.includes('baru') || progres === 0) {
+      status = 'Belum Ditindaklanjuti';
       progres = 0;
+    } else if (combinedText.includes('jadwal') || combinedText.includes('wo') || combinedText.includes('rencana')) {
+      status = 'Terjadwal WO / Pemeliharaan';
+      if (progres > 30) progres = 20;
     }
 
-    const anggaran = parseFloat(p.anggaran || p.anggaranrp || p.nilai || '45000000') || 45000000;
-    const vendor = p.pelaksanavendor || p.vendor || p.pelaksana || 'PT Maluku Daya Mandiri';
-    const pengawas = p.pengawaspln || p.pengawas || 'Samsul Bahri (Supervisor Teknik)';
-    const volume = p.volumeaset || p.volume || '1 Paket Pekerjaan JTM';
+    const anggaran = parseFloat(p.anggaran || p.anggaranrp || p.biaya || '3500000') || 3500000;
+    const vendor = p.pelaksanavendor || p.pelaksana || p.timhar || 'Tim Pemeliharaan JTM ULP Baguala';
+    const pengawas = p.pengawaspln || p.pengawas || p.petugas || 'Samsul Bahri (Supervisor Teknik)';
+    const volume = p.volumeaset || p.volume || '1 Titik Temuan Konstruksi';
+    const kebutuhanMaterial = p.kebutuhanmaterial || p.material || p.alat || `Material perbaikan untuk kategori ${kategori}`;
+    const jenisAnomali = p.jenisanomali || p.anomali || p.kondisi || feat.description || `Anomali konstruksi ${rawNamaProyek} pada ${rawNoTiang}`;
 
     return {
       id: `kst-imp-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       namaProyek: rawNamaProyek,
       nomorSpk: rawSpk,
+      noTiang: rawNoTiang,
       penyulang: rawPenyulang,
       section: p.section || '',
       lokasi: rawLokasi,
       lat: feat.lat,
       lng: feat.lng,
       kategoriKonstruksi: kategori,
+      jenisAnomali: jenisAnomali,
+      tingkatBahaya: bahaya,
+      kebutuhanMaterial: kebutuhanMaterial,
       statusProyek: status,
       progresPersen: progres,
-      targetSelesai: p.targetselesai || '2026-06-30',
+      targetSelesai: p.targetselesai || '2026-03-31',
       tglMulai: p.tglmulai || new Date().toISOString().split('T')[0],
+      tglTemuan: p.tgltemuan || new Date().toISOString().split('T')[0],
       anggaranRp: anggaran,
       pelaksanaVendor: vendor,
       pengawasPln: pengawas,
       volumeAset: volume,
-      keterangan: p.keterangan || feat.description || 'Import GIS Paket Konstruksi',
+      keterangan: p.keterangan || feat.description || `Temuan inspeksi konstruksi [${feat.name}]`,
       coordinatesPolyline: feat.coordinates || [
-        [feat.lat - 0.001, feat.lng - 0.001],
+        [feat.lat - 0.0008, feat.lng - 0.0008],
         [feat.lat, feat.lng],
-        [feat.lat + 0.001, feat.lng + 0.001]
+        [feat.lat + 0.0008, feat.lng + 0.0008]
       ]
     };
   });

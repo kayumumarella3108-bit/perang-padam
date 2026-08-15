@@ -77,15 +77,18 @@ export const ImportKonstruksiModal: React.FC<ImportKonstruksiModalProps> = ({
   };
 
   const handleDownloadCsvTemplate = () => {
-    const csvContent = `namaproyek,nomorspk,penyulang,section,lokasi,lat,lng,kategori,status,progres,anggaran,vendor,pengawas,targetselesai,volume,keterangan
-Rekonstruksi Tiang Miring Paso,SPK/KONST/2026/081,PASSO,SEC-PASSO-02,Jl. Wolter Monginsidi Paso,-3.626100,128.238400,Rekonstruksi Tiang Miring / Keropos,Sedang Dikerjakan,60,45000000,PT Maluku Daya Mandiri,Samsul Bahri,2026-03-31,4 Tiang Beton 12m/350daN,Penggantian 4 tiang keropos
-Pemasangan LBS Motorized Waiheru,SPK/KONST/2026/092,WAIHERU,SEC-WAIHERU-01,Desa Waiheru Dalam,-3.618200,128.230100,Pemasangan LBS Motorized / Recloser,Sedang Dikerjakan,40,75000000,PT Mandiri Listrik Ambon,Hendrikus Latumahina,2026-04-15,1 Unit LBS Motorized SF6,Otomasi SCADA Feeder
-Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong Suli,-3.605400,128.281200,Pembangunan GTT Sisipan,Rencana,10,95000000,PT Citra Daya Prima,Samsul Bahri,2026-05-30,1 Unit Trafo 100kVA 20kV,Mengatasi overload trafo eksisting`;
+    const csvContent = `namaproyek,nomorspk,notiang,penyulang,section,lokasi,lat,lng,kategori,jenisanomali,tingkatbahaya,kebutuhanmaterial,status,progres,anggaran,vendor,pengawas,targetselesai,volume,keterangan
+Travers Miring & Baut Beugel Kendor,INSP/TRV/2026/014,PAS-45,PASSO,SEC-PASSO-02,Jl. Wolter Monginsidi Paso,-3.626100,128.238400,TRAVERS / Cross Arm,Travers UNP 2.5m miring 20 derajat dan beugel kendor,Kritis (Potensi Gangguan Segera),1 Set Travers UNP 10 + 2 Beugel Tiang 8 inch,Sedang Dikerjakan,65,4500000,Tim Pemeliharaan JTM,Samsul Bahri,2026-03-05,1 Set Travers + Beugel,Kawat fasa S mendekati arm tie tiang
+Beugel Tiang Berkarat & Trekschoor Kendor,INSP/BGL/2026/022,TLH-112,TULEHU,SEC-TULEHU-01,Jalur Utama Tulehu Dekat Jembatan,-3.565000,128.342000,BEUGEL & Aksesoris Tiang,Beugel travers berkarat keropos dan kawat guy wire kendor,Tinggi (Perlu Tindak Lanjut Cepat),3 Set Beugel Tiang 9 inch + 1 Guy Wire Set 35mm2,Terjadwal WO / Pemeliharaan,30,3800000,Yantek Pos Tulehu,Ahmad Rivai,2026-03-12,3 Set Beugel + Trekschoor,Tiang sudut condong ke jalan
+Dudukan FCO & Box PHB-TR Anomali,INSP/GDU/2026/033,GTT GD-WH-04,WAIHERU 1,SEC-WAIHERU-02,Perumahan Waiheru Blok B,-3.614000,128.239000,GARDU DISTRIBUSI & GTT,Cross arm FCO miring 15 derajat dan pintu PHB-TR keropos,Kritis (Potensi Gangguan Segera),1 Set Cross Arm FCO UNP 8 + 4 Klem Pipa 3 inch,Sedang Dikerjakan,70,5200000,Tim Gardu Distribusi,Markus Pattipeilohy,2026-03-02,1 Unit GTT 100 kVA,Klem pipa kabel naik sudah diperbaiki
+Jumper Fasa S Rantas & Andongan Rendah,INSP/KBL/2026/041,LTR2-58,LATERI 2,SEC-LATERI-01,Jl. Wolter Monginsidi Lateri,-3.645000,128.248000,KABEL, Konduktor & Jumper,Jumper konduktor rantas 4 urat dan jarak bebas < 5 meter,Kritis (Potensi Gangguan Segera),12m Kawat AAACS 150mm2 + 6 CCO Tap Connector,Sedang Dikerjakan,85,6500000,Tim Har JTM Regu 2,La Ode Darmin,2026-03-01,1 Span JTM 45m,Jumper rantas sudah dipress ulang CCO
+Isolator Flashover & LA Bocor,INSP/ISO/2026/055,GLL-18,GALALA 1,SEC-GALALA-01,Pesisir Pantai Galala,-3.660000,128.205000,ISOLATOR & Arrester,Line post isolator retak berjelaga hitam dan LA bocor,Tinggi (Perlu Tindak Lanjut Cepat),3 Set Line Post Polymer 24kV + 1 Set Arrester 21kV,Selesai Diperbaiki,100,4200000,Tim Pemeliharaan 20kV,Samsul Bahri,2026-02-20,3 Pin Post + 1 LA,Sudah diganti isolator polimer anti garam
+Grounding Trafo Putus & Penghalang Rusak,INSP/GND/2026/077,GTT-TLH-02,TULEHU,SEC-TULEHU-02,Pasar Tradisional Tulehu,-3.558000,128.345000,GROUNDING & Animal Guard,Kawat BC 50mm2 pembumian trafo putus dan plat anti-climbing rusak,Kritis (Potensi Gangguan Segera),15m Kawat BC 50mm2 + 2 Rod Grounding + Anti-Climbing,Belum Ditindaklanjuti,0,2900000,Yantek Pos Tulehu,La Ode Darmin,2026-03-08,1 Set Grounding GTT,Berbahaya bagi publik di tepi pasar`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'Template_Import_Peta_Konstruksi_20kV.csv';
+    link.download = 'Template_Import_Inspeksi_Konstruksi_PLN.csv';
     link.click();
   };
 
@@ -100,37 +103,43 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
             coordinates: [128.2384, -3.6261]
           },
           properties: {
-            namaproyek: "Rekonstruksi Tiang Miring Paso",
-            nomorspk: "SPK/KONST/2026/081",
+            namaproyek: "Travers Miring & Baut Beugel Kendor PAS-45",
+            nomorspk: "INSP/TRV/2026/014",
+            notiang: "PAS-45",
             penyulang: "PASSO",
             lokasi: "Jl. Wolter Monginsidi Paso",
-            kategori: "Rekonstruksi Tiang Miring / Keropos",
+            kategori: "TRAVERS / Cross Arm",
+            jenisanomali: "Travers UNP 2.5m miring 20 derajat dan beugel kendor",
+            tingkatbahaya: "Kritis (Potensi Gangguan Segera)",
+            kebutuhanmaterial: "1 Set Travers UNP 10 + 2 Beugel Tiang 8 inch",
             status: "Sedang Dikerjakan",
-            progres: 60,
-            anggaran: 45000000,
-            vendor: "PT Maluku Daya Mandiri"
+            progres: 65,
+            anggaran: 4500000,
+            vendor: "Tim Pemeliharaan JTM",
+            pengawas: "Samsul Bahri"
           }
         },
         {
           type: "Feature",
           geometry: {
-            type: "LineString",
-            coordinates: [
-              [128.2301, -3.6182],
-              [128.2325, -3.6174],
-              [128.2351, -3.6162]
-            ]
+            type: "Point",
+            coordinates: [128.2390, -3.6140]
           },
           properties: {
-            namaproyek: "Uprating Konduktor A3C 150mm Waiheru",
-            nomorspk: "SPK/KONST/2026/095",
-            penyulang: "WAIHERU",
-            lokasi: "Jalur Utama Waiheru",
-            kategori: "Uprating / Penggantian Konduktor",
+            namaproyek: "Anomali Dudukan FCO & Klem Gardu GD-WH-04",
+            nomorspk: "INSP/GDU/2026/033",
+            notiang: "GTT GD-WH-04",
+            penyulang: "WAIHERU 1",
+            lokasi: "Perumahan Waiheru Blok B",
+            kategori: "GARDU DISTRIBUSI & GTT",
+            jenisanomali: "Cross arm FCO miring 15 derajat & pintu PHB-TR keropos",
+            tingkatbahaya: "Kritis (Potensi Gangguan Segera)",
+            kebutuhanmaterial: "1 Set Cross Arm FCO UNP 8 + 4 Klem Pipa 3 inch",
             status: "Sedang Dikerjakan",
-            progres: 75,
-            anggaran: 120000000,
-            vendor: "PT Sinar Ambon Elektrika"
+            progres: 70,
+            anggaran: 5200000,
+            vendor: "Tim Gardu Distribusi",
+            pengawas: "Markus Pattipeilohy"
           }
         }
       ]
@@ -139,7 +148,7 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
     const blob = new Blob([JSON.stringify(sampleGeoJson, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'Template_Import_Konstruksi_20kV.geojson';
+    link.download = 'Template_Import_Inspeksi_Konstruksi_PLN.geojson';
     link.click();
   };
 
@@ -234,12 +243,12 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
               {fileName ? fileName : 'Klik atau Tarik & Lepas File ke Sini'}
             </p>
             <p className="text-xs text-slate-400 max-w-sm">
-              Sistem akan mengekstrak koordinat, nama proyek konstruksi, nomor SPK, status progres (%), dan kategori pekerjaan secara otomatis.
+              Sistem akan mengekstrak koordinat, kategori temuan (Travers, Beugel, Gardu, Kabel, Tiang, Isolator, dll), tingkat bahaya, status perbaikan, dan kebutuhan material secara otomatis.
             </p>
             {isProcessing && (
               <div className="mt-3 flex items-center gap-2 text-xs text-amber-400 font-bold">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Membaca dan memetakan struktur file konstruksi...
+                Membaca dan memetakan struktur data temuan inspeksi konstruksi...
               </div>
             )}
           </div>
@@ -262,7 +271,7 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400" />
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Hasil Ekstraksi ({parsedItems.length} Proyek Konstruksi Valid)
+                    Hasil Ekstraksi ({parsedItems.length} Titik Temuan Inspeksi Valid)
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
@@ -301,10 +310,10 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
                   <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
                     <tr>
                       <th className="py-2 px-3">No</th>
-                      <th className="py-2 px-3">Nama Proyek</th>
-                      <th className="py-2 px-3">No SPK</th>
+                      <th className="py-2 px-3">Temuan / Anomali</th>
+                      <th className="py-2 px-3">No Tiang / Gardu</th>
                       <th className="py-2 px-3">Penyulang</th>
-                      <th className="py-2 px-3">Kategori</th>
+                      <th className="py-2 px-3">Kategori Material</th>
                       <th className="py-2 px-3">Progres</th>
                     </tr>
                   </thead>
@@ -312,9 +321,9 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
                     {parsedItems.slice(0, 10).map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-800/40">
                         <td className="py-1.5 px-3 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="py-1.5 px-3 font-bold text-white">{item.namaProyek}</td>
-                        <td className="py-1.5 px-3 font-mono text-slate-400 text-[11px]">{item.nomorSpk || '-'}</td>
-                        <td className="py-1.5 px-3 font-bold text-amber-400">{item.penyulang}</td>
+                        <td className="py-1.5 px-3 font-bold text-white truncate max-w-[200px]">{item.namaProyek}</td>
+                        <td className="py-1.5 px-3 font-mono text-amber-300 text-[11px]">{item.noTiang || item.nomorSpk || '-'}</td>
+                        <td className="py-1.5 px-3 font-bold text-sky-400">{item.penyulang}</td>
                         <td className="py-1.5 px-3 truncate max-w-[150px] text-slate-300">{item.kategoriKonstruksi}</td>
                         <td className="py-1.5 px-3">
                           <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300">
@@ -327,7 +336,7 @@ Pembangunan GTT Sisipan Suli,SPK/KONST/2026/104,SULI,SEC-SULI-03,Dusun Batugong 
                 </table>
                 {parsedItems.length > 10 && (
                   <div className="py-2 px-3 bg-slate-950/80 text-center text-[11px] text-slate-400 font-semibold border-t border-slate-800">
-                    ... dan {parsedItems.length - 10} proyek lainnya
+                    ... dan {parsedItems.length - 10} titik temuan lainnya
                   </div>
                 )}
               </div>

@@ -818,8 +818,9 @@ export interface PohonGisItem {
 
 export interface KonstruksiGisItem {
   id: string;
-  namaProyek: string;
-  nomorSpk?: string;
+  namaProyek: string; // Judul Temuan / Nama Proyek Perbaikan
+  nomorSpk?: string; // No Laporan Inspeksi / No WO / SPK
+  noTiang?: string; // No Tiang / No Gardu / Span JTM
   penyulang: string;
   section?: string;
   lokasi: string;
@@ -827,6 +828,15 @@ export interface KonstruksiGisItem {
   lng: number;
   coordinatesPolyline?: [number, number][];
   kategoriKonstruksi: 
+    | 'TRAVERS / Cross Arm'
+    | 'BEUGEL & Aksesoris Tiang'
+    | 'GARDU DISTRIBUSI & GTT'
+    | 'KABEL, Konduktor & Jumper'
+    | 'ISOLATOR & Arrester'
+    | 'TIANG DISTRIBUSI'
+    | 'PERALATAN HUBUNG (LBS/FCO/DS)'
+    | 'GROUNDING & Animal Guard'
+    | 'MATERIAL / Konstruksi Lainnya'
     | 'Rekonstruksi Tiang Miring / Keropos' 
     | 'Uprating / Penggantian Konduktor' 
     | 'Pemasangan LBS Motorized / Recloser' 
@@ -834,14 +844,19 @@ export interface KonstruksiGisItem {
     | 'Pembangunan JTM Baru (Perluasan)' 
     | 'Penggantian Isolator Flashover / Arrester'
     | 'Pemasangan Animal Guard / Penghalang Panjat';
-  statusProyek: 'Rencana' | 'Sedang Dikerjakan' | 'Uji Komisioning' | 'Selesai Beroperasi';
+  jenisAnomali?: string; // Deskripsi anomali (misal: Travers patah sebelah, Beugel keropos, dll)
+  tingkatBahaya?: 'Kritis (Potensi Gangguan Segera)' | 'Tinggi (Perlu Tindak Lanjut Cepat)' | 'Sedang (Perbaikan Terjadwal)' | 'Ringan (Monitoring)';
+  kebutuhanMaterial?: string; // Rincian material PLN yang dibutuhkan (mis: Travers UNP 2.5m, Beugel 8 inch, dll)
+  statusProyek: 'Rencana' | 'Sedang Dikerjakan' | 'Uji Komisioning' | 'Selesai Beroperasi' | 'Belum Ditindaklanjuti' | 'Terjadwal WO / Pemeliharaan' | 'Selesai Diperbaiki';
   progresPersen: number;
   targetSelesai: string;
   tglMulai?: string;
+  tglTemuan?: string;
+  tglSelesai?: string;
   anggaranRp?: number;
-  pelaksanaVendor: string;
-  pengawasPln: string;
-  volumeAset: string;
+  pelaksanaVendor: string; // Pelaksana / Tim Har (Yantek / Vendor / Tim Pemeliharaan ULP)
+  pengawasPln: string; // Petugas Inspeksi / Pengawas PLN
+  volumeAset: string; // Volume temuan / perbaikan
   keterangan?: string;
   fotoSebelum?: string;
   fotoProgres?: string;

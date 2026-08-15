@@ -84,6 +84,8 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markerGroupRef = useRef<L.FeatureGroup | null>(null);
+  const hasInitialFittedRef = useRef(false);
+  const lastSelectedPenyulangRef = useRef(selectedPenyulang);
 
   const getTileUrl = (style: 'dark' | 'satellite' | 'street') => {
     switch (style) {
@@ -161,6 +163,15 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   const totalSelesai = pohonList.filter((p) => p.statusEksekusi === 'Selesai Pangkas').length;
   const totalPohonCount = pohonList.reduce((acc, curr) => acc + (curr.jumlahPohon || 1), 0);
 
+  // Focus map to all markers
+  const handleFocusMap = () => {
+    if (!mapInstanceRef.current || !markerGroupRef.current) return;
+    const bounds = markerGroupRef.current.getBounds();
+    if (bounds.isValid()) {
+      mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+  };
+
   // Render Markers on Map
   useEffect(() => {
     if (!mapInstanceRef.current || !markerGroupRef.current) return;
@@ -170,32 +181,35 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     filteredList.forEach((item) => {
       if (!item.lat || !item.lng) return;
 
-      // Determine color based on hazard
+      const isDone = item.statusEksekusi === 'Selesai Pangkas';
+
+      // Determine color based on hazard and status
       let markerColor = '#10B981'; // Green
       let pulseEffect = '';
-      if (item.tingkatBahaya === 'Kritis (Bahaya Padam)') {
+      if (isDone) {
+        markerColor = '#10B981'; // Emerald
+      } else if (item.tingkatBahaya === 'Kritis (Bahaya Padam)' || item.jarakKeJaringan === '< 1 meter' || item.jarakKeJaringan === 'Menempel Kawat') {
         markerColor = '#EF4444'; // Red
         pulseEffect = 'animate-ping';
       } else if (item.tingkatBahaya === 'Potensi Roboh') {
         markerColor = '#F97316'; // Orange
       } else if (item.tingkatBahaya === 'Rawan Sentuh') {
         markerColor = '#F59E0B'; // Amber
-      } else if (item.statusEksekusi === 'Selesai Pangkas') {
-        markerColor = '#10B981'; // Emerald
       }
 
       const customIcon = L.divIcon({
         className: 'custom-tree-pin',
         html: `
           <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
-            ${item.tingkatBahaya.includes('Kritis') ? `<div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background-color: ${markerColor}; opacity: 0.4;" class="${pulseEffect}"></div>` : ''}
+            ${!isDone && item.tingkatBahaya.includes('Kritis') ? `<div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background-color: ${markerColor}; opacity: 0.4;" class="${pulseEffect}"></div>` : ''}
             <div style="width: 30px; height: 30px; border-radius: 50%; background: ${markerColor}; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #ffffff;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 10v10M12 10 7 15h10l-5-5zM12 3l-4 5h8l-4-5z"/>
-              </svg>
+              ${isDone 
+                ? `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+                : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v10M12 10 7 15h10l-5-5zM12 3l-4 5h8l-4-5z"/></svg>`
+              }
             </div>
-            <div style="position: absolute; bottom: -6px; background: #1e293b; color: #f8fafc; font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 4px; border: 1px solid ${markerColor}; white-space: nowrap;">
-              ${item.noTiangOrSpan || item.penyulang}
+            <div style="position: absolute; bottom: -6px; background: #0f172a; color: ${isDone ? '#34d399' : '#f8fafc'}; font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 4px; border: 1px solid ${markerColor}; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.6);">
+              ${isDone ? `✓ ${item.noTiangOrSpan || item.penyulang}` : (item.noTiangOrSpan || item.penyulang)}
             </div>
           </div>
         `,
@@ -215,27 +229,32 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
               ${item.penyulang} - ${item.noTiangOrSpan}
             </div>
             <span style="font-size: 10px; font-weight: 700; background: ${markerColor}25; color: ${markerColor}; border: 1px solid ${markerColor}60; padding: 2px 6px; border-radius: 6px;">
-              ${item.tingkatBahaya}
+              ${isDone ? '✓ Aman / Terpangkas' : item.tingkatBahaya}
             </span>
           </div>
           
           <div style="font-size: 11px; color: #cbd5e1; space-y: 4px; line-height: 1.5;">
             <div><strong>📍 Lokasi:</strong> ${item.lokasi}</div>
             <div><strong>🌳 Jenis:</strong> ${item.jenisPohon} (${item.jumlahPohon || 1} Pohon)</div>
-            <div><strong>📏 Jarak Jaringan:</strong> <span style="color: ${item.jarakKeJaringan === '< 1 meter' ? '#ef4444' : '#f59e0b'}; font-weight: 700;">${item.jarakKeJaringan}</span></div>
-            <div><strong>⚡ Status Eksekusi:</strong> <span style="font-weight: 700; color: #38bdf8;">${item.statusEksekusi}</span></div>
-            <div><strong>📅 Temuan:</strong> ${item.tglTemuan} ${item.tglEksekusi ? `| <strong>Selesai:</strong> ${item.tglEksekusi}` : ''}</div>
+            <div><strong>📏 Jarak Jaringan:</strong> <span style="color: ${isDone ? '#34d399' : (item.jarakKeJaringan === '< 1 meter' ? '#ef4444' : '#f59e0b')}; font-weight: 700;">${isDone ? '> 2.5 meter (Aman)' : item.jarakKeJaringan}</span></div>
+            <div><strong>⚡ Status Eksekusi:</strong> <span style="font-weight: 700; color: ${isDone ? '#34d399' : '#38bdf8'};">${item.statusEksekusi}</span></div>
+            <div><strong>📅 Temuan:</strong> ${item.tglTemuan} ${item.tglEksekusi ? `| <strong>Tgl Pangkas:</strong> ${item.tglEksekusi}` : ''}</div>
             <div><strong>👷 Pelaksana:</strong> ${item.pelaksana || '-'}</div>
             ${item.keterangan ? `<div style="margin-top: 6px; padding: 6px; background: rgba(30,41,59,0.7); border-radius: 6px; font-style: italic; color: #94a3b8; font-size: 10.5px;">${item.keterangan}</div>` : ''}
           </div>
 
           <div style="margin-top: 10px; display: flex; gap: 6px;">
             <button onclick="window.viewPohonDetail('${item.id}')" style="flex: 1; background: #0284c7; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-              🔍 Detail & Tindakan
+              🔍 Detail & Ubah
             </button>
-            <button onclick="window.quickDonePohon('${item.id}')" style="background: #059669; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-              ✓ Selesai
-            </button>
+            ${isDone 
+              ? `<button onclick="window.reopenPohon('${item.id}')" style="background: #e11d48; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" title="Buka kembali untuk jadwal tebas ulang">
+                  ↩ Buka Kembali
+                 </button>`
+              : `<button onclick="window.quickDonePohon('${item.id}')" style="background: #059669; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                  ✓ Selesai
+                 </button>`
+            }
           </div>
         </div>
       `;
@@ -245,13 +264,18 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
       });
     });
 
+    // Only adjust map bounds on initial load or if user explicitly changes selectedPenyulang filter
     if (filteredList.length > 0) {
       const bounds = mg.getBounds();
       if (bounds.isValid()) {
-        mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        if (!hasInitialFittedRef.current || lastSelectedPenyulangRef.current !== selectedPenyulang) {
+          mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+          hasInitialFittedRef.current = true;
+          lastSelectedPenyulangRef.current = selectedPenyulang;
+        }
       }
     }
-  }, [filteredList]);
+  }, [filteredList, selectedPenyulang]);
 
   // Window callbacks for Leaflet Popups
   useEffect(() => {
@@ -263,6 +287,10 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     (window as any).quickDonePohon = (id: string) => {
       const found = pohonList.find((p) => p.id === id);
       if (found) {
+        // If a status filter was restricting view, reset to 'Semua' so the updated item remains visible on the map
+        if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+        if (selectedBahaya !== 'Semua' && selectedBahaya !== 'Aman / Terpangkas') setSelectedBahaya('Semua');
+
         onUpdatePohon({
           ...found,
           statusEksekusi: 'Selesai Pangkas',
@@ -273,11 +301,26 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
       }
     };
 
+    (window as any).reopenPohon = (id: string) => {
+      const found = pohonList.find((p) => p.id === id);
+      if (found) {
+        if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+        onUpdatePohon({
+          ...found,
+          statusEksekusi: 'Perlu Tebas',
+          tingkatBahaya: 'Rawan Sentuh',
+          jarakKeJaringan: '1 - 2.5 meter',
+          tglEksekusi: undefined
+        });
+      }
+    };
+
     return () => {
       delete (window as any).viewPohonDetail;
       delete (window as any).quickDonePohon;
+      delete (window as any).reopenPohon;
     };
-  }, [pohonList, onUpdatePohon]);
+  }, [pohonList, onUpdatePohon, selectedStatus, selectedBahaya]);
 
   // Form Reset / Load Editing
   const openAddModal = () => {
@@ -348,8 +391,12 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     };
 
     if (editingItem) {
+      if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+      if (selectedBahaya !== 'Semua') setSelectedBahaya('Semua');
       onUpdatePohon(payload);
     } else {
+      if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+      if (selectedBahaya !== 'Semua') setSelectedBahaya('Semua');
       onAddPohon(payload);
     }
 
@@ -609,6 +656,15 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
           {/* Map Layer Mode */}
           {activeTab === 'peta' && (
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 ml-auto">
+              <button
+                onClick={handleFocusMap}
+                className="px-2 py-1.5 rounded-lg text-slate-300 hover:text-emerald-400 hover:bg-slate-900 transition-all flex items-center gap-1 text-[11px] font-bold"
+                title="Fokuskan Semua Titik Pohon di Peta"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Fokus Peta</span>
+              </button>
+              <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
               <button
                 onClick={() => setMapStyle('dark')}
                 className={`p-1.5 rounded-lg transition-all ${mapStyle === 'dark' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
@@ -1085,22 +1141,44 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    onUpdatePohon({
-                      ...selectedDetail,
-                      statusEksekusi: 'Selesai Pangkas',
-                      tingkatBahaya: 'Aman / Terpangkas',
-                      jarakKeJaringan: '> 2.5 meter',
-                      tglEksekusi: new Date().toISOString().split('T')[0]
-                    });
-                    setSelectedDetail(null);
-                  }}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" />
-                  Tandai Selesai Pangkas
-                </button>
+                {selectedDetail.statusEksekusi === 'Selesai Pangkas' ? (
+                  <button
+                    onClick={() => {
+                      if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+                      onUpdatePohon({
+                        ...selectedDetail,
+                        statusEksekusi: 'Perlu Tebas',
+                        tingkatBahaya: 'Rawan Sentuh',
+                        jarakKeJaringan: '1 - 2.5 meter',
+                        tglEksekusi: undefined
+                      });
+                      setSelectedDetail(null);
+                    }}
+                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Buka Kembali (Perlu Tebas Ulang)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (selectedStatus !== 'Semua') setSelectedStatus('Semua');
+                      if (selectedBahaya !== 'Semua' && selectedBahaya !== 'Aman / Terpangkas') setSelectedBahaya('Semua');
+                      onUpdatePohon({
+                        ...selectedDetail,
+                        statusEksekusi: 'Selesai Pangkas',
+                        tingkatBahaya: 'Aman / Terpangkas',
+                        jarakKeJaringan: '> 2.5 meter',
+                        tglEksekusi: new Date().toISOString().split('T')[0]
+                      });
+                      setSelectedDetail(null);
+                    }}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    Tandai Selesai Pangkas
+                  </button>
+                )}
                 <button
                   onClick={() => openEditModal(selectedDetail)}
                   className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all"
