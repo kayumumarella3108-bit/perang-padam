@@ -112,7 +112,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
 
   const isSectionFromGi = (sectionStr: string): boolean => {
     if (!sectionStr) return true;
-    const s = sectionStr.trim().toUpperCase();
+    const s = String(sectionStr).trim().toUpperCase();
     return (
       s.startsWith('GI') ||
       s.startsWith('GIS') ||
@@ -253,7 +253,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
   const matrixRowsData = DEFAULT_MATRIX_CODES.map((rowDef) => {
     const monthlyCounts = Array(12).fill(0);
     activeList.forEach((g) => {
-      if ((g.kodeGangguan || '').trim().toUpperCase() === rowDef.code.toUpperCase()) {
+      if ((g.kodeGangguan || '').trim().toUpperCase() === (rowDef.code || '').toUpperCase()) {
         const parts = (g.tanggal || '').split('-');
         if (parts.length >= 2) {
           const mIdx = parseInt(parts[1], 10) - 1;

@@ -93,7 +93,7 @@ export const InputTopologiBatchModal: React.FC<InputTopologiBatchModalProps> = (
   const activeSections = sectionList.filter(
     (s) =>
       s.penyulangId === activeFeeder.id ||
-      s.namaPenyulang.toLowerCase() === activeFeeder.namaPenyulang.toLowerCase()
+      (s.namaPenyulang && activeFeeder.namaPenyulang && s.namaPenyulang.toLowerCase() === activeFeeder.namaPenyulang.toLowerCase())
   );
 
   const defaultSectionName =

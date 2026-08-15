@@ -184,7 +184,7 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
     const masterPet = INITIAL_MASTER_PETUGAS.find(p => p.id === selectedMasterPetugasId);
     if (masterPet) {
       // check if already added
-      if (petugasList.some(p => p.nama.toLowerCase() === masterPet.nama.toLowerCase())) {
+      if (petugasList.some(p => (p.nama || '').toLowerCase() === (masterPet.nama || '').toLowerCase())) {
         alert(`${masterPet.nama} sudah ada dalam daftar petugas!`);
         return;
       }

@@ -234,7 +234,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
 
   const isSectionFromGi = (sectionStr: string): boolean => {
     if (!sectionStr) return false;
-    const s = sectionStr.trim().toUpperCase();
+    const s = String(sectionStr).trim().toUpperCase();
     return (
       s.startsWith('GI') ||
       s.startsWith('GIS') ||
@@ -281,7 +281,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
 
     if (section && section.trim() !== '') {
       const matchedSec = availableSections.find(
-        (s) => s.namaSection.toLowerCase() === section.toLowerCase()
+        (s) => s.namaSection && section && s.namaSection.toLowerCase() === section.toLowerCase()
       );
       if (matchedSec && matchedSec.jumlahPelanggan) {
         setJumlahPelangganPadam(matchedSec.jumlahPelanggan);

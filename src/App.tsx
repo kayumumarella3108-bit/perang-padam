@@ -1495,6 +1495,7 @@ export default function App() {
               currentUser={user}
               pohonList={pohonGisList}
               penyulangList={syncedPenyulangList}
+              layers={mapLayers}
               onAddPohon={handleAddPohonGis}
               onImportBatch={handleBatchAddPohonGis}
               onUpdatePohon={handleUpdatePohonGis}

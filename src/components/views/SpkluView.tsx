@@ -272,7 +272,7 @@ export const SpkluView: React.FC<SpkluViewProps> = ({ currentUser }) => {
       s.tipeCharger.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedStatusFilter === 'ALL') return matchesSearch;
-    return matchesSearch && s.status.toUpperCase() === selectedStatusFilter.toUpperCase();
+    return matchesSearch && (s.status || '').toUpperCase() === (selectedStatusFilter || '').toUpperCase();
   });
 
   return (

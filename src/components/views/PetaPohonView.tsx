@@ -27,13 +27,24 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { PohonGisItem, User, Penyulang } from '../../types';
+import { PohonGisItem, User, Penyulang, MapLayerItem } from '../../types';
 import { ImportPohonModal } from '../modals/ImportPohonModal';
+
+const TREE_ICON_MAP: Record<string, { emoji: string; label: string; desc: string }> = {
+  pohon: { emoji: '🌳', label: 'Pohon Rimbun', desc: 'Trembesi, Mahoni, Sengon' },
+  kelapa: { emoji: '🌴', label: 'Kelapa / Palem', desc: 'Pohon kelapa, pinang' },
+  bambu: { emoji: '🎋', label: 'Bambu / Ranting', desc: 'Rumpun bambu & semak' },
+  saw: { emoji: '🪚', label: 'Gergaji ROW', desc: 'Target eksekusi pangkas' },
+  warning: { emoji: '⚠️', label: 'Bahaya Kritis', desc: 'Menempel kawat / darurat' },
+  leaf: { emoji: '🍃', label: 'Daun Vegetasi', desc: 'Sulur & rambatan' },
+  pin: { emoji: '📍', label: 'Pin Standar', desc: 'Titik koordinat acuan' }
+};
 
 interface PetaPohonViewProps {
   currentUser?: User | null;
   pohonList: PohonGisItem[];
   penyulangList?: Penyulang[];
+  layers?: MapLayerItem[];
   onAddPohon: (item: PohonGisItem) => void;
   onImportBatch?: (items: PohonGisItem[]) => void;
   onUpdatePohon: (item: PohonGisItem) => void;
@@ -44,6 +55,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   currentUser,
   pohonList,
   penyulangList = [],
+  layers = [],
   onAddPohon,
   onImportBatch,
   onUpdatePohon,
@@ -54,10 +66,13 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   const [selectedBahaya, setSelectedBahaya] = useState<string>('Semua');
   const [selectedStatus, setSelectedStatus] = useState<string>('Semua');
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
+  const [showFeederLayer, setShowFeederLayer] = useState<boolean>(true);
+  const [globalIconStyle, setGlobalIconStyle] = useState<'default' | 'pohon' | 'kelapa' | 'bambu' | 'saw' | 'warning' | 'leaf' | 'pin'>('default');
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importToast, setImportToast] = useState<{ message: string; count: number } | null>(null);
   const [editingItem, setEditingItem] = useState<PohonGisItem | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<PohonGisItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<PohonGisItem | null>(null);
@@ -74,6 +89,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   const [formStatus, setFormStatus] = useState<'Perlu Tebas' | 'Perlu Tebang' | 'Perlu Izin Warga' | 'Perlu Padam' | 'Selesai Pangkas'>('Perlu Tebas');
   const [formJenisPohon, setFormJenisPohon] = useState('');
   const [formJumlah, setFormJumlah] = useState<number>(1);
+  const [formIconType, setFormIconType] = useState<NonNullable<PohonGisItem['iconType']>>('pohon');
   const [formTglTemuan, setFormTglTemuan] = useState<string>(new Date().toISOString().split('T')[0]);
   const [formTglEksekusi, setFormTglEksekusi] = useState<string>('');
   const [formPelaksana, setFormPelaksana] = useState('Tim ROW Baguala - Valer Demny');
@@ -84,6 +100,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markerGroupRef = useRef<L.FeatureGroup | null>(null);
+  const feederGroupRef = useRef<L.FeatureGroup | null>(null);
   const markersMapRef = useRef<Record<string, L.Marker>>({});
   const hasInitialFittedRef = useRef(false);
 
@@ -117,6 +134,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     }).addTo(map);
 
     tileLayerRef.current = tile;
+    feederGroupRef.current = L.featureGroup().addTo(map);
     markerGroupRef.current = L.featureGroup().addTo(map);
     mapInstanceRef.current = map;
 
@@ -133,6 +151,43 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     const newTile = L.tileLayer(getTileUrl(mapStyle), { maxZoom: 19 }).addTo(mapInstanceRef.current);
     tileLayerRef.current = newTile;
   }, [mapStyle]);
+
+  // Render Feeder Line Routes (Polyline murni tanpa titik-titik tiang berlebih)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !feederGroupRef.current) return;
+    const fg = feederGroupRef.current;
+    fg.clearLayers();
+
+    if (!showFeederLayer || !layers || layers.length === 0) return;
+
+    const activeLayers = (layers || []).filter((layer) => {
+      if (!layer) return false;
+      if (selectedPenyulang === 'Semua') return layer.visible !== false;
+      const layerName = (layer.nama || '').toUpperCase();
+      const selP = (selectedPenyulang || '').toUpperCase();
+      if (!layerName || !selP) return false;
+      return layerName.includes(selP) || selP.includes(layerName);
+    });
+
+    activeLayers.forEach((layer) => {
+      if (!layer.coordinates || layer.coordinates.length < 2) return;
+
+      const layerColor = layer.color || '#38bdf8';
+
+      // Polyline for Feeder Line (Clean line without dots)
+      const line = L.polyline(layer.coordinates, {
+        color: layerColor,
+        weight: 3.5,
+        opacity: 0.85,
+        dashArray: '6, 6'
+      }).addTo(fg);
+
+      line.bindTooltip(`⚡ Jalur JTM: ${layer.nama} (${layer.tiangCount || layer.coordinates.length} Tiang)`, {
+        sticky: true,
+        className: 'custom-feeder-tooltip'
+      });
+    });
+  }, [layers, showFeederLayer, selectedPenyulang]);
 
   // Filtered List
   const filteredList = pohonList.filter((item) => {
@@ -204,36 +259,40 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
         markerColor = '#F59E0B'; // Amber
       }
 
+      const iconKey = globalIconStyle !== 'default' ? globalIconStyle : (item.iconType || 'pohon');
+      const iconInfo = TREE_ICON_MAP[iconKey] || TREE_ICON_MAP.pohon;
+
       const customIcon = L.divIcon({
         className: 'custom-tree-pin',
         html: `
-          <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
             ${!isDone && item.tingkatBahaya.includes('Kritis') ? `<div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background-color: ${markerColor}; opacity: 0.4;" class="${pulseEffect}"></div>` : ''}
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${markerColor}; border: 2px solid #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #ffffff;">
+            <div style="width: 30px; height: 30px; border-radius: 50%; background: ${isDone ? '#059669' : '#0f172a'}; border: 2.5px solid ${markerColor}; box-shadow: 0 4px 10px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #ffffff;">
               ${isDone 
-                ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v10M12 10 7 15h10l-5-5zM12 3l-4 5h8l-4-5z"/></svg>`
+                ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+                : `<span style="font-size: 15px; line-height: 1; user-select: none;">${iconInfo.emoji}</span>`
               }
             </div>
-            <div style="position: absolute; bottom: -6px; background: #0f172a; color: ${isDone ? '#34d399' : '#f8fafc'}; font-size: 8.5px; font-weight: 800; padding: 1px 4px; border-radius: 4px; border: 1px solid ${markerColor}; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+            <div style="position: absolute; bottom: -8px; background: #0f172a; color: ${isDone ? '#34d399' : '#f8fafc'}; font-size: 8.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; border: 1px solid ${markerColor}; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
               ${isDone ? `✓ ${item.noTiangOrSpan || item.penyulang}` : (item.noTiangOrSpan || item.penyulang)}
             </div>
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16]
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -17]
       });
 
       const marker = L.marker([item.lat, item.lng], { icon: customIcon }).addTo(mg);
       markersMapRef.current[item.id] = marker;
 
-      // Popup Content
+      // Popup Content (Clean Tree Information matching PetaPenyulangView)
       const popupHtml = `
-        <div style="font-family: inherit; width: 250px; padding: 2px; color: #1e293b;">
+        <div style="font-family: inherit; width: 255px; padding: 2px; color: #1e293b;">
           <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
-            <div style="font-size: 13px; font-weight: 800; color: #0f172a;">
-              ${item.penyulang} - ${item.noTiangOrSpan}
+            <div style="font-size: 13px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px;">
+              <span>${iconInfo.emoji}</span>
+              <span>${item.penyulang} - ${item.noTiangOrSpan}</span>
             </div>
             <span style="font-size: 9.5px; font-weight: 700; background: ${markerColor}20; color: ${markerColor}; border: 1px solid ${markerColor}50; padding: 2px 5px; border-radius: 4px;">
               ${isDone ? '✓ Terpangkas' : item.tingkatBahaya}
@@ -243,7 +302,6 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
           <div style="font-size: 11.5px; line-height: 1.5; color: #334155; space-y: 2px;">
             <div><strong>📍 Lokasi:</strong> ${item.lokasi}</div>
             <div><strong>🌳 Jenis:</strong> ${item.jenisPohon} (${item.jumlahPohon || 1} Pohon)</div>
-            <div><strong>📏 Jarak Kawat:</strong> <span style="color: ${isDone ? '#059669' : (item.jarakKeJaringan === '< 1 meter' ? '#dc2626' : '#d97706')}; font-weight: 700;">${isDone ? '> 2.5m (Aman)' : item.jarakKeJaringan}</span></div>
             <div><strong>⚡ Status:</strong> <span style="font-weight: 700; color: ${isDone ? '#059669' : '#0284c7'};">${item.statusEksekusi}</span></div>
             <div><strong>📅 Temuan:</strong> ${item.tglTemuan}</div>
             <div><strong>👷 Pelaksana:</strong> ${item.pelaksana || '-'}</div>
@@ -282,7 +340,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
         hasInitialFittedRef.current = true;
       }
     }
-  }, [filteredList]);
+  }, [filteredList, globalIconStyle]);
 
   // Window callbacks for Leaflet Popups
   useEffect(() => {
@@ -344,6 +402,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     setFormStatus('Perlu Tebas');
     setFormJenisPohon('');
     setFormJumlah(1);
+    setFormIconType('pohon');
     setFormTglTemuan(new Date().toISOString().split('T')[0]);
     setFormTglEksekusi('');
     setFormPelaksana('Tim ROW Baguala - Valer Demny');
@@ -364,6 +423,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
     setFormStatus(item.statusEksekusi);
     setFormJenisPohon(item.jenisPohon);
     setFormJumlah(item.jumlahPohon || 1);
+    setFormIconType(item.iconType || 'pohon');
     setFormTglTemuan(item.tglTemuan);
     setFormTglEksekusi(item.tglEksekusi || '');
     setFormPelaksana(item.pelaksana || 'Tim ROW Baguala');
@@ -388,6 +448,7 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
       statusEksekusi: formStatus,
       jenisPohon: formJenisPohon || 'Pohon Campuran',
       jumlahPohon: Number(formJumlah) || 1,
+      iconType: formIconType,
       tglTemuan: formTglTemuan,
       tglEksekusi: formStatus === 'Selesai Pangkas' ? (formTglEksekusi || new Date().toISOString().split('T')[0]) : undefined,
       pelaksana: formPelaksana,
@@ -595,18 +656,21 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
                   } shadow-xs`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Status Pill Indicator */}
-                    <div
-                      className={`w-3 h-3 rounded-full shrink-0 ${
-                        isDone
-                          ? 'bg-emerald-500 ring-2 ring-emerald-200'
-                          : isKritis
-                          ? 'bg-rose-500 ring-2 ring-rose-200 animate-pulse'
-                          : item.tingkatBahaya === 'Potensi Roboh'
-                          ? 'bg-orange-500'
-                          : 'bg-amber-500'
-                      }`}
-                    />
+                    {/* Status & Icon Indicator */}
+                    <div className="relative shrink-0 flex items-center justify-center">
+                      <span className="text-base">{TREE_ICON_MAP[item.iconType || 'pohon']?.emoji || '🌳'}</span>
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-white ${
+                          isDone
+                            ? 'bg-emerald-500 ring-1 ring-emerald-200'
+                            : isKritis
+                            ? 'bg-rose-500 ring-1 ring-rose-200 animate-pulse'
+                            : item.tingkatBahaya === 'Potensi Roboh'
+                            ? 'bg-orange-500'
+                            : 'bg-amber-500'
+                        }`}
+                      />
+                    </div>
 
                     {/* Text Details */}
                     <div className="min-w-0">
@@ -620,8 +684,8 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-[10.5px] text-slate-500 truncate mt-0.5">
-                        {item.jenisPohon} • {item.jarakKeJaringan}
+                      <p className="text-[10.5px] text-slate-600 font-medium truncate mt-0.5">
+                        {item.jenisPohon} {item.jumlahPohon && item.jumlahPohon > 1 ? `(${item.jumlahPohon} Pohon)` : ''}
                       </p>
                       <p className="text-[9.5px] text-slate-400 truncate">
                         📍 {item.lokasi}
@@ -701,8 +765,79 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
         {/* Leaflet Map Div */}
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-        {/* Top Control Bar for Map Style & Focus */}
+        {/* Floating Import Success Toast */}
+        {importToast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 bg-emerald-950/95 text-emerald-100 border border-emerald-500/60 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-2xl animate-fadeIn text-xs font-bold ring-1 ring-emerald-500/20">
+            <div className="p-1 bg-emerald-500/20 rounded-lg text-emerald-400">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <span>{importToast.message}</span>
+            <button
+              onClick={() => setImportToast(null)}
+              className="p-1 text-emerald-400 hover:text-white rounded-md transition-colors cursor-pointer ml-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Top Control Bar for Map Style, Feeder Layer, Icon Selector & Focus */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-slate-900/90 text-white backdrop-blur-md border border-slate-700/80 p-1 rounded-xl shadow-xl">
+          {/* Icon Display Selector */}
+          <div className="relative group">
+            <button
+              type="button"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer"
+              title="Pilihan Icon Marker Pohon"
+            >
+              <span>{globalIconStyle === 'default' ? '🎨' : TREE_ICON_MAP[globalIconStyle]?.emoji || '🌳'}</span>
+              <span className="hidden md:inline">
+                {globalIconStyle === 'default' ? 'Icon: Otomatis' : `Icon: ${TREE_ICON_MAP[globalIconStyle]?.emoji} ${TREE_ICON_MAP[globalIconStyle]?.label}`}
+              </span>
+            </button>
+            <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl p-1.5 shadow-2xl z-30 hidden group-hover:block hover:block">
+              <div className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">
+                Pilihan Icon Marker
+              </div>
+              <button
+                type="button"
+                onClick={() => setGlobalIconStyle('default')}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+                  globalIconStyle === 'default' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <span>✨</span>
+                <span>Sesuai Data Item</span>
+              </button>
+              {Object.entries(TREE_ICON_MAP).map(([key, opt]) => (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => setGlobalIconStyle(key as any)}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+                    globalIconStyle === key ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="text-base">{opt.emoji}</span>
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="w-[1px] h-4 bg-slate-700 mx-0.5" />
+
+          <button
+            onClick={() => setShowFeederLayer(!showFeederLayer)}
+            className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold text-xs flex items-center gap-1.5 ${
+              showFeederLayer ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Tampilkan / Sembunyikan Jalur Penyulang 20kV"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Jalur JTM (20kV)</span>
+          </button>
+          <div className="w-[1px] h-4 bg-slate-700 mx-0.5" />
           <button
             onClick={handleFocusMap}
             className="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-emerald-400 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
@@ -879,6 +1014,37 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
                 </div>
               </div>
 
+              {/* Pilihan Icon Marker */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1.5 flex items-center justify-between">
+                  <span>Pilihan Icon Marker *</span>
+                  <span className="text-[11px] text-emerald-400 font-semibold">
+                    {TREE_ICON_MAP[formIconType]?.emoji} {TREE_ICON_MAP[formIconType]?.label}
+                  </span>
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {Object.entries(TREE_ICON_MAP).map(([key, opt]) => {
+                    const isSelected = formIconType === key;
+                    return (
+                      <button
+                        type="button"
+                        key={key}
+                        onClick={() => setFormIconType(key as any)}
+                        className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-md shadow-emerald-950 ring-1 ring-emerald-500'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                        title={opt.desc}
+                      >
+                        <span className="text-xl">{opt.emoji}</span>
+                        <span className="text-[10px] font-bold truncate max-w-full">{opt.label.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 font-bold mb-1">Jenis Pohon</label>
@@ -1028,9 +1194,12 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
             <div className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div>
-                  <div className="text-slate-500 font-medium">Jenis Pohon</div>
-                  <div className="font-bold text-white text-sm">{selectedDetail.jenisPohon}</div>
-                  <div className="text-slate-400 text-[11px]">{selectedDetail.jumlahPohon || 1} Pohon</div>
+                  <div className="text-slate-500 font-medium">Jenis & Icon Pohon</div>
+                  <div className="font-bold text-white text-sm flex items-center gap-1.5 mt-0.5">
+                    <span className="text-base">{TREE_ICON_MAP[selectedDetail.iconType || 'pohon']?.emoji || '🌳'}</span>
+                    <span>{selectedDetail.jenisPohon}</span>
+                  </div>
+                  <div className="text-slate-400 text-[11px]">{selectedDetail.jumlahPohon || 1} Pohon ({TREE_ICON_MAP[selectedDetail.iconType || 'pohon']?.label || 'Pohon'})</div>
                 </div>
                 <div>
                   <div className="text-slate-500 font-medium">Jarak ke Jaringan</div>
@@ -1113,33 +1282,60 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
         </div>
       )}
 
-      {/* Modal Konfirmasi Hapus Titik Pohon */}
+      {/* Dialog Konfirmasi Hapus Titik Pohon (Alert Dialog) */}
       {deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden text-slate-100 p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-rose-500/20 text-rose-400 rounded-xl">
-                <Trash2 className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden text-slate-100 p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/30 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
               </div>
-              <div>
-                <h3 className="text-base font-black text-white">Hapus Titik Pohon?</h3>
-                <p className="text-xs text-slate-400">Data pohon ini akan dihapus dari peta & database.</p>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white">Konfirmasi Hapus Titik Pohon</h3>
+                <p className="text-xs text-rose-300/90 font-medium">
+                  Apakah Anda yakin ingin menghapus data titik pohon ini? Tindakan ini bersifat permanen.
+                </p>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1.5 text-slate-300">
-              <div><strong className="text-slate-400">Penyulang:</strong> {deletingItem.penyulang}</div>
-              <div><strong className="text-slate-400">No. Tiang / Span:</strong> {deletingItem.noTiangOrSpan}</div>
-              <div><strong className="text-slate-400">Jenis Pohon:</strong> {deletingItem.jenisPohon} ({deletingItem.jumlahPohon || 1} Pohon)</div>
-              <div><strong className="text-slate-400">Lokasi:</strong> {deletingItem.lokasi}</div>
-              <div><strong className="text-slate-400">Status:</strong> {deletingItem.statusEksekusi}</div>
+            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-xs space-y-2 text-slate-300">
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">Penyulang:</span>
+                <span className="font-bold text-white">{deletingItem.penyulang}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">No. Tiang / Span:</span>
+                <span className="font-bold text-white">{deletingItem.noTiangOrSpan}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">Jenis & Jumlah Pohon:</span>
+                <span className="font-semibold text-emerald-400">{deletingItem.jenisPohon} ({deletingItem.jumlahPohon || 1} Pohon)</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">Lokasi:</span>
+                <span className="font-medium text-slate-200 text-right max-w-[220px] truncate">{deletingItem.lokasi}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-400">Koordinat:</span>
+                <span className="font-mono text-slate-400">{deletingItem.latitude.toFixed(5)}, {deletingItem.longitude.toFixed(5)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-0.5">
+                <span className="text-slate-400">Status Saat Ini:</span>
+                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                  deletingItem.statusEksekusi === 'Selesai Pangkas' 
+                    ? 'bg-emerald-500/20 text-emerald-300' 
+                    : 'bg-amber-500/20 text-amber-300'
+                }`}>
+                  {deletingItem.statusEksekusi}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setDeletingItem(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Batal
               </button>
@@ -1149,10 +1345,10 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
                   onDeletePohon(deletingItem.id);
                   setDeletingItem(null);
                 }}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-900/40 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-900/40 transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Hapus Sekarang
+                <Trash2 className="w-4 h-4" />
+                Ya, Hapus Data Pohon
               </button>
             </div>
           </div>
@@ -1170,7 +1366,14 @@ export const PetaPohonView: React.FC<PetaPohonViewProps> = ({
             } else {
               items.forEach((it) => onAddPohon(it));
             }
+            setImportToast({
+              message: `Berhasil mengimpor & memvalidasi ${items.length} titik pohon ke dalam peta.`,
+              count: items.length
+            });
             setIsImportModalOpen(false);
+            setTimeout(() => {
+              setImportToast(null);
+            }, 6000);
           }}
           penyulangList={penyulangList}
         />
