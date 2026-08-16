@@ -814,7 +814,20 @@ export interface PohonGisItem {
   keterangan?: string;
   fotoTemuan?: string;
   fotoEksekusi?: string;
-  iconType?: 'pohon' | 'kelapa' | 'bambu' | 'saw' | 'warning' | 'leaf' | 'pin';
+  iconType?:
+    | 'pohon'
+    | 'kelapa'
+    | 'bambu'
+    | 'leaf'
+    | 'saw'
+    | 'tiang'
+    | 'tiang_besi'
+    | 'konstruksi'
+    | 'gardu'
+    | 'crane'
+    | 'warning'
+    | 'pin'
+    | string;
 }
 
 export interface KonstruksiGisItem {

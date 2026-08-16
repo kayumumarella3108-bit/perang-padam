@@ -32,14 +32,19 @@ interface ImportPohonModalProps {
   penyulangList?: Penyulang[];
 }
 
-export const ICON_OPTIONS: { id: NonNullable<PohonGisItem['iconType']>; label: string; emoji: string; desc: string }[] = [
-  { id: 'pohon', label: 'Pohon Rimbun', emoji: '🌳', desc: 'Trembesi, Mahoni, dsb.' },
-  { id: 'kelapa', label: 'Pohon Kelapa/Palem', emoji: '🌴', desc: 'Kelapa, Pinang, Palem' },
-  { id: 'bambu', label: 'Bambu & Ranting', emoji: '🎋', desc: 'Rumpun Bambu, Semak' },
-  { id: 'saw', label: 'Gergaji / Potong ROW', emoji: '🪚', desc: 'Prioritas Pangkas / Tebas' },
-  { id: 'warning', label: 'Bahaya Kritis', emoji: '⚠️', desc: 'Rawan Gangguan / Roboh' },
-  { id: 'leaf', label: 'Daun Vegetasi', emoji: '🍃', desc: 'Ranting Daun Dekat JTM' },
-  { id: 'pin', label: 'Pin Marker', emoji: '📍', desc: 'Penanda Titik Standar' }
+export const ICON_OPTIONS: { id: NonNullable<PohonGisItem['iconType']>; label: string; emoji: string; desc: string; category: string }[] = [
+  { id: 'pohon', label: 'Pohon Rimbun', emoji: '🌳', desc: 'Trembesi, Mahoni, Sengon', category: 'Pohon & ROW' },
+  { id: 'kelapa', label: 'Kelapa / Palem', emoji: '🌴', desc: 'Kelapa, Pinang, Palem', category: 'Pohon & ROW' },
+  { id: 'bambu', label: 'Bambu & Ranting', emoji: '🎋', desc: 'Rumpun Bambu, Semak', category: 'Pohon & ROW' },
+  { id: 'leaf', label: 'Daun / Sulur', emoji: '🍃', desc: 'Ranting & Rambatan Tanaman', category: 'Pohon & ROW' },
+  { id: 'saw', label: 'Gergaji ROW', emoji: '🪚', desc: 'Target Eksekusi Pangkas', category: 'Pohon & ROW' },
+  { id: 'tiang', label: 'Tiang JTM / Distribusi', emoji: '🗼', desc: 'Tiang SUTM / Distribusi', category: 'Tiang Listrik' },
+  { id: 'tiang_besi', label: 'Tiang Percabangan', emoji: '💈', desc: 'Tiang Ujung & Percabangan', category: 'Tiang Listrik' },
+  { id: 'pin', label: 'Pin Tagging GPS', emoji: '📍', desc: 'Penanda Titik Acuan', category: 'Tiang Listrik' },
+  { id: 'konstruksi', label: 'Konstruksi & Travers', emoji: '🏗️', desc: 'Crossarm, Isolator, Rekonstruksi', category: 'Konstruksi & Gardu' },
+  { id: 'gardu', label: 'Gardu Trafo / GTT', emoji: '⚡', desc: 'Trafo Distribusi 20kV / Gardu', category: 'Konstruksi & Gardu' },
+  { id: 'crane', label: 'Alat Berat / Har', emoji: '🚜', desc: 'Mobil Crane / Tim Har', category: 'Konstruksi & Gardu' },
+  { id: 'warning', label: 'Bahaya Kritis / Anomali', emoji: '⚠️', desc: 'Rawan Gangguan / Darurat', category: 'Konstruksi & Gardu' }
 ];
 
 export const ImportPohonModal: React.FC<ImportPohonModalProps> = ({
