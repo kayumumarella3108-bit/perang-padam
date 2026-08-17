@@ -196,10 +196,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       onLogin(matchedUser);
     } else {
       // Fallback user based on entered username
+      let userRole = 'Koordinator';
+      let userName = `User ${username}`;
+      const uLower = username.toLowerCase();
+
+      if (uLower.includes('pemasaran') || uLower.includes('pemasaran')) {
+        userRole = 'Bagian Pemasaran';
+        userName = 'Staf Bagian Pemasaran';
+      } else if (uLower.includes('transaksi') || uLower.includes('te')) {
+        userRole = 'Bagian Transaksi Energi';
+        userName = 'Staf Transaksi Energi';
+      } else if (uLower.includes('admin')) {
+        userRole = 'Admin Teknik';
+      }
+
       const authenticatedUser: User = {
         username: username,
-        name: `User ${username}`,
-        role: username.includes('admin') ? 'Admin Teknik' : 'Koordinator',
+        name: userName,
+        role: userRole as any,
         unit: 'ULP Baguala',
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
       };

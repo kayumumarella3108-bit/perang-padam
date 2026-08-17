@@ -38,8 +38,9 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SurveyPbPdItem, Penyulang, MasterGardu, User } from '../../types';
-import { canEditData } from '../../utils/permissions';
+import { canEditData, isPemasaranUser } from '../../utils/permissions';
 import { SurveyMapPicker } from '../modals/SurveyMapPicker';
+import { SurveyPhotoUploadSection } from '../modals/SurveyPhotoUploadSection';
 import { SurveyPbPdMapTab } from './SurveyPbPdMapTab';
 
 interface SurveyPbPdViewProps {
@@ -73,6 +74,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
   const [editingItem, setEditingItem] = useState<SurveyPbPdItem | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<SurveyPbPdItem | null>(null);
   const [selectedForBa, setSelectedForBa] = useState<SurveyPbPdItem | null>(null);
+  const [previewModalPhoto, setPreviewModalPhoto] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
 
   // Form input fields
   const [formData, setFormData] = useState<Partial<SurveyPbPdItem>>({
@@ -105,16 +107,18 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
     tanggalSurvey: new Date().toISOString().split('T')[0],
     rekomendasiTeknis: '',
     catatan: '',
+    fotoBangunan: '',
     fotoLokasi: '',
     fotoPengukuranTegangan: '',
     fotoTitikSambung: ''
   });
 
   const canEdit = currentUser ? canEditData(currentUser) : true;
+  const isPemasaran = currentUser ? isPemasaranUser(currentUser) : false;
 
   // Calculation helpers
   const getDropTegangan = (pangkal: number = 0, tetangga: number = 0) => {
-    if (!pangkal || !tetangga) return { dropVolt: 0, dropPct: 0, status: 'Aman' };
+    if (!pangkal || !tetangga) return { dropVolt: 0, dropPct: 0, status: 'Belum Diukur / Pending Survey' };
     const dropVolt = Math.max(0, pangkal - tetangga);
     const dropPct = (dropVolt / pangkal) * 100;
     let status = 'Aman (< 5%)';
@@ -123,8 +127,53 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
     return { dropVolt, dropPct, status };
   };
 
+  // Open modal for Create Work Order (Bagian Pemasaran)
+  const handleOpenCreateWo = () => {
+    setEditingItem(null);
+    setFormData({
+      jenisTransaksi: 'Pasang Baru (PB)',
+      namaPelanggan: '',
+      noAgenda: `54260${Math.floor(1000000 + Math.random() * 9000000)}`,
+      idPelanggan: '',
+      noHpPelanggan: '',
+      tarifLama: '',
+      dayaLamaVa: undefined,
+      tarifBaru: 'R1/1300 VA',
+      dayaBaruVa: 1300,
+      peruntukan: 'Rumah Tangga',
+      penyulang: penyulangList[0]?.namaPenyulang || 'PASSO',
+      noGardu: masterGarduList[0]?.noGardu || 'BG-01',
+      jurusanGardu: 'Jurusan 1',
+      lokasi: '',
+      lat: -3.6375,
+      lng: 128.2435,
+      titikSambungLat: -3.6376,
+      titikSambungLng: 128.2433,
+      tegPangkal: 0,
+      tegTetangga: 0,
+      fasaYangDiambil: '1 Fasa (Fasa R)',
+      titikSambung: 'Ditentukan Saat Survey Lapangan',
+      panjangSrMeter: 15,
+      jenisKabelSr: 'TIC 2x10 mm²',
+      statusKelayakan: 'Perlu Survey Lapangan',
+      petugasSurvey: currentUser?.name || 'Staf Pemasaran ULP Baguala',
+      tanggalSurvey: new Date().toISOString().split('T')[0],
+      rekomendasiTeknis: 'Diterbitkan dari Bagian Pemasaran. Memerlukan survey pengukuran tegangan & titik sambung di lapangan oleh Tim Teknik.',
+      catatan: '',
+      fotoBangunan: '',
+      fotoLokasi: '',
+      fotoPengukuranTegangan: '',
+      fotoTitikSambung: ''
+    });
+    setIsModalOpen(true);
+  };
+
   // Open modal for Create or Edit
   const handleOpenCreate = () => {
+    if (isPemasaran) {
+      handleOpenCreateWo();
+      return;
+    }
     setEditingItem(null);
     setFormData({
       jenisTransaksi: 'Pasang Baru (PB)',
@@ -156,6 +205,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tanggalSurvey: new Date().toISOString().split('T')[0],
       rekomendasiTeknis: '',
       catatan: '',
+      fotoBangunan: '',
       fotoLokasi: '',
       fotoPengukuranTegangan: '',
       fotoTitikSambung: ''
@@ -170,7 +220,9 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       lat: item.lat || -3.6375,
       lng: item.lng || 128.2435,
       titikSambungLat: item.titikSambungLat || (item.lat ? item.lat - 0.00015 : -3.6376),
-      titikSambungLng: item.titikSambungLng || (item.lng ? item.lng - 0.00015 : 128.2433)
+      titikSambungLng: item.titikSambungLng || (item.lng ? item.lng - 0.00015 : 128.2433),
+      fotoBangunan: item.fotoBangunan || item.fotoLokasi || '',
+      fotoTitikSambung: item.fotoTitikSambung || ''
     });
     setIsModalOpen(true);
   };
@@ -185,6 +237,9 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
     const pangkal = Number(formData.tegPangkal) || 220;
     const tetangga = Number(formData.tegTetangga) || 220;
     const dropVolt = Math.max(0, pangkal - tetangga);
+
+    const fotoBangunanVal = formData.fotoBangunan || formData.fotoLokasi || '';
+    const fotoTitikSambungVal = formData.fotoTitikSambung || '';
 
     const record: SurveyPbPdItem = {
       id: editingItem ? editingItem.id : `srv-${Date.now()}`,
@@ -219,9 +274,10 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tanggalPenyambungan: formData.tanggalPenyambungan || '',
       rekomendasiTeknis: formData.rekomendasiTeknis || '',
       catatan: formData.catatan || '',
-      fotoLokasi: formData.fotoLokasi || '',
+      fotoBangunan: fotoBangunanVal,
+      fotoLokasi: fotoBangunanVal,
       fotoPengukuranTegangan: formData.fotoPengukuranTegangan || '',
-      fotoTitikSambung: formData.fotoTitikSambung || '',
+      fotoTitikSambung: fotoTitikSambungVal,
       createdAt: editingItem?.createdAt || new Date().toISOString()
     };
 
@@ -294,7 +350,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
     return { total, pbCount, pdCount, layakCount, sisipTiangCount, dropKritisCount, selesaiSambungCount };
   }, [surveyList]);
 
-  // Export CSV
+  // Export CSV (Semua data yang terfilter)
   const handleExportCsv = () => {
     if (filteredList.length === 0) {
       alert('Tidak ada data survey untuk di-export.');
@@ -305,26 +361,33 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       'No Agenda',
       'ID Pelanggan',
       'Nama Pelanggan',
-      'No HP',
+      'No Kontak/WA',
       'Jenis Transaksi',
-      'Tarif/Daya Lama',
-      'Tarif/Daya Baru (VA)',
-      'Penyulang',
+      'Peruntukan',
+      'Tarif & Daya Lama',
+      'Tarif & Daya Baru (VA)',
+      'Penyulang 20kV',
       'No Gardu',
-      'Jurusan',
-      'Lokasi',
-      'Teg Pangkal (V)',
-      'Teg Tetangga (V)',
-      'Drop Tegangan (V)',
-      'Drop (%)',
-      'Fasa yang Diambil',
-      'Titik Sambung',
+      'Jurusan Gardu',
+      'Alamat Lokasi',
+      'Latitude Bangunan',
+      'Longitude Bangunan',
+      'Titik Sambung (Tiang JTR)',
+      'Latitude Titik Sambung',
+      'Longitude Titik Sambung',
       'Panjang SR (m)',
       'Jenis Kabel SR',
+      'Teg Pangkal Trafo (V)',
+      'Teg Ujung Tetangga (V)',
+      'Drop Tegangan (V)',
+      'Drop Tegangan (%)',
+      'Fasa yang Diambil',
       'Status Kelayakan',
-      'Petugas Survey',
+      'Petugas Surveyor',
       'Tanggal Survey',
-      'Rekomendasi Teknis'
+      'Tanggal Penyambungan',
+      'Rekomendasi Teknis',
+      'Catatan'
     ];
 
     const rows = filteredList.map((s, idx) => {
@@ -336,24 +399,31 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
         `"${s.namaPelanggan}"`,
         `"${s.noHpPelanggan || '-'}"`,
         `"${s.jenisTransaksi}"`,
+        `"${s.peruntukan || 'Rumah Tangga'}"`,
         `"${s.tarifLama ? `${s.tarifLama} (${s.dayaLamaVa} VA)` : '-'}"`,
         `"${s.tarifBaru} (${s.dayaBaruVa} VA)"`,
         `"${s.penyulang}"`,
         `"${s.noGardu}"`,
         `"${s.jurusanGardu || '-'}"`,
         `"${s.lokasi.replace(/"/g, '""')}"`,
+        s.lat ? s.lat.toFixed(6) : '-',
+        s.lng ? s.lng.toFixed(6) : '-',
+        `"${s.titikSambung.replace(/"/g, '""')}"`,
+        s.titikSambungLat ? s.titikSambungLat.toFixed(6) : '-',
+        s.titikSambungLng ? s.titikSambungLng.toFixed(6) : '-',
+        s.panjangSrMeter || '-',
+        `"${s.jenisKabelSr || '-'}"`,
         s.tegPangkal,
         s.tegTetangga,
         dropVolt,
         `${dropPct.toFixed(2)}%`,
         `"${s.fasaYangDiambil}"`,
-        `"${s.titikSambung.replace(/"/g, '""')}"`,
-        s.panjangSrMeter || '-',
-        `"${s.jenisKabelSr || '-'}"`,
         `"${s.statusKelayakan}"`,
         `"${s.petugasSurvey}"`,
         s.tanggalSurvey,
-        `"${(s.rekomendasiTeknis || s.catatan || '').replace(/"/g, '""')}"`
+        s.tanggalPenyambungan || '-',
+        `"${(s.rekomendasiTeknis || '').replace(/"/g, '""')}"`,
+        `"${(s.catatan || '').replace(/"/g, '""')}"`
       ];
     });
 
@@ -361,10 +431,219 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Survey_PB_PD_PLN_ULP_Baguala_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Laporan_Survey_PB_PD_PLN_ULP_Baguala_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Export Single Item CSV
+  const handleExportSingleCsv = (item: SurveyPbPdItem) => {
+    const { dropVolt, dropPct } = getDropTegangan(item.tegPangkal, item.tegTetangga);
+    const headers = [
+      'Parameter',
+      'Nilai'
+    ];
+    const rows = [
+      ['No Agenda / Registrasi', `"${item.noAgenda || '-'}"`],
+      ['ID Pelanggan / No Meter', `"${item.idPelanggan || '-'}"`],
+      ['Nama Pelanggan', `"${item.namaPelanggan}"`],
+      ['Nomor HP / Kontak', `"${item.noHpPelanggan || '-'}"`],
+      ['Jenis Transaksi', `"${item.jenisTransaksi}"`],
+      ['Peruntukan', `"${item.peruntukan || 'Rumah Tangga'}"`],
+      ['Tarif / Daya Lama', `"${item.tarifLama ? `${item.tarifLama} (${item.dayaLamaVa} VA)` : '-'}"`],
+      ['Tarif / Daya Baru', `"${item.tarifBaru} (${item.dayaBaruVa} VA)"`],
+      ['Penyulang Feeder 20kV', `"${item.penyulang}"`],
+      ['Nomor Gardu Distribusi', `"${item.noGardu}"`],
+      ['Jurusan Gardu', `"${item.jurusanGardu || '-'}"`],
+      ['Alamat / Lokasi', `"${item.lokasi.replace(/"/g, '""')}"`],
+      ['Koordinat Bangunan (Lat, Lng)', `"${item.lat ? `${item.lat.toFixed(6)}, ${item.lng?.toFixed(6)}` : '-'}"`],
+      ['Titik Sambung (Tiang JTR)', `"${item.titikSambung.replace(/"/g, '""')}"`],
+      ['Koordinat Titik Sambung (Lat, Lng)', `"${item.titikSambungLat ? `${item.titikSambungLat.toFixed(6)}, ${item.titikSambungLng?.toFixed(6)}` : '-'}"`],
+      ['Panjang Saluran Rumah (SR)', `"${item.panjangSrMeter || 15} meter"`],
+      ['Jenis Kabel SR', `"${item.jenisKabelSr || 'TIC 2x10mm²'}"`],
+      ['Tegangan Pangkal Sumber (V)', item.tegPangkal],
+      ['Tegangan Ujung Tetangga (V)', item.tegTetangga],
+      ['Drop Tegangan (V)', dropVolt],
+      ['Drop Tegangan (%)', `${dropPct.toFixed(2)}%`],
+      ['Fasa yang Diambil', `"${item.fasaYangDiambil}"`],
+      ['Status Kelayakan Teknis', `"${item.statusKelayakan}"`],
+      ['Petugas Surveyor', `"${item.petugasSurvey}"`],
+      ['Tanggal Survey', item.tanggalSurvey],
+      ['Tanggal Rencana Penyambungan', item.tanggalPenyambungan || '-'],
+      ['Rekomendasi Teknis Petugas', `"${(item.rekomendasiTeknis || '').replace(/"/g, '""')}"`],
+      ['Catatan Tambahan', `"${(item.catatan || '').replace(/"/g, '""')}"`]
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Survey_${item.namaPelanggan.replace(/\s+/g, '_')}_${item.noGardu}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export Rekapitulasi PDF (Semua Data yang Terfilter - Landscape)
+  const handleExportSummaryPDF = () => {
+    if (filteredList.length === 0) {
+      alert('Tidak ada data survey untuk di-export ke PDF.');
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const currentDateStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    // 1. Header KOP Surat PLN
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 297, 24, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PT PLN (PERSERO) UIW MALUKU DAN MALUKU UTARA - UP3 AMBON', 14, 10);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('UNIT LAYANAN PELANGGAN (ULP) BAGUALA | SISTEM INFORMASI PERANG PADAM', 14, 16);
+    doc.setFontSize(8);
+    doc.text(`Dicetak pada: ${currentDateStr} | Total: ${filteredList.length} Permohonan`, 283, 16, { align: 'right' });
+
+    // 2. Title Section
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('REKAPITULASI HASIL SURVEY KELAYAKAN TEKNIS PB / PD', 148.5, 32, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    const filterDesc = [
+      filterPenyulang !== 'ALL' ? `Penyulang: ${filterPenyulang}` : 'Semua Penyulang',
+      filterJenis !== 'ALL' ? `Transaksi: ${filterJenis}` : 'Semua Transaksi',
+      filterStatus !== 'ALL' ? `Status: ${filterStatus}` : 'Semua Status'
+    ].join(' | ');
+    doc.text(`Filter Data: ${filterDesc}`, 148.5, 37, { align: 'center' });
+
+    // 3. Ringkasan Metrics Banner
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(14, 41, 269, 12, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      `Total: ${filteredList.length} | Layak Sambung: ${filteredList.filter(s => s.statusKelayakan === 'Layak Sambung').length} | Sisip Tiang/JTR: ${filteredList.filter(s => s.statusKelayakan === 'Perlu Sisip Tiang' || s.statusKelayakan === 'Perlu Perluasan JTR').length} | Drop Kritis: ${filteredList.filter(s => getDropTegangan(s.tegPangkal, s.tegTetangga).dropPct >= 10).length} | Pasang Baru: ${filteredList.filter(s => s.jenisTransaksi.includes('PB')).length} | Perubahan Daya: ${filteredList.filter(s => s.jenisTransaksi.includes('PD')).length}`,
+      148.5,
+      48.5,
+      { align: 'center' }
+    );
+
+    // 4. Data Table
+    const tableData = filteredList.map((item, idx) => {
+      const { dropVolt, dropPct } = getDropTegangan(item.tegPangkal, item.tegTetangga);
+      return [
+        idx + 1,
+        `${item.noAgenda || '-'}\n${item.idPelanggan || '-'}`,
+        `${item.namaPelanggan}\n${item.lokasi}`,
+        `${item.jenisTransaksi}\n${item.tarifBaru} (${item.dayaBaruVa}VA)`,
+        `${item.penyulang}\nGardu ${item.noGardu}`,
+        `${item.tegPangkal}V / ${item.tegTetangga}V\nΔV: ${dropVolt}V (${dropPct.toFixed(1)}%)`,
+        item.fasaYangDiambil,
+        `${item.titikSambung}\nSR: ${item.panjangSrMeter || 15}m`,
+        item.statusKelayakan,
+        `${item.petugasSurvey}\n${item.tanggalSurvey}`
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 56,
+      head: [
+        [
+          'No',
+          'No Agenda / ID Pel',
+          'Pelanggan & Lokasi',
+          'Transaksi & Daya',
+          'Penyulang / Gardu',
+          'Tegangan & Drop',
+          'Fasa',
+          'Titik Sambung',
+          'Status Kelayakan',
+          'Surveyor & Tgl'
+        ]
+      ],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [14, 116, 144], // cyan-700
+        textColor: 255,
+        fontSize: 7.5,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        valign: 'middle',
+        overflow: 'linebreak'
+      },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 26 },
+        2: { cellWidth: 44 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 32, halign: 'center' },
+        6: { cellWidth: 14, halign: 'center', fontStyle: 'bold' },
+        7: { cellWidth: 36 },
+        8: { cellWidth: 29, halign: 'center', fontStyle: 'bold' },
+        9: { cellWidth: 26 }
+      },
+      didDrawPage: (data) => {
+        // Footer page numbering
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Dokumen Resmi PLN ULP Baguala - Sistem Perang Padam | Halaman ${data.pageNumber}`,
+          148.5,
+          202,
+          { align: 'center' }
+        );
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 8;
+    const pageHeight = doc.internal.pageSize.height;
+
+    // Check if enough space for signatures on current page, else add new page
+    let signY = finalY;
+    if (signY + 28 > pageHeight - 10) {
+      doc.addPage();
+      signY = 20;
+    }
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text('Mengetahui / Menyetujui,', 40, signY);
+    doc.text('Supervisor Transaksi Energi / TL Teknik,', 40, signY + 4);
+    doc.text('ULP Baguala', 40, signY + 8);
+
+    doc.text('Ambon, ' + currentDateStr, 220, signY);
+    doc.text('Petugas Koordinator Survey Lapangan,', 220, signY + 4);
+    doc.text('ULP Baguala', 220, signY + 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Samuel Leimena', 40, signY + 24);
+    doc.text('NIP. 8812345678', 40, signY + 28);
+
+    doc.text(currentUser?.name || 'Tim Survey Teknik Baguala', 220, signY + 24);
+    doc.text('Surveyor Teknik Lapangan', 220, signY + 28);
+
+    doc.save(`Laporan_Rekap_Survey_PB_PD_PLN_Baguala_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Generate Berita Acara PDF
@@ -509,26 +788,68 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 relative z-10">
+          {/* Unduh CSV */}
           <button
             onClick={handleExportCsv}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700/60 shadow-sm transition-all cursor-pointer"
-            title="Export Data ke Excel/CSV"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-300 text-xs font-bold border border-emerald-700/60 shadow-sm transition-all cursor-pointer hover:shadow-emerald-900/30"
+            title="Unduh Seluruh Data Hasil Survey ke File CSV/Excel"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>Export Excel</span>
+            <span>Unduh CSV</span>
+          </button>
+
+          {/* Unduh Rekap PDF */}
+          <button
+            onClick={handleExportSummaryPDF}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-950/80 hover:bg-sky-900/90 text-sky-300 text-xs font-bold border border-sky-700/60 shadow-sm transition-all cursor-pointer hover:shadow-sky-900/30"
+            title="Unduh Laporan Rekapitulasi Survey Resmi (Format PDF PLN Landscape)"
+          >
+            <FileText className="w-4 h-4 text-sky-400" />
+            <span>Unduh Rekap PDF</span>
           </button>
 
           {canEdit && (
             <button
-              onClick={handleOpenCreate}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/20 transition-all cursor-pointer transform active:scale-95"
+              onClick={isPemasaran ? handleOpenCreateWo : handleOpenCreate}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer transform active:scale-95"
             >
               <Plus className="w-4 h-4 text-slate-950" />
-              <span>+ Input Survey Baru</span>
+              <span>{isPemasaran ? '+ Input WO Survey Baru' : '+ Input Survey Baru'}</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Banner khusus Bagian Pemasaran */}
+      {isPemasaran && (
+        <div className="p-4 bg-gradient-to-r from-amber-950/80 via-amber-900/40 to-slate-900 border border-amber-500/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 text-amber-200 shadow-lg">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-xl shrink-0 shadow-inner">
+              <Zap className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-amber-300">
+                  Formulir Input WO Survey Permohonan PB/PD (Bagian Pemasaran)
+                </h3>
+                <span className="px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[9px] font-black uppercase">
+                  PEMASARAN
+                </span>
+              </div>
+              <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">
+                Setiap permohonan Pasang Baru (PB) atau Perubahan Daya (PD) yang Anda input akan otomatis menjadi Work Order (WO) survey untuk diperiksa oleh petugas teknik & Transaksi Energi di lapangan.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleOpenCreateWo}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 cursor-pointer shrink-0 transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4 text-slate-950" />
+            <span>+ Input WO Survey Baru</span>
+          </button>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -712,6 +1033,7 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
                 >
                   <option value="ALL">Semua Status Kelayakan</option>
+                  <option value="Perlu Survey Lapangan">Perlu Survey Lapangan (WO Baru)</option>
                   <option value="Layak Sambung">Layak Sambung</option>
                   <option value="Perlu Sisip Tiang">Perlu Sisip Tiang</option>
                   <option value="Perlu Perluasan JTR">Perlu Perluasan JTR</option>
@@ -721,31 +1043,58 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
               </div>
             </div>
 
-            {/* Quick Fasa Chips */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/60">
-              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                <Filter className="w-3 h-3 text-amber-400" />
-                Filter Fasa:
-              </span>
-              {[
-                { id: 'ALL', label: 'Semua Fasa' },
-                { id: 'R', label: 'Fasa R (Merah)', color: 'border-rose-500/40 text-rose-300' },
-                { id: 'S', label: 'Fasa S (Kuning)', color: 'border-amber-500/40 text-amber-300' },
-                { id: 'T', label: 'Fasa T (Biru)', color: 'border-sky-500/40 text-sky-300' },
-                { id: '3F', label: '3 Fasa (R-S-T)', color: 'border-purple-500/40 text-purple-300' }
-              ].map(f => (
+            {/* Quick Fasa Chips & Export Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                  <Filter className="w-3 h-3 text-amber-400" />
+                  Filter Fasa:
+                </span>
+                {[
+                  { id: 'ALL', label: 'Semua Fasa' },
+                  { id: 'R', label: 'Fasa R (Merah)', color: 'border-rose-500/40 text-rose-300' },
+                  { id: 'S', label: 'Fasa S (Kuning)', color: 'border-amber-500/40 text-amber-300' },
+                  { id: 'T', label: 'Fasa T (Biru)', color: 'border-sky-500/40 text-sky-300' },
+                  { id: '3F', label: '3 Fasa (R-S-T)', color: 'border-purple-500/40 text-purple-300' }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setFilterFasa(f.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      filterFasa === f.id
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
+                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick Export Controls */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                  Terpilih: <strong className="text-white">{filteredList.length}</strong> data
+                </span>
                 <button
-                  key={f.id}
-                  onClick={() => setFilterFasa(f.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    filterFasa === f.id
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
-                      : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
-                  }`}
+                  type="button"
+                  onClick={handleExportCsv}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 text-[11px] font-bold shadow-sm transition-all cursor-pointer"
+                  title="Unduh data hasil filter dalam format CSV/Excel"
                 >
-                  {f.label}
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>CSV ({filteredList.length})</span>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={handleExportSummaryPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-950/90 hover:bg-sky-900 text-sky-300 border border-sky-800/80 text-[11px] font-bold shadow-sm transition-all cursor-pointer"
+                  title="Unduh laporan rekapitulasi data survey dalam format PDF Resmi PLN"
+                >
+                  <FileText className="w-3.5 h-3.5 text-sky-400" />
+                  <span>PDF Rekap ({filteredList.length})</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -873,6 +1222,42 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                                 </button>
                               )}
                             </div>
+
+                            {/* Foto Thumbnail Badges */}
+                            {((item.fotoBangunan || item.fotoLokasi) || item.fotoTitikSambung) && (
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                {(item.fotoBangunan || item.fotoLokasi) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewModalPhoto({
+                                      url: (item.fotoBangunan || item.fotoLokasi)!,
+                                      title: `Foto Bangunan - ${item.namaPelanggan}`,
+                                      subtitle: `${item.lokasi} (Koordinat: ${item.lat?.toFixed(6) || '-'}, ${item.lng?.toFixed(6) || '-'})`
+                                    })}
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-sky-950/90 hover:bg-sky-900 text-sky-300 border border-sky-800 font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                                    title="Lihat Foto Bangunan"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-sky-400" />
+                                    <span>Foto Bangunan</span>
+                                  </button>
+                                )}
+                                {item.fotoTitikSambung && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewModalPhoto({
+                                      url: item.fotoTitikSambung!,
+                                      title: `Foto Titik Sambung - ${item.titikSambung}`,
+                                      subtitle: `Gardu ${item.noGardu} (Koordinat: ${item.titikSambungLat?.toFixed(6) || '-'}, ${item.titikSambungLng?.toFixed(6) || '-'})`
+                                    })}
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/90 hover:bg-amber-900 text-amber-300 border border-amber-800 font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                                    title="Lihat Foto Titik Sambung"
+                                  >
+                                    <Zap className="w-2.5 h-2.5 text-amber-400" />
+                                    <span>Foto Titik Sambung</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* Tegangan Pangkal & Ujung */}
@@ -918,7 +1303,9 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                           <td className="py-3 px-3 text-center">
                             <span
                               className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
-                                item.statusKelayakan === 'Layak Sambung'
+                                item.statusKelayakan === 'Perlu Survey Lapangan' || item.statusKelayakan === 'WO Survey Diterbitkan'
+                                  ? 'bg-amber-500/25 text-amber-300 border-amber-500/60 shadow-sm animate-pulse font-extrabold'
+                                  : item.statusKelayakan === 'Layak Sambung'
                                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                   : item.statusKelayakan === 'Selesai Penyambungan'
                                   ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
@@ -966,6 +1353,26 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                               >
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
+
+                              {/* Unduh Data CSV Baris */}
+                              <button
+                                onClick={() => handleExportSingleCsv(item)}
+                                className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-800/50 transition-all cursor-pointer"
+                                title="Unduh Data Pelanggan Ini ke CSV"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                              </button>
+
+                              {canEdit && (item.statusKelayakan === 'Perlu Survey Lapangan' || item.statusKelayakan === 'WO Survey Diterbitkan') && (
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] flex items-center gap-1 cursor-pointer transition-all shadow-md active:scale-95 shrink-0"
+                                  title="Input Hasil Survey Lapangan & Pengukuran Tegangan"
+                                >
+                                  <Zap className="w-3 h-3 text-slate-950" />
+                                  <span>Input Hasil Survey</span>
+                                </button>
+                              )}
 
                               {canEdit && (
                                 <>
@@ -1365,6 +1772,84 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                 </div>
               </div>
 
+              {/* Dokumentasi Foto Bangunan & Titik Sambung */}
+              <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                  <Camera className="w-3 h-3 text-amber-400" />
+                  <span>Dokumentasi Foto Lapangan</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Foto Bangunan */}
+                  <div className="p-2 bg-slate-950 rounded-lg border border-sky-900/40 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-sky-300">
+                      <span className="flex items-center gap-1">🏠 Foto Bangunan Pelanggan</span>
+                      {(selectedDetail.fotoBangunan || selectedDetail.fotoLokasi) && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-950 text-sky-400 border border-sky-800">Ada Foto</span>
+                      )}
+                    </div>
+                    {(selectedDetail.fotoBangunan || selectedDetail.fotoLokasi) ? (
+                      <div
+                        onClick={() => setPreviewModalPhoto({
+                          url: (selectedDetail.fotoBangunan || selectedDetail.fotoLokasi)!,
+                          title: `Foto Bangunan - ${selectedDetail.namaPelanggan}`,
+                          subtitle: `${selectedDetail.lokasi} (${selectedDetail.lat?.toFixed(6)}, ${selectedDetail.lng?.toFixed(6)})`
+                        })}
+                        className="relative group rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-900 cursor-pointer shadow-md"
+                      >
+                        <img
+                          src={selectedDetail.fotoBangunan || selectedDetail.fotoLokasi}
+                          alt="Foto Bangunan"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity text-white text-xs font-bold">
+                          <Eye className="w-4 h-4 text-sky-400" />
+                          <span>Klik untuk Perbesar</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-lg bg-slate-900/60 border border-dashed border-slate-800 text-center text-slate-500 text-[11px]">
+                        Foto bangunan belum dilampirkan
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Foto Titik Sambung */}
+                  <div className="p-2 bg-slate-950 rounded-lg border border-amber-900/40 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
+                      <span className="flex items-center gap-1">⚡ Foto Titik Sambung (Tiang)</span>
+                      {selectedDetail.fotoTitikSambung && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800">Ada Foto</span>
+                      )}
+                    </div>
+                    {selectedDetail.fotoTitikSambung ? (
+                      <div
+                        onClick={() => setPreviewModalPhoto({
+                          url: selectedDetail.fotoTitikSambung!,
+                          title: `Foto Titik Sambung - ${selectedDetail.titikSambung}`,
+                          subtitle: `Gardu ${selectedDetail.noGardu} (${selectedDetail.titikSambungLat?.toFixed(6)}, ${selectedDetail.titikSambungLng?.toFixed(6)})`
+                        })}
+                        className="relative group rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-900 cursor-pointer shadow-md"
+                      >
+                        <img
+                          src={selectedDetail.fotoTitikSambung}
+                          alt="Foto Titik Sambung"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity text-white text-xs font-bold">
+                          <Eye className="w-4 h-4 text-amber-400" />
+                          <span>Klik untuk Perbesar</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-lg bg-slate-900/60 border border-dashed border-slate-800 text-center text-slate-500 text-[11px]">
+                        Foto titik sambung belum dilampirkan
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {selectedDetail.rekomendasiTeknis && (
                 <p className="text-indigo-300 bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-800/40 mt-1">
                   <strong>Rekomendasi Petugas:</strong> {selectedDetail.rekomendasiTeknis}
@@ -1713,6 +2198,8 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                     bangunanLng={formData.lng}
                     titikSambungLat={formData.titikSambungLat}
                     titikSambungLng={formData.titikSambungLng}
+                    fotoBangunan={formData.fotoBangunan || formData.fotoLokasi}
+                    fotoTitikSambung={formData.fotoTitikSambung}
                     namaPelanggan={formData.namaPelanggan || 'Bangunan Pelanggan'}
                     titikSambungNama={formData.titikSambung || 'Tiang JTR'}
                     penyulang={formData.penyulang}
@@ -1762,11 +2249,32 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                 </div>
               </div>
 
-              {/* Section 3: Hasil Survey & Rekomendasi */}
+              {/* Section 3: Dokumentasi Foto Bangunan & Titik Sambung */}
+              <SurveyPhotoUploadSection
+                fotoBangunan={formData.fotoBangunan || formData.fotoLokasi}
+                fotoTitikSambung={formData.fotoTitikSambung}
+                onChangeFotoBangunan={(url) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    fotoBangunan: url || '',
+                    fotoLokasi: url || ''
+                  }));
+                }}
+                onChangeFotoTitikSambung={(url) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    fotoTitikSambung: url || ''
+                  }));
+                }}
+                namaPelanggan={formData.namaPelanggan || 'Bangunan Calon Pelanggan'}
+                titikSambungNama={formData.titikSambung || 'Tiang JTR / Saluran Sambung'}
+              />
+
+              {/* Section 4: Hasil Survey & Rekomendasi */}
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
                 <h4 className="font-bold text-emerald-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  3. Kesimpulan & Rekomendasi Teknis
+                  4. Kesimpulan & Rekomendasi Teknis
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -1776,6 +2284,7 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                       onChange={e => setFormData({ ...formData, statusKelayakan: e.target.value as any })}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-emerald-500"
                     >
+                      <option value="Perlu Survey Lapangan">Perlu Survey Lapangan (WO Diterbitkan)</option>
                       <option value="Layak Sambung">Layak Sambung</option>
                       <option value="Perlu Sisip Tiang">Perlu Sisip Tiang JTR</option>
                       <option value="Perlu Perluasan JTR">Perlu Perluasan Jaringan JTR</option>
@@ -1848,6 +2357,74 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* FULL PHOTO LIGHTBOX PREVIEW MODAL */}
+      {previewModalPhoto && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fade-in"
+          onClick={() => setPreviewModalPhoto(null)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl space-y-3 p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white leading-tight">
+                    {previewModalPhoto.title}
+                  </h3>
+                  {previewModalPhoto.subtitle && (
+                    <p className="text-[11px] text-slate-400">
+                      {previewModalPhoto.subtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewModalPhoto(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center min-h-[300px] max-h-[65vh]">
+              <img
+                src={previewModalPhoto.url}
+                alt={previewModalPhoto.title}
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-lg"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-slate-400">Dokumentasi Survei Lapangan PLN ULP Baguala</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewModalPhoto.url}
+                  download="Foto_Survei_PLN_Baguala.jpg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Unduh Foto</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalPhoto(null)}
+                  className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

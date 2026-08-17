@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart3,
   Plus,
@@ -22,7 +22,9 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  CartesianGrid,
+  Legend
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -51,6 +53,8 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
   const [editingSaidi, setEditingSaidi] = useState<SaidiSaifiData | null>(null);
   const [selectedYear, setSelectedYear] = useState('2026');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [chartMetricMode, setChartMetricMode] = useState<'saidi' | 'saifi' | 'both'>('saidi');
 
   const handleExportCSV = () => {
     const headers = [
@@ -194,6 +198,111 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
         }))
       : [{ name: 'Belum Ada ENS', value: 1, color: '#cbd5e1' }];
 
+  // Detailed 12-Month SAIDI / SAIFI Bar Chart Data
+  const monthlyChartData = useMemo(() => {
+    return monthsList.map((m) => {
+      const matched = saidiFiltered.find((s) => {
+        const b = String(s.bulan || '').toLowerCase().trim();
+        return (
+          b.includes(m.full.toLowerCase()) ||
+          b.includes(m.name.toLowerCase()) ||
+          b === String(m.key) ||
+          b === `0${m.key}`
+        );
+      });
+
+      const targetSaidi = matched ? matched.targetSaidi : 0.200;
+      const realisasiSaidi = matched ? matched.realisasiSaidi : 0;
+      const targetSaifi = matched ? matched.targetSaifi : 0.050;
+      const realisasiSaifi = matched ? matched.realisasiSaifi : 0;
+      const ens = matched ? matched.ensKumulatifKwh : 0;
+
+      return {
+        bulanShort: m.name,
+        bulanFull: m.full,
+        targetSaidi,
+        realisasiSaidi,
+        targetSaifi,
+        realisasiSaifi,
+        ens,
+        saidiDiff: realisasiSaidi - targetSaidi,
+        saifiDiff: realisasiSaifi - targetSaifi,
+        hasData: !!matched
+      };
+    });
+  }, [monthsList, saidiFiltered]);
+
+  const CustomSaidiSaifiTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 max-w-xs">
+          <div className="flex items-center justify-between font-extrabold border-b border-slate-800 pb-1 text-amber-300">
+            <span>{data.bulanFull} {selectedYear}</span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                data.realisasiSaidi <= data.targetSaidi
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-rose-500/20 text-rose-300'
+              }`}
+            >
+              {data.realisasiSaidi <= data.targetSaidi ? 'Sesuai Target' : 'Melampaui Target'}
+            </span>
+          </div>
+
+          <div className="space-y-1 font-mono text-[11px]">
+            {chartMetricMode === 'saidi' && (
+              <>
+                <div className="flex justify-between text-slate-300">
+                  <span>Target SAIDI:</span>
+                  <span className="font-bold text-slate-100">{data.targetSaidi.toFixed(3)} Jam</span>
+                </div>
+                <div className="flex justify-between text-blue-400 font-bold">
+                  <span>Realisasi SAIDI:</span>
+                  <span>{data.realisasiSaidi.toFixed(3)} Jam</span>
+                </div>
+              </>
+            )}
+
+            {chartMetricMode === 'saifi' && (
+              <>
+                <div className="flex justify-between text-slate-300">
+                  <span>Target SAIFI:</span>
+                  <span className="font-bold text-slate-100">{data.targetSaifi.toFixed(3)} Kali</span>
+                </div>
+                <div className="flex justify-between text-purple-400 font-bold">
+                  <span>Realisasi SAIFI:</span>
+                  <span>{data.realisasiSaifi.toFixed(3)} Kali</span>
+                </div>
+              </>
+            )}
+
+            {chartMetricMode === 'both' && (
+              <>
+                <div className="flex justify-between text-blue-300">
+                  <span>Realisasi SAIDI:</span>
+                  <span className="font-bold">{data.realisasiSaidi.toFixed(3)} Jam/Plg</span>
+                </div>
+                <div className="flex justify-between text-purple-300">
+                  <span>Realisasi SAIFI:</span>
+                  <span className="font-bold">{data.realisasiSaifi.toFixed(3)} Kali/Plg</span>
+                </div>
+              </>
+            )}
+
+            {data.ens > 0 && (
+              <div className="flex justify-between text-amber-300 text-[10px] pt-1 border-t border-slate-800">
+                <span>ENS Kumulatif:</span>
+                <span className="font-bold">{data.ens.toLocaleString('id-ID')} kWh</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
       
@@ -288,6 +397,166 @@ export const SaidiSaifiView: React.FC<SaidiSaifiViewProps> = ({
             {avgSaifi} <span className="text-xs font-semibold">Kali/Plg</span>
           </div>
           <span className="text-[11px] text-slate-400">Rata-rata Frekuensi Padam</span>
+        </div>
+      </div>
+
+      {/* GRAFIK BATANG PERBANDINGAN SAIDI & SAIFI 12 BULAN TERAKHIR */}
+      <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
+                  Grafik Batang Perbandingan SAIDI & SAIFI Bulanan (12 Bulan)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Analisis tren keandalan jaringan 12 bulan terakhir (Tahun {selectedYear}): Perbandingan Target vs Realisasi
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start lg:self-auto text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setChartMetricMode('saidi')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                chartMetricMode === 'saidi'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Mode SAIDI (Jam)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMetricMode('saifi')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                chartMetricMode === 'saifi'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Mode SAIFI (Kali)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMetricMode('both')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                chartMetricMode === 'both'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Semua Realisasi
+            </button>
+          </div>
+        </div>
+
+        {/* Highlight Summary Stats for 12 Months */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl">
+            <span className="text-[10px] text-blue-600 font-bold uppercase block">Rata-Rata Realisasi SAIDI</span>
+            <span className="text-lg font-black text-blue-900 font-mono">{avgSaidi}</span>
+            <span className="text-[10px] text-slate-500 block">Jam / Pelanggan</span>
+          </div>
+          <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl">
+            <span className="text-[10px] text-purple-600 font-bold uppercase block">Rata-Rata Realisasi SAIFI</span>
+            <span className="text-lg font-black text-purple-900 font-mono">{avgSaifi}</span>
+            <span className="text-[10px] text-slate-500 block">Kali / Pelanggan</span>
+          </div>
+          <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl">
+            <span className="text-[10px] text-emerald-600 font-bold uppercase block">Status Keandalan</span>
+            <span className="text-sm font-extrabold text-emerald-800 flex items-center gap-1 mt-1">
+              ✓ Sesuai Target UP3
+            </span>
+            <span className="text-[10px] text-slate-500 block">Realisasi di bawah ambang target</span>
+          </div>
+          <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
+            <span className="text-[10px] text-amber-700 font-bold uppercase block">Bulan SAIDI Tertinggi</span>
+            <span className="text-sm font-extrabold text-amber-900">
+              {(() => {
+                if (saidiFiltered.length === 0) return '-';
+                const highest = [...saidiFiltered].sort((a, b) => (b.realisasiSaidi || 0) - (a.realisasiSaidi || 0))[0];
+                return `${highest.bulan} (${highest.realisasiSaidi.toFixed(3)} Jam)`;
+              })()}
+            </span>
+            <span className="text-[10px] text-slate-500 block">Puncak tren gangguan</span>
+          </div>
+        </div>
+
+        {/* Recharts Bar Chart Container */}
+        <div className="h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyChartData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="bulanShort" stroke="#64748b" fontSize={11} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+              <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+              <Tooltip content={<CustomSaidiSaifiTooltip />} />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+
+              {chartMetricMode === 'saidi' && (
+                <>
+                  <Bar
+                    dataKey="targetSaidi"
+                    name="Target SAIDI (Jam)"
+                    fill="#cbd5e1"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="realisasiSaidi"
+                    name="Realisasi SAIDI (Jam)"
+                    fill="#2563eb"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </>
+              )}
+
+              {chartMetricMode === 'saifi' && (
+                <>
+                  <Bar
+                    dataKey="targetSaifi"
+                    name="Target SAIFI (Kali)"
+                    fill="#e2e8f0"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="realisasiSaifi"
+                    name="Realisasi SAIFI (Kali)"
+                    fill="#9333ea"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </>
+              )}
+
+              {chartMetricMode === 'both' && (
+                <>
+                  <Bar
+                    dataKey="realisasiSaidi"
+                    name="Realisasi SAIDI (Jam/Plg)"
+                    fill="#2563eb"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="realisasiSaifi"
+                    name="Realisasi SAIFI (Kali/Plg)"
+                    fill="#9333ea"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </>
+              )}
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

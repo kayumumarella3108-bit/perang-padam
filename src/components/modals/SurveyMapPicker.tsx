@@ -25,6 +25,8 @@ interface SurveyMapPickerProps {
   titikSambungNama?: string;
   penyulang?: string;
   noGardu?: string;
+  fotoBangunan?: string;
+  fotoTitikSambung?: string;
   onChangeCoordinates: (coords: {
     lat?: number;
     lng?: number;
@@ -69,6 +71,8 @@ export const SurveyMapPicker: React.FC<SurveyMapPickerProps> = ({
   titikSambungNama = 'Tiang Sambung TR',
   penyulang,
   noGardu,
+  fotoBangunan,
+  fotoTitikSambung,
   onChangeCoordinates
 }) => {
   // Active target mode: 'bangunan' or 'titik_sambung'
@@ -118,6 +122,35 @@ export const SurveyMapPicker: React.FC<SurveyMapPickerProps> = ({
     if (titikSambungLng !== undefined) setSLng(titikSambungLng);
   }, [bangunanLat, bangunanLng, titikSambungLat, titikSambungLng]);
 
+  // Invalidate Map size on render and resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+
+    const timers = [
+      setTimeout(handleResize, 100),
+      setTimeout(handleResize, 350),
+      setTimeout(handleResize, 700),
+      setTimeout(handleResize, 1200)
+    ];
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (mapContainerRef.current && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, []);
+
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -141,6 +174,11 @@ export const SurveyMapPicker: React.FC<SurveyMapPickerProps> = ({
     tileLayerRef.current = tile;
     layerGroupRef.current = L.featureGroup().addTo(map);
     mapInstanceRef.current = map;
+
+    // Trigger invalidateSize once ready
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
 
     // Handle map click
     map.on('click', (e: L.LeafletMouseEvent) => {

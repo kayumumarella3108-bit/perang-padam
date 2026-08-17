@@ -82,6 +82,17 @@ export interface SectionJaringan {
   penyulangDiSupply: string;
 }
 
+export interface SectionRestoration {
+  id: string;
+  namaSection: string;
+  jumlahPelanggan: number;
+  jamKeluar: string;
+  jamMasuk: string;
+  durasiMenit: number;
+  estimasiSaidiMenit: number;
+  keterangan?: string;
+}
+
 export interface GangguanLog {
   id: string;
   tanggal: string;
@@ -107,6 +118,7 @@ export interface GangguanLog {
   estimasiSaidiMenit?: number;
   estimasiSaidiJam?: number;
   estimasiSaifi?: number;
+  sectionRestorations?: SectionRestoration[];
 }
 
 export interface ROWItem {
@@ -908,15 +920,16 @@ export interface SurveyPbPdItem {
   lng?: number; // Koordinat Bangunan / Lokasi Pelanggan (Longitude)
   titikSambungLat?: number; // Koordinat Titik Sambung / Tiang TR (Latitude)
   titikSambungLng?: number; // Koordinat Titik Sambung / Tiang TR (Longitude)
-  statusKelayakan: 'Layak Sambung' | 'Perlu Sisip Tiang' | 'Perlu Perluasan JTR' | 'Perlu Up-rating Trafo' | 'Drop Tegangan (Tidak Layak)' | 'Menunggu Material' | 'Selesai Penyambungan';
+  statusKelayakan: 'Perlu Survey Lapangan' | 'WO Survey Diterbitkan' | 'Layak Sambung' | 'Perlu Sisip Tiang' | 'Perlu Perluasan JTR' | 'Perlu Up-rating Trafo' | 'Drop Tegangan (Tidak Layak)' | 'Menunggu Material' | 'Selesai Penyambungan' | string;
   petugasSurvey: string; // Surveyor Lapangan
   tanggalSurvey: string; // YYYY-MM-DD
   tanggalPenyambungan?: string; // YYYY-MM-DD
   rekomendasiTeknis?: string;
   catatan?: string;
-  fotoLokasi?: string;
-  fotoPengukuranTegangan?: string;
-  fotoTitikSambung?: string;
+  fotoBangunan?: string; // URL / Base64 foto bangunan / rumah calon pelanggan
+  fotoLokasi?: string; // Alias foto lokasi
+  fotoPengukuranTegangan?: string; // Foto pengukuran multimeter / voltase
+  fotoTitikSambung?: string; // URL / Base64 foto titik sambung / tiang TR / SR
   createdAt?: string;
 }
 

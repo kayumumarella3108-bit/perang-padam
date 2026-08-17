@@ -166,6 +166,42 @@ export const SurveyPbPdMapTab: React.FC<SurveyPbPdMapTabProps> = ({
 
       const bMarker = L.marker([bLat, bLng], { icon: buildingIcon }).addTo(lg);
 
+      const fotoBangunanSrc = item.fotoBangunan || item.fotoLokasi;
+      const fotoTitikSambungSrc = item.fotoTitikSambung;
+
+      bMarker.bindPopup(`
+        <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; max-width: 280px; padding: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px;">
+            <span style="font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor}50;">
+              ${item.jenisTransaksi}
+            </span>
+            <span style="font-size: 10px; font-weight: 700; color: #64748b;">
+              Gardu ${item.noGardu}
+            </span>
+          </div>
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">
+            ${item.namaPelanggan}
+          </div>
+          <div style="font-size: 11px; color: #475569; margin-bottom: 6px;">
+            📍 ${item.lokasi}
+          </div>
+          <div style="font-size: 11px; font-family: monospace; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0; color: #334155; margin-bottom: 6px;">
+            Lat: <strong>${bLat.toFixed(6)}</strong><br/>
+            Lng: <strong>${bLng.toFixed(6)}</strong>
+          </div>
+          ${
+            fotoBangunanSrc
+              ? `<div style="margin-top: 6px; border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1; max-height: 120px;">
+                  <img src="${fotoBangunanSrc}" alt="Foto Bangunan" style="width: 100%; height: 100px; object-fit: cover; display: block;" />
+                </div>`
+              : `<div style="font-size: 10px; color: #94a3b8; font-style: italic;">(Belum ada foto bangunan)</div>`
+          }
+          <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: ${statusColor};">
+            Status: ${item.statusKelayakan}
+          </div>
+        </div>
+      `);
+
       // 2. Tiang Sambung Icon (if sLat & sLng exist)
       if (sLat && sLng) {
         const poleIcon = L.divIcon({
@@ -186,6 +222,31 @@ export const SurveyPbPdMapTab: React.FC<SurveyPbPdMapTabProps> = ({
 
         const pMarker = L.marker([sLat, sLng], { icon: poleIcon }).addTo(lg);
         pMarker.bindTooltip(`⚡ ${item.titikSambung} (Gardu ${item.noGardu})`, { direction: 'top' });
+
+        pMarker.bindPopup(`
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; max-width: 280px; padding: 2px;">
+            <div style="display: flex; align-items: center; gap: 4px; color: #b45309; font-weight: 800; font-size: 11px; margin-bottom: 4px;">
+              ⚡ TITIK SAMBUNG (TIANG JTR)
+            </div>
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+              ${item.titikSambung}
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+              Gardu: <strong>${item.noGardu}</strong> | Penyulang: <strong>${item.penyulang}</strong>
+            </div>
+            <div style="font-size: 11px; font-family: monospace; background: #fffbeb; padding: 4px 6px; border-radius: 6px; border: 1px solid #fde68a; color: #92400e; margin-bottom: 6px;">
+              Lat: <strong>${sLat.toFixed(6)}</strong><br/>
+              Lng: <strong>${sLng.toFixed(6)}</strong>
+            </div>
+            ${
+              fotoTitikSambungSrc
+                ? `<div style="margin-top: 6px; border-radius: 8px; overflow: hidden; border: 1px solid #fde68a; max-height: 120px;">
+                    <img src="${fotoTitikSambungSrc}" alt="Foto Titik Sambung" style="width: 100%; height: 100px; object-fit: cover; display: block;" />
+                  </div>`
+                : `<div style="font-size: 10px; color: #94a3b8; font-style: italic;">(Belum ada foto titik sambung)</div>`
+            }
+          </div>
+        `);
 
         // 3. Connect with SR Line
         const srLine = L.polyline(

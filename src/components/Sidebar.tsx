@@ -37,7 +37,7 @@ import {
   BatteryCharging
 } from 'lucide-react';
 import { ViewType, User } from '../types';
-import { canManageUsers } from '../utils/permissions';
+import { canManageUsers, isPemasaranUser } from '../utils/permissions';
 import { SocialContacts } from './SocialContacts';
 
 interface SidebarProps {
@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const [masterAsetOpen, setMasterAsetOpen] = useState(
-    ['master_data', 'aset_jaringan', 'topologi_jaringan'].includes(activeView)
+    ['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView)
   );
 
   const [saidiSaifiOpen, setSaidiSaifiOpen] = useState(
@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (['perintah_kerja', 'format_surat'].includes(activeView)) {
       setSuratSpkOpen(true);
     }
-    if (['master_data', 'aset_jaringan', 'topologi_jaringan'].includes(activeView)) {
+    if (['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView)) {
       setMasterAsetOpen(true);
     }
     if (['saidi_saifi', 'estimasi_saidi_saifi'].includes(activeView)) {
@@ -105,9 +105,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isPetaActive = ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView);
   const isPemeliharaanActive = ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView);
   const isSuratSpkActive = ['perintah_kerja', 'format_surat'].includes(activeView);
-  const isMasterAsetActive = ['master_data', 'aset_jaringan', 'topologi_jaringan'].includes(activeView);
+  const isMasterAsetActive = ['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView);
   const isSaidiSaifiActive = ['saidi_saifi', 'estimasi_saidi_saifi'].includes(activeView);
   const isMonitoringYantekActive = ['alker_apd', 'material', 'jadwal_piket', 'kendaraan_operasional'].includes(activeView);
+
+  const isPemasaran = isPemasaranUser(currentUser);
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 h-[calc(100vh-4rem)] text-slate-300 font-sans z-20 select-none overflow-y-auto">
@@ -115,14 +117,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Section Header */}
         <div className="flex items-center justify-between px-3 pt-2 pb-1">
           <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-blue-400" />
-            MENU SYSTEM
+            <Sparkles className="w-3 h-3 text-amber-400" />
+            {isPemasaran ? 'MENU PEMASARAN' : 'MENU SYSTEM'}
           </span>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
 
-        {/* Navigation List */}
-        <nav className="space-y-1.5">
+        {/* RESTRICTED VIEW FOR BAGIAN PEMASARAN */}
+        {isPemasaran ? (
+          <div className="space-y-3">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-[11px] font-semibold space-y-1">
+              <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px] text-amber-400">
+                <Zap className="w-3.5 h-3.5" />
+                Akses Khusus Pemasaran
+              </div>
+              <p className="text-[10px] text-slate-300 leading-snug">
+                Akun Bagian Pemasaran difokuskan untuk menginput & memantau WO Survey Permohonan PB/PD.
+              </p>
+            </div>
+
+            <nav className="space-y-2">
+              <button
+                onClick={() => onSelectView('survey_pb_pd')}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-extrabold transition-all text-left cursor-pointer ${
+                  activeView === 'survey_pb_pd'
+                    ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg shrink-0">
+                    <Zap className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold text-amber-300">Permohonan & WO Survey</div>
+                    <div className="text-[10px] text-slate-400 font-medium">Input WO PB/PD Baru</div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[9px] font-black uppercase">
+                  PB/PD
+                </span>
+              </button>
+            </nav>
+          </div>
+        ) : (
+          /* FULL NAVIGATION FOR TEKNIK / KOORDINATOR / TE / OTHERS */
+          <nav className="space-y-1.5">
           {/* 1. Dashboard Utama */}
           <button
             onClick={() => onSelectView('dashboard')}
@@ -265,6 +305,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <GitGraph className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span>Topologi Jaringan Feeder</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectView('sld_visio')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                    activeView === 'sld_visio'
+                      ? 'bg-purple-600/20 text-purple-300 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Single Line Diagram (Visio)</span>
                 </button>
               </div>
             )}
@@ -716,6 +768,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })()}
         </nav>
+        )}
 
         {/* Developer & Admin Social Contact Footer */}
         <div className="mt-6 pt-4 border-t border-slate-800/80 px-2">

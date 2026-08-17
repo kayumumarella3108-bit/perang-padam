@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter, Camera, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
-import { GangguanLog, Penyulang, SectionJaringan } from '../../types';
+import { X, Zap, Calendar, Clock, AlertTriangle, Users, Calculator, ListFilter, Camera, Upload, Trash2, Image as ImageIcon, Plus, RefreshCw, Check, Layers } from 'lucide-react';
+import { GangguanLog, Penyulang, SectionJaringan, SectionRestoration } from '../../types';
 
 interface InputGangguanModalProps {
   isOpen: boolean;
@@ -64,6 +64,35 @@ const STANDARD_PENYEBAB_MAP: Record<string, string[]> = {
   ]
 };
 
+// Helper for parsing time difference in minutes
+const calcMinDiff = (outTime: string, inTime: string): number => {
+  if (!outTime || !inTime) return 0;
+  try {
+    const [hOut, mOut] = outTime.split(':').map(Number);
+    const [hIn, mIn] = inTime.split(':').map(Number);
+    let diffMinutes = (hIn * 60 + mIn) - (hOut * 60 + mOut);
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // handles overnight
+    return isNaN(diffMinutes) ? 0 : diffMinutes;
+  } catch {
+    return 0;
+  }
+};
+
+// Helper for adding minutes to a time string (HH:MM)
+const addMinutesToTime = (timeStr: string, minutesToAdd: number): string => {
+  if (!timeStr) return '08:00';
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    let totalMin = h * 60 + m + minutesToAdd;
+    totalMin = (totalMin + 24 * 60) % (24 * 60);
+    const newH = Math.floor(totalMin / 60);
+    const newM = totalMin % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+  } catch {
+    return timeStr;
+  }
+};
+
 export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   isOpen,
   onClose,
@@ -75,10 +104,10 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
 }) => {
   const [tanggal, setTanggal] = useState('2026-08-08');
   const [penyulangId, setPenyulangId] = useState(initialPenyulangId || penyulangList[0]?.id || '17');
-  const [section, setSection] = useState('');
   const [jamKeluar, setJamKeluar] = useState('08:00');
   const [jamMasuk, setJamMasuk] = useState('09:30');
   const [relayBekerja, setRelayBekerja] = useState('OCR / GFR / RECLOSER');
+  
   const [arusR, setArusR] = useState<number | string>(150);
   const [satuanR, setSatuanR] = useState<'A' | 'kA'>('A');
 
@@ -96,6 +125,13 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   const [detailLokasi, setDetailLokasi] = useState('e.g. Tiang BG-45 s/d BG-52 Jl. Laterhairy');
   const [catatan, setCatatan] = useState('Keterangan tindakan penanganan gangguan...');
   const [fotoPenyebab, setFotoPenyebab] = useState<string>('');
+
+  // SAIDI SAIFI estimation inputs
+  const [totalPelangganUlp, setTotalPelangganUlp] = useState<number>(48524);
+
+  // Per-Section Restorations List
+  const [sectionRestorations, setSectionRestorations] = useState<SectionRestoration[]>([]);
+  const [useMultiSection, setUseMultiSection] = useState<boolean>(true);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,25 +152,32 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
     }
   };
 
-  // SAIDI SAIFI estimation inputs
-  const [jumlahPelangganPadam, setJumlahPelangganPadam] = useState<number>(2450);
-  const [totalPelangganUlp, setTotalPelangganUlp] = useState<number>(48524);
-
-  // Derive master data calculations
+  // Derive master data calculations for the selected Penyulang
   const selectedPenyulang = penyulangList.find((p) => p.id === penyulangId);
-  const availableSections = sectionList.filter((s) => s.penyulangId === penyulangId || s.namaPenyulang?.toLowerCase() === selectedPenyulang?.namaPenyulang?.toLowerCase());
+  const availableSections = useMemo(() => {
+    if (!selectedPenyulang) return [];
+    return sectionList.filter(
+      (s) =>
+        s.penyulangId === penyulangId ||
+        (s.namaPenyulang &&
+          selectedPenyulang.namaPenyulang &&
+          s.namaPenyulang.toLowerCase().trim() === selectedPenyulang.namaPenyulang.toLowerCase().trim())
+    );
+  }, [sectionList, penyulangId, selectedPenyulang]);
 
-  // Calculate total customers for current feeder from section or feeder master data
-  const feederSectionsCustomerSum = availableSections.reduce(
-    (sum, sec) => sum + (sec.jumlahPelanggan || 0),
-    0
-  );
-  const feederTotalCustomers =
-    selectedPenyulang?.jumlahPelanggan && selectedPenyulang.jumlahPelanggan > 0
-      ? selectedPenyulang.jumlahPelanggan
-      : feederSectionsCustomerSum;
+  // Calculate total customers for current feeder from section master data
+  const feederSectionsCustomerSum = useMemo(() => {
+    return availableSections.reduce((sum, sec) => sum + (sec.jumlahPelanggan || 0), 0);
+  }, [availableSections]);
 
-  // Calculate total ULP customers from all penyulangs and sections in Master Data
+  const feederTotalCustomers = useMemo(() => {
+    if (selectedPenyulang?.jumlahPelanggan && selectedPenyulang.jumlahPelanggan > 0) {
+      return selectedPenyulang.jumlahPelanggan;
+    }
+    return feederSectionsCustomerSum > 0 ? feederSectionsCustomerSum : 3354;
+  }, [selectedPenyulang, feederSectionsCustomerSum]);
+
+  // Total ULP Customers from Master Data
   const masterDataTotalUlp = useMemo(() => {
     const sumFromPenyulangs = penyulangList.reduce((acc, p) => {
       const fSections = sectionList.filter(
@@ -151,67 +194,56 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       (sum, sec) => sum + (sec.jumlahPelanggan || 0),
       0
     );
-    return sumFromSections > 0 ? sumFromSections : 91740;
+    return sumFromSections > 0 ? sumFromSections : 69481;
   }, [penyulangList, sectionList]);
 
   const safeMasterUlp = masterDataTotalUlp;
+  const currentSafeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : safeMasterUlp;
 
+  // Sync sections when penyulang or editItem changes
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editItem) {
       setTanggal(editItem.tanggal || '2026-08-08');
       setPenyulangId(editItem.penyulangId || penyulangList[0]?.id || '17');
-      setSection(editItem.section || '');
       setJamKeluar(editItem.jamKeluar || '08:00');
       setJamMasuk(editItem.jamMasuk || '09:30');
       setRelayBekerja(editItem.relayBekerja || 'OCR');
 
       const valR = editItem.arusR || 0;
-      if (valR > 0 && valR < 50) {
-        setArusR(valR);
-        setSatuanR('kA');
-      } else {
-        setArusR(valR);
-        setSatuanR('A');
-      }
+      setArusR(valR);
+      setSatuanR(valR > 0 && valR < 50 ? 'kA' : 'A');
 
       const valS = editItem.arusS || 0;
-      if (valS > 0 && valS < 50) {
-        setArusS(valS);
-        setSatuanS('kA');
-      } else {
-        setArusS(valS);
-        setSatuanS('A');
-      }
+      setArusS(valS);
+      setSatuanS(valS > 0 && valS < 50 ? 'kA' : 'A');
 
       const valT = editItem.arusT || 0;
-      if (valT > 0 && valT < 50) {
-        setArusT(valT);
-        setSatuanT('kA');
-      } else {
-        setArusT(valT);
-        setSatuanT('A');
-      }
+      setArusT(valT);
+      setSatuanT(valT > 0 && valT < 50 ? 'kA' : 'A');
 
       const valIN = editItem.arusIN || 0;
-      if (valIN > 0 && valIN < 50) {
-        setArusIN(valIN);
-        setSatuanIN('kA');
-      } else {
-        setArusIN(valIN);
-        setSatuanIN('A');
-      }
+      setArusIN(valIN);
+      setSatuanIN(valIN > 0 && valIN < 50 ? 'kA' : 'A');
 
       setPenyebab(editItem.penyebab || '');
       setKodeGangguan(editItem.kodeGangguan || 'E-3');
       setDetailLokasi(editItem.detailLokasi || '');
       setCatatan(editItem.catatan || '');
       setFotoPenyebab(editItem.fotoPenyebab || '');
-      setJumlahPelangganPadam(editItem.jumlahPelangganPadam || feederTotalCustomers);
       setTotalPelangganUlp(editItem.totalPelangganUlp || safeMasterUlp);
+
+      if (editItem.sectionRestorations && editItem.sectionRestorations.length > 0) {
+        setSectionRestorations(editItem.sectionRestorations);
+        setUseMultiSection(true);
+      } else {
+        // Build section restorations from master data or single section
+        initSectionRestorations(editItem.jamKeluar || '08:00', editItem.jamMasuk || '09:30', editItem.section);
+      }
     } else {
       setTanggal('2026-08-08');
       setPenyulangId(initialPenyulangId || penyulangList[0]?.id || '17');
-      setSection('');
       setJamKeluar('08:00');
       setJamMasuk('09:30');
       setRelayBekerja('OCR / GFR / RECLOSER');
@@ -229,22 +261,242 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       setCatatan('Keterangan tindakan penanganan gangguan...');
       setFotoPenyebab('');
       setTotalPelangganUlp(safeMasterUlp);
+
+      initSectionRestorations('08:00', '09:30', undefined);
     }
   }, [editItem, isOpen, initialPenyulangId]);
 
-  const isSectionFromGi = (sectionStr: string): boolean => {
-    if (!sectionStr) return false;
-    const s = String(sectionStr).trim().toUpperCase();
-    return (
-      s.startsWith('GI') ||
-      s.startsWith('GIS') ||
-      s.startsWith('G.I') ||
-      s.startsWith('PMT') ||
-      s.startsWith('GARDU INDUK') ||
-      /\bGI\b/.test(s) ||
-      /\bGIS\b/.test(s)
+  // Helper to initialize section restoration list from Master Data
+  const initSectionRestorations = (defaultOut: string, defaultIn: string, customSectionName?: string) => {
+    if (availableSections.length > 0) {
+      const initialSecs: SectionRestoration[] = availableSections.map((sec, idx) => {
+        const dur = calcMinDiff(defaultOut, defaultIn);
+        const plg = sec.jumlahPelanggan || 0;
+        return {
+          id: sec.id || `sec_${idx}_${Date.now()}`,
+          sectionId: sec.id,
+          namaSection: sec.namaSection,
+          jumlahPelanggan: plg,
+          jamKeluar: defaultOut,
+          jamMasuk: defaultIn,
+          durasiMenit: dur,
+          estimasiSaidiMenit: currentSafeUlp > 0 ? (plg * dur) / currentSafeUlp : 0,
+          estimasiSaifi: currentSafeUlp > 0 ? plg / currentSafeUlp : 0
+        };
+      });
+      setSectionRestorations(initialSecs);
+      setUseMultiSection(true);
+    } else {
+      // Single fallback section if no master sections found
+      const defaultSecName = customSectionName || selectedPenyulang?.sectionTerlama || `${selectedPenyulang?.namaPenyulang || 'Feeder'} - Main Section`;
+      const dur = calcMinDiff(defaultOut, defaultIn);
+      const plg = feederTotalCustomers;
+      setSectionRestorations([
+        {
+          id: `sec_0_${Date.now()}`,
+          namaSection: defaultSecName,
+          jumlahPelanggan: plg,
+          jamKeluar: defaultOut,
+          jamMasuk: defaultIn,
+          durasiMenit: dur,
+          estimasiSaidiMenit: currentSafeUlp > 0 ? (plg * dur) / currentSafeUlp : 0,
+          estimasiSaifi: currentSafeUlp > 0 ? plg / currentSafeUlp : 0
+        }
+      ]);
+      setUseMultiSection(false);
+    }
+  };
+
+  // Re-sync sections when penyulang selection changes manually
+  const handlePenyulangChange = (newPenyulangId: string) => {
+    setPenyulangId(newPenyulangId);
+    const newSelectedPenyulang = penyulangList.find((p) => p.id === newPenyulangId);
+    const newMasterSections = sectionList.filter(
+      (s) =>
+        s.penyulangId === newPenyulangId ||
+        (s.namaPenyulang &&
+          newSelectedPenyulang?.namaPenyulang &&
+          s.namaPenyulang.toLowerCase().trim() === newSelectedPenyulang.namaPenyulang.toLowerCase().trim())
+    );
+
+    if (newMasterSections.length > 0) {
+      const newSecs: SectionRestoration[] = newMasterSections.map((sec, idx) => {
+        const dur = calcMinDiff(jamKeluar, jamMasuk);
+        const plg = sec.jumlahPelanggan || 0;
+        return {
+          id: sec.id || `sec_${idx}_${Date.now()}`,
+          sectionId: sec.id,
+          namaSection: sec.namaSection,
+          jumlahPelanggan: plg,
+          jamKeluar,
+          jamMasuk,
+          durasiMenit: dur,
+          estimasiSaidiMenit: currentSafeUlp > 0 ? (plg * dur) / currentSafeUlp : 0,
+          estimasiSaifi: currentSafeUlp > 0 ? plg / currentSafeUlp : 0
+        };
+      });
+      setSectionRestorations(newSecs);
+      setUseMultiSection(true);
+    } else {
+      const plg = newSelectedPenyulang?.jumlahPelanggan || 3354;
+      setSectionRestorations([
+        {
+          id: `sec_0_${Date.now()}`,
+          namaSection: `${newSelectedPenyulang?.namaPenyulang || 'Feeder'} - Main Section`,
+          jumlahPelanggan: plg,
+          jamKeluar,
+          jamMasuk,
+          durasiMenit: calcMinDiff(jamKeluar, jamMasuk),
+          estimasiSaidiMenit: currentSafeUlp > 0 ? (plg * calcMinDiff(jamKeluar, jamMasuk)) / currentSafeUlp : 0,
+          estimasiSaifi: currentSafeUlp > 0 ? plg / currentSafeUlp : 0
+        }
+      ]);
+      setUseMultiSection(false);
+    }
+  };
+
+  // Update a specific section item
+  const updateSectionItem = (index: number, field: keyof SectionRestoration, val: any) => {
+    setSectionRestorations((prev) => {
+      const next = [...prev];
+      const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : safeMasterUlp;
+
+      if (index === 0 && field === 'jamKeluar') {
+        // Changing Jam Lepas on section 1 propagates to ALL sections
+        setJamKeluar(val);
+        return next.map((sec) => {
+          const dur = calcMinDiff(val, sec.jamMasuk);
+          return {
+            ...sec,
+            jamKeluar: val,
+            durasiMenit: dur,
+            estimasiSaidiMenit: safeUlp > 0 ? (sec.jumlahPelanggan * dur) / safeUlp : 0,
+            estimasiSaifi: safeUlp > 0 ? sec.jumlahPelanggan / safeUlp : 0
+          };
+        });
+      }
+
+      const tripTime = next[0]?.jamKeluar || jamKeluar;
+      const item = { ...next[index], [field]: val };
+      if (index > 0) {
+        item.jamKeluar = tripTime;
+      }
+      const dur = calcMinDiff(item.jamKeluar, item.jamMasuk);
+      item.durasiMenit = dur;
+      item.estimasiSaidiMenit = safeUlp > 0 ? (item.jumlahPelanggan * dur) / safeUlp : 0;
+      item.estimasiSaifi = safeUlp > 0 ? item.jumlahPelanggan / safeUlp : 0;
+      next[index] = item;
+      return next;
+    });
+  };
+
+  // Sync global header Jam Keluar & Jam Masuk to all sections
+  const syncGlobalTimeToAllSections = (newOut?: string, newIn?: string) => {
+    const outT = newOut !== undefined ? newOut : jamKeluar;
+    const inT = newIn !== undefined ? newIn : jamMasuk;
+    
+    if (newOut !== undefined) setJamKeluar(newOut);
+    if (newIn !== undefined) setJamMasuk(newIn);
+
+    setSectionRestorations((prev) =>
+      prev.map((sec) => {
+        const dur = calcMinDiff(outT, inT);
+        const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : safeMasterUlp;
+        return {
+          ...sec,
+          jamKeluar: outT,
+          jamMasuk: inT,
+          durasiMenit: dur,
+          estimasiSaidiMenit: safeUlp > 0 ? (sec.jumlahPelanggan * dur) / safeUlp : 0,
+          estimasiSaifi: safeUlp > 0 ? sec.jumlahPelanggan / safeUlp : 0
+        };
+      })
     );
   };
+
+  // Apply incremental / staggered restoration (Penormalan Bertahap +30m)
+  const applyStaggeredRestoration = (stepMinutes: number = 30) => {
+    setSectionRestorations((prev) =>
+      prev.map((sec, idx) => {
+        const newIn = addMinutesToTime(jamMasuk, idx * stepMinutes);
+        const dur = calcMinDiff(sec.jamKeluar, newIn);
+        const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : safeMasterUlp;
+        return {
+          ...sec,
+          jamMasuk: newIn,
+          durasiMenit: dur,
+          estimasiSaidiMenit: safeUlp > 0 ? (sec.jumlahPelanggan * dur) / safeUlp : 0,
+          estimasiSaifi: safeUlp > 0 ? sec.jumlahPelanggan / safeUlp : 0
+        };
+      })
+    );
+  };
+
+  // Add custom section item
+  const addSectionItem = () => {
+    const newIdx = sectionRestorations.length + 1;
+    const plg = 1000;
+    const dur = calcMinDiff(jamKeluar, jamMasuk);
+    setSectionRestorations((prev) => [
+      ...prev,
+      {
+        id: `sec_${Date.now()}_${Math.random()}`,
+        namaSection: `Section ${newIdx}`,
+        jumlahPelanggan: plg,
+        jamKeluar,
+        jamMasuk,
+        durasiMenit: dur,
+        estimasiSaidiMenit: currentSafeUlp > 0 ? (plg * dur) / currentSafeUlp : 0,
+        estimasiSaifi: currentSafeUlp > 0 ? plg / currentSafeUlp : 0
+      }
+    ]);
+  };
+
+  // Remove section item
+  const removeSectionItem = (index: number) => {
+    if (sectionRestorations.length <= 1) {
+      alert('Minimal harus ada 1 Section Jaringan.');
+      return;
+    }
+    setSectionRestorations((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // AGGREGATE CALCULATIONS FROM SECTIONS
+  const aggregateMetrics = useMemo(() => {
+    const totalPadam = sectionRestorations.reduce((acc, s) => acc + (Number(s.jumlahPelanggan) || 0), 0);
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : safeMasterUlp;
+
+    const totalSaidiMenit = sectionRestorations.reduce((acc, s) => {
+      const dur = calcMinDiff(s.jamKeluar, s.jamMasuk);
+      return acc + (safeUlp > 0 ? ((Number(s.jumlahPelanggan) || 0) * dur) / safeUlp : 0);
+    }, 0);
+
+    const totalSaifi = sectionRestorations.reduce((acc, s) => {
+      return acc + (safeUlp > 0 ? (Number(s.jumlahPelanggan) || 0) / safeUlp : 0);
+    }, 0);
+
+    const totalSaidiJam = totalSaidiMenit / 60;
+
+    // Earliest out & latest in
+    let minOut = jamKeluar;
+    let maxIn = jamMasuk;
+    if (sectionRestorations.length > 0) {
+      minOut = sectionRestorations[0].jamKeluar || jamKeluar;
+      maxIn = sectionRestorations[sectionRestorations.length - 1].jamMasuk || jamMasuk;
+    }
+
+    const sectionSummaryNames = sectionRestorations.map((s) => s.namaSection).filter(Boolean).join(', ');
+
+    return {
+      totalPadam,
+      totalSaidiMenit,
+      totalSaidiJam,
+      totalSaifi,
+      minOut,
+      maxIn,
+      sectionSummaryNames
+    };
+  }, [sectionRestorations, totalPelangganUlp, safeMasterUlp, jamKeluar, jamMasuk]);
 
   const parseArusValue = (val: string | number): number => {
     if (val === null || val === undefined || val === '') return 0;
@@ -275,49 +527,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
     }
   };
 
-  // Sync customer count dynamically when Penyulang or Section changes
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (section && section.trim() !== '') {
-      const matchedSec = availableSections.find(
-        (s) => s.namaSection && section && s.namaSection.toLowerCase() === section.toLowerCase()
-      );
-      if (matchedSec && matchedSec.jumlahPelanggan) {
-        setJumlahPelangganPadam(matchedSec.jumlahPelanggan);
-      } else {
-        // Fallback or user custom section
-      }
-    } else {
-      // If section is blank or Pangkal / Whole feeder selected -> default to feeder total
-      setJumlahPelangganPadam(feederTotalCustomers);
-    }
-  }, [section, penyulangId, isOpen, feederTotalCustomers]);
-
   if (!isOpen) return null;
-
-  // Calculate duration in minutes and format string
-  const calculateDurationMinutes = (): number => {
-    try {
-      const [hOut, mOut] = jamKeluar.split(':').map(Number);
-      const [hIn, mIn] = jamMasuk.split(':').map(Number);
-      let diffMinutes = (hIn * 60 + mIn) - (hOut * 60 + mOut);
-      if (diffMinutes < 0) diffMinutes += 24 * 60;
-      return diffMinutes;
-    } catch {
-      return 90;
-    }
-  };
-
-  const durasiMenit = calculateDurationMinutes();
-  const durasiHours = durasiMenit / 60;
-  const durasiCalculated = `${Math.floor(durasiMenit / 60)}j ${durasiMenit % 60}m`;
-
-  // Calculate SAIDI and SAIFI estimates for this event
-  const safeTotalUlp = totalPelangganUlp > 0 ? totalPelangganUlp : 48500;
-  const estimasiSaifi = jumlahPelangganPadam / safeTotalUlp; // Kali / Plg
-  const estimasiSaidiMenit = (jumlahPelangganPadam * durasiMenit) / safeTotalUlp; // Menit / Plg
-  const estimasiSaidiJam = estimasiSaidiMenit / 60; // Jam / Plg
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,15 +543,23 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
     const calculatedArusT = satuanT === 'kA' ? valT * 1000 : valT;
     const calculatedArusIN = satuanIN === 'kA' ? valIN * 1000 : valIN;
 
+    const overallSectionName =
+      sectionRestorations.length > 1
+        ? `${sectionRestorations[0]?.namaSection || 'Section 1'} - ${sectionRestorations[sectionRestorations.length - 1]?.namaSection || 'Ujung'} (${sectionRestorations.length} Section)`
+        : sectionRestorations[0]?.namaSection || selectedPenyulang.sectionTerlama || 'GH Asten - Ujung Jaringan';
+
+    const maxDurationMin = calcMinDiff(aggregateMetrics.minOut, aggregateMetrics.maxIn);
+    const overallDurasiStr = `${Math.floor(maxDurationMin / 60)}j ${maxDurationMin % 60}m`;
+
     const newLog: GangguanLog = {
       id: editItem ? editItem.id : `g_${Date.now()}`,
       tanggal,
       penyulangId,
       namaPenyulang: selectedPenyulang.namaPenyulang,
-      section: section || selectedPenyulang.sectionTerlama || 'GH Asten - Ujung Jaringan',
-      jamKeluar,
-      jamMasuk,
-      durasi: durasiCalculated,
+      section: overallSectionName,
+      jamKeluar: aggregateMetrics.minOut,
+      jamMasuk: aggregateMetrics.maxIn,
+      durasi: overallDurasiStr,
       relayBekerja,
       arusR: calculatedArusR || 0,
       arusS: calculatedArusS || 0,
@@ -353,11 +571,13 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
       catatan,
       fotoPenyebab: fotoPenyebab || undefined,
       // SAIDI SAIFI calculation values
-      jumlahPelangganPadam: Number(jumlahPelangganPadam) || 0,
-      totalPelangganUlp: Number(safeTotalUlp),
-      estimasiSaidiMenit: Number(estimasiSaidiMenit.toFixed(4)),
-      estimasiSaidiJam: Number(estimasiSaidiJam.toFixed(5)),
-      estimasiSaifi: Number(estimasiSaifi.toFixed(5))
+      jumlahPelangganPadam: Number(aggregateMetrics.totalPadam) || 0,
+      totalPelangganUlp: Number(currentSafeUlp),
+      estimasiSaidiMenit: Number(aggregateMetrics.totalSaidiMenit.toFixed(4)),
+      estimasiSaidiJam: Number(aggregateMetrics.totalSaidiJam.toFixed(5)),
+      estimasiSaifi: Number(aggregateMetrics.totalSaifi.toFixed(5)),
+      // Section restorations breakdown
+      sectionRestorations
     };
 
     onSave(newLog);
@@ -365,21 +585,26 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-12 bg-slate-950/70 backdrop-blur-md font-sans overflow-y-auto">
-      <div className="relative w-full max-w-lg max-h-[85vh] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-800 flex flex-col my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-10 bg-slate-950/75 backdrop-blur-md font-sans overflow-y-auto">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-800 flex flex-col my-auto">
         
         {/* Modal Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600">
-              <Zap className="w-5 h-5 fill-rose-600" />
+              <Zap className="w-5 h-5 fill-rose-600 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 leading-tight">
-                Input Gangguan Penyulang
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                  Input Gangguan Penyulang
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                  Penormalan Per Section
+                </span>
+              </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Ekosistem gangguan trip & kalkulasi estimasi SAIDI SAIFI section
+                Input jam lepas & penormalan per section tersinkron Master Data Section & SAIDI SAIFI
               </p>
             </div>
           </div>
@@ -393,12 +618,12 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
 
         {/* Form Body - Scrollable */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4 text-xs pr-1">
-          {/* Tanggal Gangguan */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Tanggal Gangguan *
-            </label>
-            <div className="relative">
+          {/* Tanggal & Penyulang Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Tanggal Gangguan *
+              </label>
               <input
                 type="date"
                 value={tanggal}
@@ -407,99 +632,202 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
               />
             </div>
-          </div>
 
-          {/* Nama Penyulang */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Nama Penyulang (Master Data) *
-            </label>
-            <select
-              value={penyulangId}
-              onChange={(e) => {
-                setPenyulangId(e.target.value);
-                setSection('');
-              }}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer"
-            >
-              {penyulangList.map((p) => (
-                <option key={p.id} value={p.id} className="bg-white">
-                  {p.namaPenyulang} ({p.namaGi})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Section Jaringan */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Section Jaringan Padam (Master Data)
-            </label>
-            {availableSections.length > 0 ? (
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Nama Penyulang (Master Data) *
+              </label>
               <select
-                value={section}
-                onChange={(e) => {
-                  const secVal = e.target.value;
-                  setSection(secVal);
-                  const matched = availableSections.find((s) => s.namaSection === secVal);
-                  if (matched && matched.jumlahPelanggan) {
-                    setJumlahPelangganPadam(matched.jumlahPelanggan);
-                  }
-                }}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium cursor-pointer mb-2"
+                value={penyulangId}
+                onChange={(e) => handlePenyulangChange(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-extrabold cursor-pointer text-blue-900"
               >
-                <option value="" className="bg-white">-- Pilih Section --</option>
-                {availableSections.map((s) => (
-                  <option key={s.id} value={s.namaSection} className="bg-white">
-                    {s.namaSection} ({s.jumlahPelanggan?.toLocaleString('id-ID') || 0} Plg)
+                {penyulangList.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-white">
+                    Penyulang {p.namaPenyulang} ({p.namaGi}) • {p.jumlahPelanggan?.toLocaleString('id-ID') || 0} Plg
                   </option>
                 ))}
               </select>
-            ) : null}
-            <input
-              type="text"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-              placeholder="Atau ketik nama section..."
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-            />
-            {section && isSectionFromGi(section) && (
-              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200/80 rounded-lg text-blue-700 text-[10px] font-extrabold">
-                <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span>Section berasal dari GI (Otomatis masuk Kategori Trip Pangkal)</span>
+            </div>
+          </div>
+
+
+          {/* SECTION RESTORATION TABLE CARD (INPUT PER SECTION) */}
+          <div className="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span className="font-extrabold text-xs text-amber-300 uppercase tracking-wider">
+                  Penormalan Section Jaringan (Master Data)
+                </span>
+                <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] border border-amber-500/30">
+                  {sectionRestorations.length} Section
+                </span>
               </div>
-            )}
+
+              {/* Quick Action Buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => applyStaggeredRestoration(30)}
+                  className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                  title="Otomatis tambah +30 menit jam masuk tiap section (Penormalan Bertahap)"
+                >
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span>Bertahap (+30m)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePenyulangChange(penyulangId)}
+                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                  title="Sync ulang daftar section dari Master Data"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reset Master</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addSectionItem}
+                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ Section</span>
+                </button>
+              </div>
+            </div>
+
+            {/* List of Section Restoration Items */}
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+              {sectionRestorations.map((sec, idx) => {
+                const durMin = calcMinDiff(sec.jamKeluar, sec.jamMasuk);
+                const isMatchMaster = availableSections.some((s) => s.namaSection === sec.namaSection);
+
+                return (
+                  <div
+                    key={sec.id || idx}
+                    className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-2 transition-all hover:border-slate-700"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-extrabold flex items-center justify-center shrink-0 border border-amber-500/30">
+                          {idx + 1}
+                        </span>
+
+                        {/* Section Name Dropdown or Input */}
+                        {availableSections.length > 0 ? (
+                          <select
+                            value={sec.namaSection}
+                            onChange={(e) => {
+                              const selectedSecName = e.target.value;
+                              const matchSec = availableSections.find((s) => s.namaSection === selectedSecName);
+                              updateSectionItem(idx, 'namaSection', selectedSecName);
+                              if (matchSec && matchSec.jumlahPelanggan) {
+                                updateSectionItem(idx, 'jumlahPelanggan', matchSec.jumlahPelanggan);
+                              }
+                            }}
+                            className="bg-slate-900 border border-slate-700 text-amber-300 font-extrabold text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500 truncate flex-1"
+                          >
+                            <option value={sec.namaSection}>{sec.namaSection}</option>
+                            {availableSections.map((s) => (
+                              <option key={s.id} value={s.namaSection}>
+                                {s.namaSection} ({s.jumlahPelanggan?.toLocaleString('id-ID') || 0} Plg)
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={sec.namaSection}
+                            onChange={(e) => updateSectionItem(idx, 'namaSection', e.target.value)}
+                            placeholder="Nama Section..."
+                            className="bg-slate-900 border border-slate-700 text-amber-300 font-bold text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500 flex-1 min-w-0"
+                          />
+                        )}
+
+                        {isMatchMaster && (
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded shrink-0">
+                            Master
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeSectionItem(idx)}
+                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded cursor-pointer transition-colors shrink-0"
+                        title="Hapus section ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Customer count & Section Times */}
+                    <div className={`grid gap-2 items-center text-[11px] ${idx === 0 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                      {/* Jumlah Pelanggan Section */}
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Pelanggan Section</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={sec.jumlahPelanggan}
+                            onChange={(e) => updateSectionItem(idx, 'jumlahPelanggan', Number(e.target.value))}
+                            min={0}
+                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono font-bold focus:outline-none focus:border-blue-400 text-xs"
+                          />
+                          <span className="text-[10px] text-slate-400">Plg</span>
+                        </div>
+                      </div>
+
+                      {/* Jam Keluar Section - Hanya di Section Pertama */}
+                      {idx === 0 && (
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">Jam Lepas</label>
+                          <input
+                            type="time"
+                            value={sec.jamKeluar}
+                            onChange={(e) => updateSectionItem(idx, 'jamKeluar', e.target.value)}
+                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-amber-200 font-mono font-bold focus:outline-none focus:border-amber-500 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      {/* Jam Masuk Section */}
+                      <div>
+                        <label className="text-[10px] text-emerald-400 font-bold block mb-0.5">Jam Masuk (Normal)</label>
+                        <input
+                          type="time"
+                          value={sec.jamMasuk}
+                          onChange={(e) => updateSectionItem(idx, 'jamMasuk', e.target.value)}
+                          className="w-full px-2 py-1 bg-emerald-950/70 border border-emerald-600/70 rounded-lg text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400 text-xs shadow-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Realtime Duration & SAIDI Contribution for this section */}
+                    <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-800/80 text-slate-400">
+                      <span className="flex items-center gap-1 text-slate-300">
+                        <span>Durasi Section:</span>
+                        <strong className="text-emerald-300 font-mono">{Math.floor(durMin / 60)}j {durMin % 60}m ({durMin}m)</strong>
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-blue-300 font-mono">
+                          SAIDI: <strong>{((sec.jumlahPelanggan * durMin) / currentSafeUlp).toFixed(3)}</strong> m/plg
+                        </span>
+                        <span className="text-purple-300 font-mono">
+                          SAIFI: <strong>{(sec.jumlahPelanggan / currentSafeUlp).toFixed(4)}</strong> k/plg
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Jam Keluar, Jam Masuk, Durasi */}
-          <div className="grid grid-cols-3 gap-2 items-end">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Jam Keluar</label>
-              <input
-                type="time"
-                value={jamKeluar}
-                onChange={(e) => setJamKeluar(e.target.value)}
-                required
-                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Jam Masuk</label>
-              <input
-                type="time"
-                value={jamMasuk}
-                onChange={(e) => setJamMasuk(e.target.value)}
-                required
-                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-              />
-            </div>
-            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-center text-xs">
-              <span className="text-[10px] text-emerald-600 block font-normal">Durasi Padam</span>
-              {durasiCalculated} ({durasiMenit}m)
-            </div>
-          </div>
-
-          {/* SAIDI SAIFI ESTIMATION CALCULATION CARD */}
+          {/* SAIDI SAIFI ESTIMATION CALCULATION CARD (SUMMARY) */}
           <div className="p-3.5 bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl border border-blue-800/50 space-y-3 shadow-md">
             <div className="flex items-center justify-between border-b border-blue-800/60 pb-2">
               <div className="flex items-center gap-2">
@@ -509,67 +837,34 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
                 </span>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-semibold text-[10px]">
-                Tersinkron Master Data
+                Akumulasi Multi Section
               </span>
             </div>
 
             {/* Master Data Sync Summary Bar */}
             <div className="p-2 bg-blue-900/40 rounded-xl border border-blue-800/40 text-[11px] space-y-1">
               <div className="flex items-center justify-between text-blue-200">
-                <span>Penyulang <strong>{selectedPenyulang?.namaPenyulang || 'Terpilih'}</strong> ({availableSections.length} Section):</span>
-                <span className="font-bold text-amber-300 font-mono">{feederTotalCustomers.toLocaleString('id-ID')} Plg</span>
+                <span>Penyulang <strong>{selectedPenyulang?.namaPenyulang || 'Terpilih'}</strong> ({sectionRestorations.length} Section Padam):</span>
+                <span className="font-bold text-amber-300 font-mono">{aggregateMetrics.totalPadam.toLocaleString('id-ID')} Plg Padam</span>
               </div>
               <div className="flex items-center justify-between text-slate-300">
                 <span>Total Pelanggan ULP (Akumulasi Master Data):</span>
-                <span className="font-bold text-emerald-300 font-mono">{safeMasterUlp.toLocaleString('id-ID')} Plg</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-300">
-                    Pelanggan Padam:
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setJumlahPelangganPadam(feederTotalCustomers)}
-                    className="text-[9px] text-blue-300 hover:text-white underline cursor-pointer"
-                    title="Gunakan total pelanggan seluruh penyulang jika Trip Pangkal"
-                  >
-                    1 Feeder Full ({feederTotalCustomers.toLocaleString('id-ID')})
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  value={jumlahPelangganPadam}
-                  onChange={(e) => setJumlahPelangganPadam(Number(e.target.value))}
-                  min={1}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-blue-400"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-300">
-                    Total Pelanggan ULP:
-                  </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={totalPelangganUlp}
+                    onChange={(e) => setTotalPelangganUlp(Number(e.target.value))}
+                    className="w-20 px-1.5 py-0.5 bg-slate-950 border border-blue-700/60 rounded text-center text-xs font-bold text-emerald-300 focus:outline-none"
+                  />
                   <button
                     type="button"
                     onClick={() => setTotalPelangganUlp(safeMasterUlp)}
                     className="text-[9px] text-emerald-300 hover:text-white underline cursor-pointer"
-                    title="Reset ke total ULP dari Master Data"
+                    title="Sync ke Master Data ULP"
                   >
-                    Sync ULP ({safeMasterUlp.toLocaleString('id-ID')})
+                    Sync
                   </button>
                 </div>
-                <input
-                  type="number"
-                  value={totalPelangganUlp}
-                  onChange={(e) => setTotalPelangganUlp(Number(e.target.value))}
-                  min={1}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-blue-400"
-                />
               </div>
             </div>
 
@@ -578,17 +873,17 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               <div className="p-2.5 rounded-xl bg-blue-900/50 border border-blue-700/50">
                 <span className="text-[10px] text-blue-300 uppercase font-semibold block">ESTIMASI SAIDI EVENT</span>
                 <div className="text-sm font-extrabold text-blue-300 mt-0.5">
-                  {estimasiSaidiMenit.toFixed(3)} <span className="text-[10px] font-normal">Menit/Plg</span>
+                  {aggregateMetrics.totalSaidiMenit.toFixed(3)} <span className="text-[10px] font-normal">Menit/Plg</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">({estimasiSaidiJam.toFixed(4)} Jam/Plg)</span>
+                <span className="text-[10px] text-slate-400 font-mono">({aggregateMetrics.totalSaidiJam.toFixed(4)} Jam/Plg)</span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-purple-900/50 border border-purple-700/50">
                 <span className="text-[10px] text-purple-300 uppercase font-semibold block">ESTIMASI SAIFI EVENT</span>
                 <div className="text-sm font-extrabold text-purple-300 mt-0.5">
-                  {estimasiSaifi.toFixed(4)} <span className="text-[10px] font-normal">Kali/Plg</span>
+                  {aggregateMetrics.totalSaifi.toFixed(4)} <span className="text-[10px] font-normal">Kali/Plg</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">({jumlahPelangganPadam.toLocaleString('id-ID')} / {safeTotalUlp.toLocaleString('id-ID')})</span>
+                <span className="text-[10px] text-slate-400 font-mono">({aggregateMetrics.totalPadam.toLocaleString('id-ID')} / {currentSafeUlp.toLocaleString('id-ID')})</span>
               </div>
             </div>
           </div>
@@ -670,7 +965,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
             />
           </div>
 
-          {/* Arus RST & IN with Unit Choice (A / kA) per Column */}
+          {/* Arus RST & IN */}
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -784,7 +1079,6 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               onChange={(e) => {
                 const newCode = e.target.value;
                 setKodeGangguan(newCode);
-                // Auto suggest first cause option if current cause is empty or default
                 const options = STANDARD_PENYEBAB_MAP[newCode];
                 if (options && options.length > 0 && (!penyebab || penyebab.startsWith('Pohon') || penyebab.startsWith('Tidak Ditemukan'))) {
                   setPenyebab(options[0]);
@@ -817,7 +1111,6 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               </span>
             </div>
 
-            {/* Dropdown Preset Options */}
             <select
               value={
                 STANDARD_PENYEBAB_MAP[kodeGangguan]?.includes(penyebab)
@@ -842,7 +1135,6 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               </option>
             </select>
 
-            {/* Custom Input Field */}
             <input
               type="text"
               value={penyebab}
@@ -877,7 +1169,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
             />
           </div>
 
-          {/* Foto Dokumentasi Penyebab Gangguan (JPG / JPEG / PNG) */}
+          {/* Foto Dokumentasi */}
           <div className="space-y-1.5 p-3.5 bg-blue-50/50 border border-blue-200 rounded-2xl">
             <div className="flex items-center justify-between">
               <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -945,7 +1237,7 @@ export const InputGangguanModal: React.FC<InputGangguanModalProps> = ({
               type="submit"
               className="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs shadow-sm shadow-blue-500/30 transition-all cursor-pointer"
             >
-              Simpan Data Gangguan & Estimasi SAIDI SAIFI
+              Simpan Data Gangguan & Estimasi SAIDI SAIFI Per Section
             </button>
           </div>
         </form>

@@ -142,7 +142,150 @@ export const INITIAL_SAIDI: SaidiSaifiData[] = [
     realisasiSaifi: 0.022,
     tarifListrik: 1444.7,
     estimasiKerugianRp: 1792150,
-    catatan: 'Keandalan tercapai sesuai target bulanan.'
+    catatan: 'Keandalan baik, tercapai sesuai target bulanan.'
+  },
+  {
+    id: 'saidi2',
+    bulan: 'Februari',
+    tahun: 2026,
+    ensKumulatifKwh: 1850.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.120,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.035,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 2672695,
+    catatan: 'Dampaknya terkendali pada cuaca ekstrem pertengahan bulan.'
+  },
+  {
+    id: 'saidi3',
+    bulan: 'Maret',
+    tahun: 2026,
+    ensKumulatifKwh: 2100.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.150,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.040,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 3033870,
+    catatan: 'Insiden pohon tumbang di Feeder Passo.'
+  },
+  {
+    id: 'saidi4',
+    bulan: 'April',
+    tahun: 2026,
+    ensKumulatifKwh: 1320.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.090,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.028,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 1907004,
+    catatan: 'Perintisan pohon (ROW) dioptimalkan.'
+  },
+  {
+    id: 'saidi5',
+    bulan: 'Mei',
+    tahun: 2026,
+    ensKumulatifKwh: 1600.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.110,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.030,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 2311520,
+    catatan: 'Kinerja pasokan stabil.'
+  },
+  {
+    id: 'saidi6',
+    bulan: 'Juni',
+    tahun: 2026,
+    ensKumulatifKwh: 2450.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.180,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.045,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 3539515,
+    catatan: 'Hujan deras memicu pemeliharaan darurat.'
+  },
+  {
+    id: 'saidi7',
+    bulan: 'Juli',
+    tahun: 2026,
+    ensKumulatifKwh: 1380.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.095,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.025,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 1993686,
+    catatan: 'Inspeksi berkala Tier 2 dilaksanakan.'
+  },
+  {
+    id: 'saidi8',
+    bulan: 'Agustus',
+    tahun: 2026,
+    ensKumulatifKwh: 1050.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.070,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.018,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 1516935,
+    catatan: 'Rekor kinerja keandalan terbaik.'
+  },
+  {
+    id: 'saidi9',
+    bulan: 'September',
+    tahun: 2026,
+    ensKumulatifKwh: 1920.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.130,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.038,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 2773824,
+    catatan: 'Pemeliharaan gardu distribusi rutin.'
+  },
+  {
+    id: 'saidi10',
+    bulan: 'Oktober',
+    tahun: 2026,
+    ensKumulatifKwh: 1510.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.105,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.032,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 2181497,
+    catatan: 'Penanganan gangguan jaringan tepat waktu.'
+  },
+  {
+    id: 'saidi11',
+    bulan: 'November',
+    tahun: 2026,
+    ensKumulatifKwh: 2020.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.140,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.039,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 2918294,
+    catatan: 'Persiapan siaga keandalan musim hujan.'
+  },
+  {
+    id: 'saidi12',
+    bulan: 'Desember',
+    tahun: 2026,
+    ensKumulatifKwh: 2300.0,
+    targetSaidi: 0.200,
+    realisasiSaidi: 0.160,
+    targetSaifi: 0.050,
+    realisasiSaifi: 0.042,
+    tarifListrik: 1444.7,
+    estimasiKerugianRp: 3322810,
+    catatan: 'Siaga Natal dan Tahun Baru (Nataru).'
   }
 ];
 
@@ -1252,6 +1395,8 @@ export const INITIAL_SURVEY_PB_PD: SurveyPbPdItem[] = [
     tanggalPenyambungan: '2026-02-28',
     rekomendasiTeknis: 'Tegangan ujung tetangga 221V masih dalam batas toleransi standar PLN (Drop tegangan hanya 3.07%). Dapat disambung langsung dari tiang TR-05.',
     catatan: 'Posisi tiang berada tepat di seberang jalan rumah pemohon, kabel SR tidak melintasi pohon rindang.',
+    fotoBangunan: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
+    fotoTitikSambung: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
     createdAt: '2026-02-26T08:30:00.000Z'
   },
   {
@@ -1285,6 +1430,8 @@ export const INITIAL_SURVEY_PB_PD: SurveyPbPdItem[] = [
     tanggalSurvey: '2026-02-27',
     rekomendasiTeknis: 'Beban fasa S pada Gardu BG-18 paling ringan (34A). Direkomendasikan ganti kabel SR eksisting ke TIC 2x16mm² dan ganti pembatas MCB 1x16A.',
     catatan: 'KWH Meter lama tipe analog, diusulkan ganti ke Smart Meter AMI.',
+    fotoBangunan: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
+    fotoTitikSambung: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=800&q=80',
     createdAt: '2026-02-27T09:15:00.000Z'
   },
   {
@@ -1318,6 +1465,8 @@ export const INITIAL_SURVEY_PB_PD: SurveyPbPdItem[] = [
     tanggalSurvey: '2026-02-28',
     rekomendasiTeknis: 'Trafo BG-01 kapasitas 250 kVA beban saat ini 58%, sangat mencukupi untuk tambahan 16.5 kVA 3 Fasa. Diperlukan penarikan SR 4x25mm² dan APP 3 Fasa Pengukuran Langsung.',
     catatan: 'Pengukuran tegangan antar fasa: Vrs=398V, Vst=396V, Vtr=397V seimbang.',
+    fotoBangunan: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80',
+    fotoTitikSambung: 'https://images.unsplash.com/photo-1516937941344-00b4e0337589?auto=format&fit=crop&w=800&q=80',
     createdAt: '2026-02-28T10:00:00.000Z'
   },
   {
@@ -1350,6 +1499,8 @@ export const INITIAL_SURVEY_PB_PD: SurveyPbPdItem[] = [
     tanggalSurvey: '2026-03-01',
     rekomendasiTeknis: 'Tegangan tetangga ujung sudah 194V (Drop 13.78% melebihi batas 10%). Jarak dari tiang terakhir 68 meter. Rekomendasi: Wajib dibangun 1 Tiang Sisip JTR 9m 100daN dan penarikan JTR 1 gawang sebelum penyambungan SR agar tegangan stabil >210V.',
     catatan: 'Pemohon bersedia menunggu tindak lanjut konstruksi tiang sisip JTR.',
+    fotoBangunan: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+    fotoTitikSambung: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
     createdAt: '2026-03-01T11:20:00.000Z'
   },
   {
@@ -1382,6 +1533,8 @@ export const INITIAL_SURVEY_PB_PD: SurveyPbPdItem[] = [
     tanggalPenyambungan: '2026-03-03',
     rekomendasiTeknis: 'Tegangan ujung tetangga 218V (Drop 3.96%). Titik sambung sangat dekat, jalur tarikan kabel aman melintasi halaman gedung.',
     catatan: 'Tarif Sosial S2 telah terverifikasi dengan surat rekomendasi Kemenag/Yayasan.',
+    fotoBangunan: 'https://images.unsplash.com/photo-1548625361-195fe5795df5?auto=format&fit=crop&w=800&q=80',
+    fotoTitikSambung: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=800&q=80',
     createdAt: '2026-03-02T13:40:00.000Z'
   }
 ];

@@ -403,6 +403,7 @@
         "tanggalPenyambungan": { "type": "string" },
         "rekomendasiTeknis": { "type": "string" },
         "catatan": { "type": "string" },
+        "fotoBangunan": { "type": "string" },
         "fotoLokasi": { "type": "string" },
         "fotoPengukuranTegangan": { "type": "string" },
         "fotoTitikSambung": { "type": "string" },

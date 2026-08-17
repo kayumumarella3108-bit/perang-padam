@@ -1,5 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend
+} from 'recharts';
+import {
   Calculator,
   Calendar,
   Clock,
@@ -48,6 +58,7 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
   const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [syncWithDataPadam, setSyncWithDataPadam] = useState<boolean>(true);
+  const [trendChartMode, setTrendChartMode] = useState<'saidi' | 'saifi' | 'both'>('saidi');
   // Calculate total ULP customers from Master Data (sum of all penyulangs or sections)
   const masterDataTotalUlp = useMemo(() => {
     const sumFromPenyulang = penyulangList.reduce((acc, p) => {
@@ -258,16 +269,37 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
 
     filteredLogs.forEach((log) => {
-      const durasiMenit = parseDurasiMenit(log);
-      const jmlPlg = getJumlahPelangganPadam(log);
+      if (log.sectionRestorations && log.sectionRestorations.length > 0) {
+        let logSaidi = 0;
+        let logSaifi = 0;
+        let logPlg = 0;
+        let maxLogDur = 0;
 
-      const eventSaifi = jmlPlg / safeUlp;
-      const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
+        log.sectionRestorations.forEach((sec) => {
+          const secDur = sec.durasiMenit || parseDurasiMenit({ ...log, jamKeluar: sec.jamKeluar, jamMasuk: sec.jamMasuk });
+          const secPlg = sec.jumlahPelanggan || 0;
+          logSaidi += safeUlp > 0 ? (secPlg * secDur) / safeUlp : 0;
+          logSaifi += safeUlp > 0 ? secPlg / safeUlp : 0;
+          logPlg += secPlg;
+          if (secDur > maxLogDur) maxLogDur = secDur;
+        });
 
-      totalSaidiMenit += eventSaidiMenit;
-      totalSaifi += eventSaifi;
-      totalPelangganPadamAccum += jmlPlg;
-      totalDurasiPadamMenit += durasiMenit;
+        totalSaidiMenit += logSaidi;
+        totalSaifi += logSaifi;
+        totalPelangganPadamAccum += logPlg;
+        totalDurasiPadamMenit += maxLogDur;
+      } else {
+        const durasiMenit = parseDurasiMenit(log);
+        const jmlPlg = getJumlahPelangganPadam(log);
+
+        const eventSaifi = jmlPlg / safeUlp;
+        const eventSaidiMenit = (jmlPlg * durasiMenit) / safeUlp;
+
+        totalSaidiMenit += eventSaidiMenit;
+        totalSaifi += eventSaifi;
+        totalPelangganPadamAccum += jmlPlg;
+        totalDurasiPadamMenit += durasiMenit;
+      }
     });
 
     const totalSaidiJam = totalSaidiMenit / 60;
@@ -291,6 +323,110 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
     totalPelangganPadamAccum,
     totalDurasiPadamMenit
   } = metrics;
+
+  // Monthly 12-Month SAIDI / SAIFI Trend Calculation from gangguanList
+  const monthlyTrendData = useMemo(() => {
+    const months = [
+      { name: 'Jan', key: 1, full: 'Januari' },
+      { name: 'Feb', key: 2, full: 'Februari' },
+      { name: 'Mar', key: 3, full: 'Maret' },
+      { name: 'Apr', key: 4, full: 'April' },
+      { name: 'Mei', key: 5, full: 'Mei' },
+      { name: 'Jun', key: 6, full: 'Juni' },
+      { name: 'Jul', key: 7, full: 'Juli' },
+      { name: 'Ags', key: 8, full: 'Agustus' },
+      { name: 'Sep', key: 9, full: 'September' },
+      { name: 'Okt', key: 10, full: 'Oktober' },
+      { name: 'Nov', key: 11, full: 'November' },
+      { name: 'Des', key: 12, full: 'Desember' }
+    ];
+
+    const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
+
+    return months.map((m) => {
+      let saidiMenit = 0;
+      let saifi = 0;
+      let eventCount = 0;
+
+      gangguanList.forEach((log) => {
+        if (!log.tanggal) return;
+        const [yStr, mStr] = log.tanggal.split('-');
+        if (selectedYear !== 'all' && yStr !== selectedYear) return;
+        if (parseInt(mStr, 10) !== m.key) return;
+
+        eventCount += 1;
+
+        if (log.sectionRestorations && log.sectionRestorations.length > 0) {
+          log.sectionRestorations.forEach((sec) => {
+            const secDur = sec.durasiMenit || parseDurasiMenit({ ...log, jamKeluar: sec.jamKeluar, jamMasuk: sec.jamMasuk });
+            const secPlg = sec.jumlahPelanggan || 0;
+            saidiMenit += safeUlp > 0 ? (secPlg * secDur) / safeUlp : 0;
+            saifi += safeUlp > 0 ? secPlg / safeUlp : 0;
+          });
+        } else {
+          const durasiMenit = parseDurasiMenit(log);
+          const jmlPlg = getJumlahPelangganPadam(log);
+          saidiMenit += safeUlp > 0 ? (jmlPlg * durasiMenit) / safeUlp : 0;
+          saifi += safeUlp > 0 ? jmlPlg / safeUlp : 0;
+        }
+      });
+
+      return {
+        bulanShort: m.name,
+        bulanFull: m.full,
+        saidiMenit: parseFloat(saidiMenit.toFixed(3)),
+        saidiJam: parseFloat((saidiMenit / 60).toFixed(4)),
+        saifi: parseFloat(saifi.toFixed(4)),
+        eventCount
+      };
+    });
+  }, [gangguanList, selectedYear, totalPelangganUlp, masterDataTotalUlp]);
+
+  const CustomTrendTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 max-w-xs">
+          <div className="flex items-center justify-between font-extrabold border-b border-slate-800 pb-1 text-amber-300">
+            <span>{data.bulanFull} {selectedYear !== 'all' ? selectedYear : ''}</span>
+            <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-extrabold">
+              {data.eventCount} Kejadian Padam
+            </span>
+          </div>
+
+          <div className="space-y-1 font-mono text-[11px]">
+            {trendChartMode === 'saidi' && (
+              <div className="flex justify-between text-blue-300 font-bold">
+                <span>Estimasi SAIDI:</span>
+                <span>{data.saidiMenit.toFixed(3)} m/plg ({data.saidiJam.toFixed(3)} jam)</span>
+              </div>
+            )}
+
+            {trendChartMode === 'saifi' && (
+              <div className="flex justify-between text-purple-300 font-bold">
+                <span>Estimasi SAIFI:</span>
+                <span>{data.saifi.toFixed(4)} kali/plg</span>
+              </div>
+            )}
+
+            {trendChartMode === 'both' && (
+              <>
+                <div className="flex justify-between text-blue-300">
+                  <span>Estimasi SAIDI:</span>
+                  <span className="font-bold">{data.saidiMenit.toFixed(3)} m/plg</span>
+                </div>
+                <div className="flex justify-between text-purple-300">
+                  <span>Estimasi SAIFI:</span>
+                  <span className="font-bold">{data.saifi.toFixed(4)} kali/plg</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Group by Penyulang for Charts & Summary
   const feederBreakdown = useMemo(() => {
@@ -831,6 +967,97 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
         </div>
       </div>
 
+      {/* 12-MONTH SAIDI & SAIFI BAR CHART */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
+                  Grafik Batang Perbandingan SAIDI & SAIFI Bulanan (12 Bulan)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Visualisasi tren keandalan 12 bulan terakhir berdasarkan data kalkulasi gangguan terintegrasi (Tahun {selectedYear !== 'all' ? selectedYear : 'Semua'})
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold self-start lg:self-auto">
+            <button
+              type="button"
+              onClick={() => setTrendChartMode('saidi')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                trendChartMode === 'saidi'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Mode SAIDI (m/plg)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTrendChartMode('saifi')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                trendChartMode === 'saifi'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Mode SAIFI (kali/plg)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTrendChartMode('both')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                trendChartMode === 'both'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              Keduanya
+            </button>
+          </div>
+        </div>
+
+        {/* Chart Container */}
+        <div className="h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyTrendData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="bulanShort" stroke="#64748b" fontSize={11} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+              <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+              <Tooltip content={<CustomTrendTooltip />} />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+
+              {(trendChartMode === 'saidi' || trendChartMode === 'both') && (
+                <Bar
+                  dataKey="saidiMenit"
+                  name="Estimasi SAIDI (Menit/Plg)"
+                  fill="#2563eb"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                />
+              )}
+
+              {(trendChartMode === 'saifi' || trendChartMode === 'both') && (
+                <Bar
+                  dataKey="saifi"
+                  name="Estimasi SAIFI (Kali/Plg)"
+                  fill="#9333ea"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                />
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* FEEDER BREAKDOWN CHARTS & TABLES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estimasi SAIDI per Penyulang */}
@@ -1096,10 +1323,25 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
             <tbody className="divide-y divide-slate-100 text-slate-800">
               {filteredLogs.map((log) => {
                 const durasiMenit = parseDurasiMenit(log);
-                const jmlPlg = getJumlahPelangganPadam(log);
                 const safeUlp = totalPelangganUlp > 0 ? totalPelangganUlp : masterDataTotalUlp || 91740;
-                const eSaifi = jmlPlg / safeUlp;
-                const eSaidiM = (jmlPlg * durasiMenit) / safeUlp;
+                
+                let eSaidiM = 0;
+                let eSaifi = 0;
+                let logJmlPlg = 0;
+
+                if (log.sectionRestorations && log.sectionRestorations.length > 0) {
+                  log.sectionRestorations.forEach((sec) => {
+                    const secDur = sec.durasiMenit || parseDurasiMenit({ ...log, jamKeluar: sec.jamKeluar, jamMasuk: sec.jamMasuk });
+                    const secPlg = sec.jumlahPelanggan || 0;
+                    eSaidiM += safeUlp > 0 ? (secPlg * secDur) / safeUlp : 0;
+                    eSaifi += safeUlp > 0 ? secPlg / safeUlp : 0;
+                    logJmlPlg += secPlg;
+                  });
+                } else {
+                  logJmlPlg = getJumlahPelangganPadam(log);
+                  eSaifi = logJmlPlg / safeUlp;
+                  eSaidiM = (logJmlPlg * durasiMenit) / safeUlp;
+                }
                 const eSaidiJ = eSaidiM / 60;
 
                 return (
@@ -1118,12 +1360,25 @@ export const EstimasiSaidiSaifiView: React.FC<EstimasiSaidiSaifiViewProps> = ({
                       <div className="text-[11px] text-slate-600 font-medium">
                         {log.section || '-'}
                       </div>
+                      {log.sectionRestorations && log.sectionRestorations.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {log.sectionRestorations.map((sec, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-mono text-amber-900 font-bold"
+                              title={`${sec.namaSection}: Lepas ${sec.jamKeluar} -> Masuk ${sec.jamMasuk} (${sec.durasiMenit}m, ${sec.jumlahPelanggan?.toLocaleString('id-ID')} Plg)`}
+                            >
+                              {sec.namaSection}: Masuk {sec.jamMasuk}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
 
                     {/* Plg Padam */}
                     <td className="py-3 px-4 text-center font-bold text-slate-800">
                       <span className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200">
-                        {jmlPlg.toLocaleString('id-ID')}
+                        {logJmlPlg.toLocaleString('id-ID')}
                       </span>
                     </td>
 

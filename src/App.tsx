@@ -59,6 +59,7 @@ import {
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { sanitizeForFirestore } from './utils/firestoreHelper';
+import { isPemasaranUser } from './utils/permissions';
 import { sendWaNotification } from './utils/whatsappNotifier';
 import { Lock } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
@@ -89,6 +90,7 @@ import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2Ult
 import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
 import { FormatSuratView } from './components/views/FormatSuratView';
 import { TopologiJaringanView } from './components/views/TopologiJaringanView';
+import { SldVisioView } from './components/views/SldVisioView';
 import { ShareLaporanView } from './components/views/ShareLaporanView';
 import { PetaPohonView } from './components/views/PetaPohonView';
 import { PetaKonstruksiView } from './components/views/PetaKonstruksiView';
@@ -113,6 +115,13 @@ export default function App() {
       }
     }
   }, []);
+
+  // Force Bagian Pemasaran user to survey_pb_pd view
+  useEffect(() => {
+    if (user && isPemasaranUser(user) && activeView !== 'survey_pb_pd') {
+      setActiveView('survey_pb_pd');
+    }
+  }, [user, activeView]);
 
   // Domain data states
   const [penyulangList, setPenyulangList] = useState<Penyulang[]>(() => filterDeleted(INITIAL_PENYULANG));
@@ -1580,6 +1589,10 @@ export default function App() {
               onAddSection={handleAddSection}
               onDeleteSection={handleDeleteSection}
             />
+          )}
+
+          {activeView === 'sld_visio' && (
+            <SldVisioView />
           )}
 
           {activeView === 'health_index' && (
