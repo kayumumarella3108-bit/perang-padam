@@ -220,6 +220,27 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     return { name: m, gangguan: count };
   });
 
+  // Chart 2B Data: 7-Day Trend of Disturbance Frequency
+  const last7DaysData = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - idx));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+    const label = `${parseInt(day, 10)} ${monthNames[d.getMonth()]}`;
+    
+    // Count matches in active list
+    const count = activeList.filter((g) => g.tanggal === formattedDate).length;
+    return {
+      name: label,
+      gangguan: count,
+      date: formattedDate
+    };
+  });
+
   // Chart 3 Data: Frequency per Feeder (Penyulang)
   const feederMap: Record<string, number> = {};
   penyulangList.forEach((p) => {
@@ -448,6 +469,113 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
     doc.save(`Matriks_Distribusi_Gangguan_ULP_Baguala_${fileSuffix}.pdf`);
   };
 
+  // Export Comprehensive Executive PDF Summary (Cetak PDF Ringkasan)
+  const handleCetakRingkasanPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Kop Header PLN
+    doc.setFillColor(30, 58, 138); // Blue 900
+    doc.rect(0, 0, 297, 16, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('PT PLN (PERSERO) UIW MMU - UP3 AMBON - ULP BAGUALA', 14, 10);
+
+    // Title
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('RINGKASAN EKSEKUTIF & MATRIKS DISTRIBUSI GANGGUAN 20kV', 14, 23);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+
+    const periodeInfo = (startDate || endDate)
+      ? `Rentang Tanggal: ${startDate || 'Awal'} s/d ${endDate || 'Akhir'}`
+      : `Tahun: ${selectedYear}${selectedMonth !== 'all' ? ` | Bulan: ${selectedMonth}` : ' (Semua Bulan)'}`;
+    const penyulangInfo = selectedPenyulang !== 'all' ? ` | Penyulang: ${selectedPenyulang}` : '';
+
+    doc.text(
+      `Periode: ${periodeInfo}${penyulangInfo} | Total Gangguan: ${overallMatrixTotal} Kejadian | Dicetak: ${new Date().toLocaleDateString('id-ID')}`,
+      14,
+      29
+    );
+
+    // Section 1: Matriks Distribusi Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('1. MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN', 14, 37);
+
+    const headRow = ['Kode', 'Keterangan Jenis Gangguan', ...months, 'TOTAL'];
+    const bodyRows = matrixRowsData.map((row) => [
+      row.code === 'E-5' ? '-' : row.code,
+      row.label,
+      ...row.monthlyCounts.map((c) => (c > 0 ? c.toString() : '-')),
+      row.totalRow.toString()
+    ]);
+
+    bodyRows.push([
+      'TOTAL',
+      'JUMLAH TOTAL PER BULAN',
+      ...monthlyTotalSums.map((s) => (s > 0 ? s.toString() : '-')),
+      overallMatrixTotal.toString()
+    ]);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [headRow],
+      body: bodyRows,
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+      margin: { left: 14, right: 14 }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 120;
+
+    // Section 2: Detailed Event List
+    if (finalY > 150) {
+      doc.addPage();
+    }
+    
+    const startYDetail = finalY > 150 ? 20 : finalY + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('2. DAFTAR RINCIAN LOG KEJADIAN GANGGUAN / TRIP', 14, startYDetail);
+
+    const detailHeader = ['No', 'Tanggal', 'Penyulang', 'Section', 'Jam Out - In', 'Durasi', 'Relay', 'Penyebab', 'Kode'];
+    const detailRows = filteredList.map((g, idx) => [
+      (idx + 1).toString(),
+      g.tanggal || '-',
+      g.namaPenyulang || '-',
+      g.section || '-',
+      `${g.jamKeluar || ''} - ${g.jamMasuk || ''}`,
+      g.durasi || '-',
+      g.relayBekerja || '-',
+      g.penyebab || '-',
+      g.kodeGangguan === 'E-5' ? 'Tidak Ditemukan' : (g.kodeGangguan || '-')
+    ]);
+
+    autoTable(doc, {
+      startY: startYDetail + 4,
+      head: [detailHeader],
+      body: detailRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.8 },
+      headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 }
+    });
+
+    const fileSuffix = startDate && endDate ? `${startDate}_sd_${endDate}` : `${selectedYear}_${selectedMonth}`;
+    doc.save(`Ringkasan_Eksekutif_Matriks_Gangguan_${fileSuffix}.pdf`);
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 text-slate-900 font-sans min-h-screen">
       
@@ -576,6 +704,15 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
               Semua ({gangguanList.length})
             </button>
           </div>
+
+          <button
+            onClick={handleCetakRingkasanPDF}
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            title="Cetak Ringkasan Eksekutif PDF"
+          >
+            <Download className="w-4 h-4 text-amber-400" />
+            <span>Cetak PDF</span>
+          </button>
 
           <button
             onClick={() => setIsModalOpen(true)}
@@ -823,7 +960,7 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
       </div>
 
       {/* Analytics Visuals Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Donut Chart */}
         <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -881,6 +1018,60 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
                 <Bar dataKey="gangguan" fill="#0284c7" radius={[4, 4, 0, 0]} name="Kejadian" />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Line Chart - 7 Hari Terakhir */}
+        <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                ⚡ Tren Gangguan 7 Hari Terakhir
+              </h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                Line Chart
+              </span>
+            </div>
+
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={last7DaysData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#ffffff', 
+                      borderColor: '#e2e8f0', 
+                      borderRadius: '12px', 
+                      fontSize: '11px', 
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+                    }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="gangguan" 
+                    stroke="#f43f5e" 
+                    strokeWidth={2.5} 
+                    dot={{ r: 3, strokeWidth: 1, fill: '#f43f5e' }} 
+                    activeDot={{ r: 5 }} 
+                    name="Kejadian" 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 font-semibold leading-relaxed">
+            {last7DaysData.reduce((sum, item) => sum + item.gangguan, 0) === 0 ? (
+              <span className="text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2 block font-medium">
+                💡 <strong>Tip:</strong> Belum ada log gangguan seminggu terakhir. Input gangguan baru dengan tanggal hari ini untuk melihat lonjakan grafik!
+              </span>
+            ) : (
+              <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2 block font-medium">
+                ✅ Terdeteksi <strong>{last7DaysData.reduce((sum, item) => sum + item.gangguan, 0)} gangguan</strong> dalam 7 hari terakhir.
+              </span>
+            )}
           </div>
         </div>
       </div>

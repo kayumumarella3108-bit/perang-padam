@@ -59,7 +59,7 @@ import {
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { sanitizeForFirestore } from './utils/firestoreHelper';
-import { isPemasaranUser } from './utils/permissions';
+import { isPemasaranUser, isInspeksiUser } from './utils/permissions';
 import { sendWaNotification } from './utils/whatsappNotifier';
 import { Lock } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
@@ -119,6 +119,25 @@ export default function App() {
   useEffect(() => {
     if (user && isPemasaranUser(user) && activeView !== 'survey_pb_pd') {
       setActiveView('survey_pb_pd');
+    }
+  }, [user, activeView]);
+
+  // Force Bagian Inspeksi / Teknik user to allowed inspection views
+  useEffect(() => {
+    if (user && isInspeksiUser(user)) {
+      const allowedInspeksiViews = [
+        'inspeksi_tier1',
+        'inspeksi_tier1_jtm',
+        'inspeksi_tier1_gtt',
+        'inspeksi_tier1_switching',
+        'inspeksi_tier2',
+        'inspeksi_tier2_thermovision',
+        'inspeksi_tier2_ultrasound',
+        'survey_pb_pd'
+      ];
+      if (!allowedInspeksiViews.includes(activeView)) {
+        setActiveView('inspeksi_tier1');
+      }
     }
   }, [user, activeView]);
 

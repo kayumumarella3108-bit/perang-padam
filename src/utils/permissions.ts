@@ -11,6 +11,16 @@ export const isPemasaranUser = (user: User | null | undefined): boolean => {
 };
 
 /**
+ * Checks whether the logged-in user belongs to Bagian Inspeksi / Teknik.
+ * Inspection user sees inspection modules and PB/PD survey parameters onwards.
+ */
+export const isInspeksiUser = (user: User | null | undefined): boolean => {
+  if (!user || !user.role) return false;
+  const roleLower = user.role.toLowerCase().trim();
+  return roleLower.includes('inspeksi') || roleLower.includes('teknik');
+};
+
+/**
  * Checks whether the logged-in user belongs to Bagian Transaksi Energi (TE).
  */
 export const isTransaksiEnergiUser = (user: User | null | undefined): boolean => {

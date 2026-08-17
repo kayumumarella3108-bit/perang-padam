@@ -39,6 +39,7 @@ import { PengukuranGardu, MasterGardu, Penyulang, User } from '../../types';
 import { canEditData } from '../../utils/permissions';
 import { MasterGarduModal } from '../modals/MasterGarduModal';
 import { PengukuranGarduModal } from '../modals/PengukuranGarduModal';
+import { PetaGarduView } from './PetaGarduView';
 
 interface PengukuranGarduViewProps {
   currentUser?: User | null;
@@ -61,7 +62,7 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
   onAddGardu,
   onDeleteGardu
 }) => {
-  const [activeTab, setActiveTab] = useState<'pengukuran' | 'monitoring' | 'master_gardu' | 'tren_beban'>('pengukuran');
+  const [activeTab, setActiveTab] = useState<'pengukuran' | 'monitoring' | 'master_gardu' | 'tren_beban' | 'peta_gardu'>('pengukuran');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterUnit, setFilterUnit] = useState<string>('ALL');
   const [filterPenyulang, setFilterPenyulang] = useState<string>('ALL');
@@ -425,6 +426,18 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
           >
             <LineChartIcon className="w-4 h-4" />
             <span>Tren Beban Gardu</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('peta_gardu')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'peta_gardu'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-rose-500" />
+            <span>Peta Lokasi Gardu ({masterGarduList.length})</span>
           </button>
         </div>
 
@@ -993,6 +1006,11 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* TAB 5: PETA LOKASI GARDU */}
+      {activeTab === 'peta_gardu' && (
+        <PetaGarduView masterGarduList={masterGarduList} pengukuranList={pengukuranList} />
       )}
 
       {/* MODALS */}

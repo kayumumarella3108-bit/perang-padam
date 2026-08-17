@@ -38,7 +38,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SurveyPbPdItem, Penyulang, MasterGardu, User } from '../../types';
-import { canEditData, isPemasaranUser } from '../../utils/permissions';
+import { canEditData, isPemasaranUser, isInspeksiUser } from '../../utils/permissions';
 import { SurveyMapPicker } from '../modals/SurveyMapPicker';
 import { SurveyPhotoUploadSection } from '../modals/SurveyPhotoUploadSection';
 import { SurveyPbPdMapTab } from './SurveyPbPdMapTab';
@@ -115,6 +115,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
 
   const canEdit = currentUser ? canEditData(currentUser) : true;
   const isPemasaran = currentUser ? isPemasaranUser(currentUser) : false;
+  const isInspeksi = currentUser ? isInspeksiUser(currentUser) : false;
 
   // Calculation helpers
   const getDropTegangan = (pangkal: number = 0, tetangga: number = 0) => {
@@ -1915,19 +1916,27 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
             </div>
 
             <form onSubmit={handleSaveForm} className="space-y-4 text-xs">
+              {isInspeksi && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-300 text-xs font-semibold flex items-center gap-2">
+                  <Info className="w-4 h-4 shrink-0 text-blue-400" />
+                  <span>Data Pelanggan & Permohonan di bawah diisi oleh Bagian Pemasaran. Silakan lengkapi <strong>Parameter & Pengukuran Lapangan</strong> dan seterusnya.</span>
+                </div>
+              )}
+
               {/* Section 1: Data Pelanggan & Permohonan */}
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
                 <h4 className="font-bold text-amber-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5" />
-                  1. Data Pelanggan & Permohonan
+                  1. Data Pelanggan & Permohonan {isInspeksi && <span className="text-slate-400 font-normal">(Diisi Pemasaran)</span>}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Jenis Transaksi *</label>
                     <select
+                      disabled={isInspeksi}
                       value={formData.jenisTransaksi}
                       onChange={e => setFormData({ ...formData, jenisTransaksi: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     >
                       <option value="Pasang Baru (PB)">Pasang Baru (PB)</option>
                       <option value="Perubahan Daya (PD)">Perubahan Daya (PD)</option>
@@ -1938,48 +1947,53 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                     <input
                       type="text"
                       required
+                      disabled={isInspeksi}
                       placeholder="Contoh: Bpk. Marthen Silooy"
                       value={formData.namaPelanggan || ''}
                       onChange={e => setFormData({ ...formData, namaPelanggan: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">No. Agenda / Registrasi</label>
                     <input
                       type="text"
+                      disabled={isInspeksi}
                       placeholder="54260..."
                       value={formData.noAgenda || ''}
                       onChange={e => setFormData({ ...formData, noAgenda: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">ID Pelanggan (Khusus PD)</label>
                     <input
                       type="text"
+                      disabled={isInspeksi}
                       placeholder="542600..."
                       value={formData.idPelanggan || ''}
                       onChange={e => setFormData({ ...formData, idPelanggan: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">No. Kontak / WA Pelanggan</label>
                     <input
                       type="text"
+                      disabled={isInspeksi}
                       placeholder="0812..."
                       value={formData.noHpPelanggan || ''}
                       onChange={e => setFormData({ ...formData, noHpPelanggan: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Peruntukan Bangunan</label>
                     <select
+                      disabled={isInspeksi}
                       value={formData.peruntukan || 'Rumah Tangga'}
                       onChange={e => setFormData({ ...formData, peruntukan: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     >
                       <option value="Rumah Tangga">Rumah Tangga</option>
                       <option value="Bisnis / Ruko">Bisnis / Ruko</option>
@@ -1998,20 +2012,22 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                         <label className="block text-slate-400 font-semibold mb-1">Tarif Lama</label>
                         <input
                           type="text"
+                          disabled={isInspeksi}
                           placeholder="R1 / B1"
                           value={formData.tarifLama || ''}
                           onChange={e => setFormData({ ...formData, tarifLama: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                         />
                       </div>
                       <div>
                         <label className="block text-slate-400 font-semibold mb-1">Daya Lama (VA)</label>
                         <input
                           type="number"
+                          disabled={isInspeksi}
                           placeholder="450 / 900 / 1300"
                           value={formData.dayaLamaVa || ''}
                           onChange={e => setFormData({ ...formData, dayaLamaVa: Number(e.target.value) })}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                         />
                       </div>
                     </>
@@ -2021,18 +2037,20 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                     <input
                       type="text"
                       required
+                      disabled={isInspeksi}
                       placeholder="R1 / R1M / B1 / S2"
                       value={formData.tarifBaru || ''}
                       onChange={e => setFormData({ ...formData, tarifBaru: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Daya Baru (VA) *</label>
                     <select
+                      disabled={isInspeksi}
                       value={formData.dayaBaruVa || 1300}
                       onChange={e => setFormData({ ...formData, dayaBaruVa: Number(e.target.value) })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500 disabled:opacity-60"
                     >
                       {[450, 900, 1300, 2200, 3500, 4400, 5500, 7700, 11000, 13200, 16500, 23000, 33000, 41500, 53000, 66000].map(
                         d => (
