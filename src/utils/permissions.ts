@@ -10,6 +10,12 @@ export const isPemasaranUser = (user: User | null | undefined): boolean => {
   return roleLower.includes('pemasaran');
 };
 
+export const isPetugasRowUser = (user: User | null | undefined): boolean => {
+  if (!user || !user.role) return false;
+  const roleLower = user.role.toLowerCase().trim();
+  return roleLower.includes('row') || roleLower.includes('pohon');
+};
+
 /**
  * Checks whether the logged-in user belongs to Bagian Inspeksi / Teknik.
  * Inspection user sees inspection modules and PB/PD survey parameters onwards.
@@ -59,6 +65,9 @@ export const canEditData = (user: User | null | undefined): boolean => {
     roleLower.includes('admin system') ||
     roleLower.includes('pemasaran') ||
     roleLower.includes('transaksi') ||
+    roleLower.includes('inspeksi') ||
+    roleLower.includes('row') ||
+    roleLower.includes('pohon') ||
     roleLower === 'admin'
   );
 };
@@ -71,6 +80,17 @@ export const canEditModule = (user: User | null | undefined, moduleName: string)
   // Bagian Pemasaran is strictly limited to survey_pb_pd
   if (isPemasaranUser(user)) {
     return mod === 'survey_pb_pd' || mod === 'wo_survey';
+  }
+
+  // Petugas ROW is strictly limited to row / peta_pohon
+  if (isPetugasRowUser(user)) {
+    return mod === 'row' || mod === 'peta_pohon';
+  }
+
+  // Petugas Inspeksi / Teknik can edit operational & inspection modules except user management
+  if (isInspeksiUser(user)) {
+    if (mod === 'kelola_user' || mod === 'users' || mod === 'user_management') return false;
+    return true;
   }
 
   if (roleLower.includes('koordinator') || roleLower.includes('admin system') || roleLower === 'admin') {

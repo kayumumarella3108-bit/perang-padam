@@ -230,8 +230,8 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.namaPelanggan || !formData.penyulang || !formData.noGardu || !formData.lokasi) {
-      alert('Mohon lengkapi data wajib: Nama Pelanggan, Penyulang, No Gardu, dan Lokasi.');
+    if (!formData.namaPelanggan) {
+      alert('Mohon masukkan Nama Pelanggan / Pemohon.');
       return;
     }
 
@@ -254,10 +254,10 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tarifBaru: formData.tarifBaru || 'R1/1300 VA',
       dayaBaruVa: Number(formData.dayaBaruVa) || 1300,
       peruntukan: formData.peruntukan || 'Rumah Tangga',
-      penyulang: formData.penyulang || 'PASSO',
-      noGardu: formData.noGardu || 'BG-01',
+      penyulang: formData.penyulang || penyulangList[0]?.namaPenyulang || 'PASSO',
+      noGardu: formData.noGardu || masterGarduList[0]?.noGardu || 'BG-01',
       jurusanGardu: formData.jurusanGardu || 'Jurusan 1',
-      lokasi: formData.lokasi.trim(),
+      lokasi: formData.lokasi?.trim() || (isPemasaran ? 'Menunggu Survey Lapangan' : 'Lokasi Pelanggan'),
       lat: formData.lat !== undefined ? Number(formData.lat) : undefined,
       lng: formData.lng !== undefined ? Number(formData.lng) : undefined,
       titikSambungLat: formData.titikSambungLat !== undefined ? Number(formData.titikSambungLat) : undefined,
@@ -265,15 +265,15 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tegPangkal: pangkal,
       tegTetangga: tetangga,
       fasaYangDiambil: formData.fasaYangDiambil || '1 Fasa (Fasa R)',
-      titikSambung: formData.titikSambung?.trim() || 'Tiang TR No. 01',
+      titikSambung: formData.titikSambung?.trim() || (isPemasaran ? 'Menunggu Survey Lapangan' : 'Tiang TR No. 01'),
       panjangSrMeter: Number(formData.panjangSrMeter) || 15,
       jenisKabelSr: formData.jenisKabelSr || 'TIC 2x10 mm²',
-      statusKelayakan: formData.statusKelayakan || 'Layak Sambung',
+      statusKelayakan: isPemasaran && !editingItem ? 'Perlu Survey Lapangan' : (formData.statusKelayakan || 'Layak Sambung'),
       perkiraanDropTeganganVolt: dropVolt,
-      petugasSurvey: formData.petugasSurvey || currentUser?.name || 'Surveyor Lapangan',
+      petugasSurvey: formData.petugasSurvey || currentUser?.name || 'Staf Pemasaran ULP Baguala',
       tanggalSurvey: formData.tanggalSurvey || new Date().toISOString().split('T')[0],
       tanggalPenyambungan: formData.tanggalPenyambungan || '',
-      rekomendasiTeknis: formData.rekomendasiTeknis || '',
+      rekomendasiTeknis: formData.rekomendasiTeknis || (isPemasaran ? 'WO Survey diterbitkan oleh Bagian Pemasaran. Menunggu pengukuran dan inspeksi teknis lapangan.' : ''),
       catatan: formData.catatan || '',
       fotoBangunan: fotoBangunanVal,
       fotoLokasi: fotoBangunanVal,
@@ -1927,8 +1927,13 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
                 <h4 className="font-bold text-amber-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5" />
-                  1. Data Pelanggan & Permohonan {isInspeksi && <span className="text-slate-400 font-normal">(Diisi Pemasaran)</span>}
+                  1. Data Pelanggan & Permohonan {isPemasaran && <span className="text-amber-300 font-normal">(Menu Input Utama Pemasaran)</span>} {isInspeksi && <span className="text-slate-400 font-normal">(Diisi Pemasaran)</span>}
                 </h4>
+                {isPemasaran && (
+                  <p className="text-[11px] text-slate-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
+                    Sesuai prosedur, Bagian Pemasaran cukup menginput data pelanggan & permohonan di atas. Parameter teknis, pengukuran, dan rekomendasi lapangan selanjutnya akan dilengkapi oleh Tim Inspeksi/Teknik.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Jenis Transaksi *</label>
@@ -2064,7 +2069,9 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                 </div>
               </div>
 
-              {/* Section 2: Data Jaringan & Kelistrikan (Wajib Sesuai Permintaan User) */}
+              {!isPemasaran && (
+                <>
+                  {/* Section 2: Data Jaringan & Kelistrikan (Wajib Sesuai Permintaan User) */}
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
                 <h4 className="font-bold text-cyan-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5" />
@@ -2357,6 +2364,8 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                   />
                 </div>
               </div>
+            </>
+          )}
 
               {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

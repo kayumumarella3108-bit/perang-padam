@@ -296,6 +296,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               { role: 'Admin Teknik', label: 'Admin Teknik', edit: true },
               { role: 'Bagian Pemasaran', label: 'Pemasaran', edit: true },
               { role: 'Bagian Transaksi Energi', label: 'Transaksi Energi', edit: true },
+              { role: 'Petugas Inspeksi', label: 'Petugas Inspeksi', edit: true },
+              { role: 'Petugas ROW', label: 'Petugas ROW', edit: true },
               { role: 'Bagian Teknik', label: 'Bagian Teknik', edit: false },
               { role: 'PLN Nusadaya', label: 'PLN Nusadaya', edit: false },
               { role: 'Team Leader', label: 'Team Leader', edit: false },
@@ -580,6 +582,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     <option value="Admin Teknik">Admin Teknik (Khusus Entri Data Operasional - Tidak Kelola User)</option>
                     <option value="Bagian Pemasaran">Bagian Pemasaran (Khusus Entri WO Survey PB/PD - Akses Terbatas)</option>
                     <option value="Bagian Transaksi Energi">Bagian Transaksi Energi (Entri Data Teknis & Pengukuran Gardu)</option>
+                    <option value="Petugas Inspeksi">Petugas Inspeksi (Inspeksi Jaringan, GTT, Tier 1/2)</option>
+                    <option value="Petugas ROW">Petugas ROW / Pembersihan Pohon</option>
                   </optgroup>
                   <optgroup label="👁️ Mode Monitoring Only (Read-Only)">
                     <option value="Bagian Teknik">Bagian Teknik (Hanya Monitoring)</option>

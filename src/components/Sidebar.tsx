@@ -39,7 +39,7 @@ import {
   Workflow
 } from 'lucide-react';
 import { ViewType, User } from '../types';
-import { canManageUsers, isPemasaranUser, isInspeksiUser } from '../utils/permissions';
+import { canManageUsers, isPemasaranUser, isInspeksiUser, isPetugasRowUser } from '../utils/permissions';
 import { SocialContacts } from './SocialContacts';
 
 interface SidebarProps {
@@ -113,6 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isPemasaran = isPemasaranUser(currentUser);
   const isInspeksi = isInspeksiUser(currentUser);
+  const isRow = isPetugasRowUser(currentUser);
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 h-[calc(100vh-4rem)] text-slate-300 font-sans z-20 select-none overflow-y-auto">
@@ -121,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between px-3 pt-2 pb-1">
           <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-amber-400" />
-            {isPemasaran ? 'MENU PEMASARAN' : isInspeksi ? 'MENU INSPEKSI' : 'MENU SYSTEM'}
+            {isPemasaran ? 'MENU PEMASARAN' : isRow ? 'MENU ROW & POHON' : isInspeksi ? 'MENU INSPEKSI' : 'MENU SYSTEM'}
           </span>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
@@ -160,6 +161,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[9px] font-black uppercase">
                   PB/PD
                 </span>
+              </button>
+            </nav>
+          </div>
+        ) : isRow ? (
+          /* RESTRICTED VIEW FOR PETUGAS ROW / POHON */
+          <div className="space-y-3">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-[11px] font-semibold space-y-1">
+              <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px] text-emerald-400">
+                <FileText className="w-3.5 h-3.5" />
+                Akses Petugas ROW & Pohon
+              </div>
+              <p className="text-[10px] text-slate-300 leading-snug">
+                Fokus pemantauan Right of Way (ROW), jarak bebas konduktor 20kV, dan jadwal pembersihan pohon.
+              </p>
+            </div>
+
+            <nav className="space-y-1.5">
+              <button
+                onClick={() => onSelectView('row')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeView === 'row' ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span>Manajemen & Peta ROW</span>
+              </button>
+
+              <button
+                onClick={() => onSelectView('peta_pohon')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeView === 'peta_pohon' ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span>Mapping Pohon & Potensi Gangguan</span>
               </button>
             </nav>
           </div>

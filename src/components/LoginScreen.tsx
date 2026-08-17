@@ -200,12 +200,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       let userName = `User ${username}`;
       const uLower = username.toLowerCase();
 
-      if (uLower.includes('pemasaran') || uLower.includes('pemasaran')) {
+      if (uLower.includes('pemasaran')) {
         userRole = 'Bagian Pemasaran';
         userName = 'Staf Bagian Pemasaran';
       } else if (uLower.includes('transaksi') || uLower.includes('te')) {
         userRole = 'Bagian Transaksi Energi';
         userName = 'Staf Transaksi Energi';
+      } else if (uLower.includes('inspeksi')) {
+        userRole = 'Petugas Inspeksi';
+        userName = 'Petugas Inspeksi Lapangan';
+      } else if (uLower.includes('row') || uLower.includes('pohon')) {
+        userRole = 'Petugas ROW';
+        userName = 'Petugas ROW & Pohon';
       } else if (uLower.includes('admin')) {
         userRole = 'Admin Teknik';
       }
