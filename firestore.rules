@@ -158,5 +158,10 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /sld_data/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

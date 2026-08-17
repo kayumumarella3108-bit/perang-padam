@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { db, doc, getDoc, setDoc } from '../../lib/firebase';
 import JSZip from 'jszip';
 import {
   ZoomIn,
@@ -30,6 +31,7 @@ import {
   FileSpreadsheet,
   Check
 } from 'lucide-react';
+import { INITIAL_PENYULANG } from '../../data/mockData';
 
 export type SubstationType = 'GI' | 'GH';
 
@@ -467,6 +469,50 @@ export const SldVisioView: React.FC = () => {
   // SCADA Grid Model
   const [substations, setSubstations] = useState<SubstationData[]>(INITIAL_SUBSTATIONS);
   const [tieSwitches, setTieSwitches] = useState<TieSwitchData[]>(INITIAL_TIE_SWITCHES);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
+
+  // Load from Firestore on mount
+  useEffect(() => {
+    const loadSldData = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'sld_data', 'scada'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.substations) setSubstations(data.substations);
+          if (data.tieSwitches) setTieSwitches(data.tieSwitches);
+        } else {
+          // Seed the database if no record exists
+          await setDoc(doc(db, 'sld_data', 'scada'), {
+            substations: INITIAL_SUBSTATIONS,
+            tieSwitches: INITIAL_TIE_SWITCHES,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error("Error loading SLD data from Firestore:", err);
+      } finally {
+        setIsInitialLoad(false);
+      }
+    };
+    loadSldData();
+  }, []);
+
+  // Save to Firestore on change (debounced)
+  useEffect(() => {
+    if (isInitialLoad) return;
+    const saveTimeout = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'sld_data', 'scada'), {
+          substations,
+          tieSwitches,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Error saving SLD data to Firestore on change:", err);
+      }
+    }, 1000);
+    return () => clearTimeout(saveTimeout);
+  }, [substations, tieSwitches, isInitialLoad]);
 
   // Visio Document Document Engine State
   const [visioDoc, setVisioDoc] = useState<VisioDocumentData | null>(null);
@@ -582,6 +628,10 @@ export const SldVisioView: React.FC = () => {
   const [feederArusT, setFeederArusT] = useState(118);
   const [feederArusIN, setFeederArusIN] = useState(4);
   const [feederBebanMw, setFeederBebanMw] = useState(3.5);
+
+  const matchedMasterPenyulang = INITIAL_PENYULANG.find(
+    (p) => p.namaPenyulang.trim().toUpperCase() === feederName.trim().toUpperCase()
+  );
 
   // Form states for Tie Switch
   const [tieName, setTieName] = useState('');
@@ -1677,21 +1727,7 @@ export const SldVisioView: React.FC = () => {
                                   </span>
                                 </button>
 
-                                {/* Currents & MW Load Stats */}
-                                <div className="text-[11px] text-slate-400 space-y-1 font-mono pt-1 border-t border-slate-800/80">
-                                  <div className="flex justify-between">
-                                    <span>Arus R/S/T:</span>
-                                    <span className="font-bold text-slate-200">
-                                      {feeder.status === 'CLOSED' ? `${feeder.arusR}A / ${feeder.arusS}A / ${feeder.arusT}A` : '0A / 0A / 0A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Beban Daya:</span>
-                                    <span className={`font-bold ${feeder.status === 'CLOSED' ? 'text-amber-400' : 'text-slate-500'}`}>
-                                      {feeder.status === 'CLOSED' ? `${feeder.bebanMw} MW` : '0 MW'}
-                                    </span>
-                                  </div>
-                                </div>
+
 
                               </div>
                             );
@@ -2672,6 +2708,42 @@ export const SldVisioView: React.FC = () => {
               </div>
 
               <div>
+                <label className="block font-bold text-slate-300 mb-1 flex items-center justify-between">
+                  <span>HUBUNGKAN KE MASTER DATA PENYULANG</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">25 PENYULANG AKTIF</span>
+                </label>
+                <select
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    if (!selectedId) return;
+                    const p = INITIAL_PENYULANG.find((item) => item.id === selectedId);
+                    if (p) {
+                      setFeederName(p.namaPenyulang);
+                      setFeederKms(p.panjangJaringanKms);
+                      
+                      // Auto select matching GI / GH
+                      const matchedSub = substations.find(
+                        (s) =>
+                          s.nama.toLowerCase().includes(p.namaGi.toLowerCase()) ||
+                          p.namaGi.toLowerCase().includes(s.nama.toLowerCase())
+                      );
+                      if (matchedSub && !editingFeeder) {
+                        setTargetSubId(matchedSub.id);
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer mb-2.5"
+                >
+                  <option value="">-- Pilih dari Master Data Penyulang (Auto-Fill) --</option>
+                  {INITIAL_PENYULANG.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.namaPenyulang} • [{p.namaGi}] ({p.panjangJaringanKms} KMS - {p.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block font-bold text-slate-300 mb-1">NAMA PENYULANG / FEEDER</label>
                 <input
                   type="text"
@@ -2682,6 +2754,29 @@ export const SldVisioView: React.FC = () => {
                   className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-bold uppercase"
                 />
               </div>
+
+              {matchedMasterPenyulang && (
+                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 rounded-2xl space-y-1.5">
+                  <div className="flex items-center justify-between border-b border-emerald-500/10 pb-1.5">
+                    <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Koneksi Master Data Aktif: #{matchedMasterPenyulang.id}</span>
+                    </div>
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {matchedMasterPenyulang.status}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 grid grid-cols-2 gap-x-3 gap-y-1 pl-5 font-mono">
+                    <span>GI Induk: <strong className="text-white">{matchedMasterPenyulang.namaGi}</strong></span>
+                    <span>Panjang JTM: <strong className="text-emerald-400">{matchedMasterPenyulang.panjangJaringanKms} KMS</strong></span>
+                    <span>Keandalan: <strong className="text-emerald-400">{matchedMasterPenyulang.healthIndexStatus}</strong></span>
+                    <span>Frekuensi Ggn: <strong className="text-amber-400">{matchedMasterPenyulang.frekuensiGangguan}x</strong></span>
+                    {matchedMasterPenyulang.jumlahPelanggan && (
+                      <span className="col-span-2 text-[10px] text-slate-400">Total Pelanggan: <strong className="text-slate-200">{matchedMasterPenyulang.jumlahPelanggan.toLocaleString('id-ID')}</strong></span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -2707,6 +2802,7 @@ export const SldVisioView: React.FC = () => {
                     <option value="LBS Section">LBS Section</option>
                     <option value="Recloser Smart">Recloser Smart</option>
                     <option value="LBS Motorized">LBS Motorized</option>
+                    <option value="PMCB">PMCB</option>
                     <option value="Fuse Cut Out">Fuse Cut Out</option>
                   </select>
                 </div>
@@ -2733,49 +2829,6 @@ export const SldVisioView: React.FC = () => {
                   <option value="CLOSED">CLOSED (Menyalur/Berbeban)</option>
                   <option value="OPEN">OPEN (Padam/Trip)</option>
                 </select>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
-                <span className="block text-[11px] font-bold text-slate-400 uppercase">Parameter Beban & Arus</span>
-                <div className="grid grid-cols-4 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400">Arus R (A)</label>
-                    <input
-                      type="number"
-                      value={feederArusR}
-                      onChange={(e) => setFeederArusR(Number(e.target.value))}
-                      className="w-full px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400">Arus S (A)</label>
-                    <input
-                      type="number"
-                      value={feederArusS}
-                      onChange={(e) => setFeederArusS(Number(e.target.value))}
-                      className="w-full px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400">Arus T (A)</label>
-                    <input
-                      type="number"
-                      value={feederArusT}
-                      onChange={(e) => setFeederArusT(Number(e.target.value))}
-                      className="w-full px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400">Beban (MW)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={feederBebanMw}
-                      onChange={(e) => setFeederBebanMw(Number(e.target.value))}
-                      className="w-full px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs text-amber-400 font-bold"
-                    />
-                  </div>
-                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">

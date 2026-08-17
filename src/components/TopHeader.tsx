@@ -18,7 +18,6 @@ const VIEW_NAMES: Record<ViewType, string> = {
   peta_penyulang: 'Peta Penyulang GIS & Feeder',
   master_data: 'Master Data Penyulang',
   aset_jaringan: 'Aset Jaringan JTM / JTR',
-  topologi_jaringan: 'Topologi Jaringan Feeder',
   health_index: 'Health Index Penyulang',
   matriks_gangguan: 'Gangguan Trip Feeder 20kV',
   row: 'Monitoring ROW (Pangkas Pohon)',

@@ -83,7 +83,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setName('');
     setRole('Koordinator');
     setUnit('ULP Baguala');
-    setAvatarUrl(PRESET_AVATARS[0].url);
+    setAvatarUrl('');
     setPassword('');
     setIsModalOpen(true);
   };
@@ -597,67 +597,30 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <label className="block font-bold text-slate-700 mb-1">
                   Foto Profile User
                 </label>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt="Preview"
-                        referrerPolicy="no-referrer"
-                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-500 shadow-sm shrink-0"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
-                        {name ? name.substring(0, 2).toUpperCase() : 'US'}
-                      </div>
-                    )}
-                    <div className="flex-1 space-y-1">
-                      <label className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold cursor-pointer transition-all border border-blue-200">
-                        <span>📁 Pilih dari File...</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                      </label>
-                      <p className="text-[9px] text-slate-500">Pilih file foto langsung dari HP/Komputer Anda.</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                      Atau input URL Foto:
-                    </span>
-                    <input
-                      type="url"
-                      value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="URL Foto (https://...)"
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
+                <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Preview"
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-full object-cover border-2 border-blue-500 shadow-sm shrink-0"
                     />
-                  </div>
-
-                  {/* Preset Photos */}
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                      Pilih Foto Preset:
-                    </span>
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {PRESET_AVATARS.map((p, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setAvatarUrl(p.url)}
-                          className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer aspect-square ${
-                            avatarUrl === p.url ? 'border-blue-600 ring-2 ring-blue-400' : 'border-slate-200 hover:border-slate-400'
-                          }`}
-                          title={p.label}
-                        >
-                          <img src={p.url} alt={p.label} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
+                      {name ? name.substring(0, 2).toUpperCase() : 'US'}
                     </div>
+                  )}
+                  <div className="flex-1 space-y-1">
+                    <label className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold cursor-pointer transition-all border border-blue-200">
+                      <span>📁 Pilih dari File...</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[9px] text-slate-500">Pilih file foto langsung dari HP/Komputer Anda.</p>
                   </div>
                 </div>
               </div>
@@ -685,9 +648,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <select
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                 >
                   <option value="ULP Baguala">ULP Baguala</option>
+                  <option value="PLN Nusa Daya">PLN Nusa Daya</option>
+                  <option value="UP3">UP3</option>
+                  <option value="UIW">UIW</option>
+                  <option value="PLN">PLN</option>
                 </select>
               </div>
 

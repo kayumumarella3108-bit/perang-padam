@@ -30,7 +30,6 @@ export type ViewType =
   | 'aset_jaringan'
   | 'jadwal_piket'
   | 'gangguan'
-  | 'topologi_jaringan'
   | 'share_laporan'
   | 'survey_pb_pd';
 

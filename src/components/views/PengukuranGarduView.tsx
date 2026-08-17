@@ -554,6 +554,10 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
               >
                 <option value="ALL">Semua Unit PLN</option>
                 <option value="ULP Baguala">ULP Baguala</option>
+                <option value="PLN Nusa Daya">PLN Nusa Daya</option>
+                <option value="UP3">UP3</option>
+                <option value="UIW">UIW</option>
+                <option value="PLN">PLN</option>
               </select>
 
               <select

@@ -410,6 +410,18 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "namaPelanggan", "jenisTransaksi", "penyulang", "noGardu", "lokasi", "tegPangkal", "tegTetangga", "fasaYangDiambil", "titikSambung", "statusKelayakan", "petugasSurvey", "tanggalSurvey"]
+    },
+    "SldData": {
+      "title": "SldData",
+      "description": "SCADA and Single Line Diagram layout state",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "substations": { "type": "array", "items": { "type": "object" } },
+        "tieSwitches": { "type": "array", "items": { "type": "object" } },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
     }
   },
   "firestore": {
@@ -516,6 +528,10 @@
     "survey_pb_pd": {
       "schema": "SurveyPbPdItem",
       "description": "Technical survey for Pasang Baru and Perubahan Daya (PB/PD) records"
+    },
+    "sld_data": {
+      "schema": "SldData",
+      "description": "SCADA Single Line Diagram substations and tie switches state data"
     }
   }
 }

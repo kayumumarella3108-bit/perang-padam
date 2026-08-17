@@ -89,7 +89,6 @@ import { InspeksiTier2ThermovisionView } from './components/views/InspeksiTier2T
 import { InspeksiTier2UltrasoundView } from './components/views/InspeksiTier2UltrasoundView';
 import { EstimasiSaidiSaifiView } from './components/views/EstimasiSaidiSaifiView';
 import { FormatSuratView } from './components/views/FormatSuratView';
-import { TopologiJaringanView } from './components/views/TopologiJaringanView';
 import { SldVisioView } from './components/views/SldVisioView';
 import { ShareLaporanView } from './components/views/ShareLaporanView';
 import { PetaPohonView } from './components/views/PetaPohonView';
@@ -1578,16 +1577,6 @@ export default function App() {
               onImportBatch={handleBatchAddKonstruksiGis}
               onUpdateKonstruksi={handleUpdateKonstruksiGis}
               onDeleteKonstruksi={handleDeleteKonstruksiGis}
-            />
-          )}
-
-          {activeView === 'topologi_jaringan' && (
-            <TopologiJaringanView
-              currentUser={user}
-              penyulangList={syncedPenyulangList}
-              sectionList={sectionList}
-              onAddSection={handleAddSection}
-              onDeleteSection={handleDeleteSection}
             />
           )}
 

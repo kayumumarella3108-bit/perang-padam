@@ -323,6 +323,10 @@ export const PengukuranGarduModal: React.FC<PengukuranGarduModalProps> = ({
                   className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="ULP Baguala">ULP Baguala</option>
+                  <option value="PLN Nusa Daya">PLN Nusa Daya</option>
+                  <option value="UP3">UP3</option>
+                  <option value="UIW">UIW</option>
+                  <option value="PLN">PLN</option>
                 </select>
               </div>
 

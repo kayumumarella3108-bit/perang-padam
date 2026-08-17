@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const [masterAsetOpen, setMasterAsetOpen] = useState(
-    ['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView)
+    ['master_data', 'aset_jaringan', 'sld_visio'].includes(activeView)
   );
 
   const [saidiSaifiOpen, setSaidiSaifiOpen] = useState(
@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (['perintah_kerja', 'format_surat'].includes(activeView)) {
       setSuratSpkOpen(true);
     }
-    if (['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView)) {
+    if (['master_data', 'aset_jaringan', 'sld_visio'].includes(activeView)) {
       setMasterAsetOpen(true);
     }
     if (['saidi_saifi', 'estimasi_saidi_saifi'].includes(activeView)) {
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isPetaActive = ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView);
   const isPemeliharaanActive = ['row', 'inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu', 'pemeliharaan_20kv'].includes(activeView);
   const isSuratSpkActive = ['perintah_kerja', 'format_surat'].includes(activeView);
-  const isMasterAsetActive = ['master_data', 'aset_jaringan', 'topologi_jaringan', 'sld_visio'].includes(activeView);
+  const isMasterAsetActive = ['master_data', 'aset_jaringan', 'sld_visio'].includes(activeView);
   const isSaidiSaifiActive = ['saidi_saifi', 'estimasi_saidi_saifi'].includes(activeView);
   const isMonitoringYantekActive = ['alker_apd', 'material', 'jadwal_piket', 'kendaraan_operasional'].includes(activeView);
 
@@ -293,18 +293,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Network className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                   <span>Aset Jaringan JTM/JTR</span>
-                </button>
-
-                <button
-                  onClick={() => onSelectView('topologi_jaringan')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                    activeView === 'topologi_jaringan'
-                      ? 'bg-purple-600/20 text-purple-300 font-extrabold'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                  }`}
-                >
-                  <GitGraph className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Topologi Jaringan Feeder</span>
                 </button>
 
                 <button
