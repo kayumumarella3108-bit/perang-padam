@@ -122,7 +122,9 @@ export interface GangguanLog {
 
 export interface ROWItem {
   id: string;
-  tanggal?: string;
+  tanggal?: string; // Tanggal Eksekusi
+  tanggalInspeksi?: string;
+  tanggalEksekusi?: string;
   penyulang?: string;
   section?: string;
   jumlahTemuanInspeksi?: number | string;
@@ -141,6 +143,7 @@ export interface ROWItem {
   status?: 'Perlu Pangkas' | 'Selesai' | 'Jadwal Ulang';
   prioritas?: 'Tinggi' | 'Sedang' | 'Rendah';
   tanggalTemuan?: string;
+  temuanBelumDieksekusi?: number;
 }
 
 export interface InspeksiItem {

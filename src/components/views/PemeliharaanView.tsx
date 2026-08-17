@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Trees,
   ClipboardList,
@@ -187,7 +187,8 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   });
 
   // ROW Form State (all fields non-mandatory)
-  const [rTanggal, setRTanggal] = useState('2026-08-08');
+  const [rTanggal, setRTanggal] = useState('2026-08-08'); // Tanggal Eksekusi
+  const [rTanggalInspeksi, setRTanggalInspeksi] = useState('2026-08-08'); // Tanggal Inspeksi
   const [rPenyulang, setRPenyulang] = useState('');
   const [rSection, setRSection] = useState('');
   const [rJumlahTemuan, setRJumlahTemuan] = useState('');
@@ -196,6 +197,33 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   const [rPerluPadam, setRPerluPadam] = useState('');
   const [rPohonBesar, setRPohonBesar] = useState('');
   const [rLuarTemuan, setRLuarTemuan] = useState('');
+
+  useEffect(() => {
+    if (!editingId) {
+      // 1. Try to sync with Inspection date if provided
+      if (rTanggalInspeksi) {
+        const matchingInspeksi = tier1Data.find(t => t.tanggal === rTanggalInspeksi);
+        if (matchingInspeksi) {
+          setRPenyulang(matchingInspeksi.penyulang || '');
+          setRSection(matchingInspeksi.section || '');
+          const matchNumber = (matchingInspeksi.temuanRow || '').match(/\d+/);
+          setRJumlahTemuan(matchNumber ? matchNumber[0] : '0');
+        }
+      } 
+      // 2. Otherwise try to sync with previous ROW entry for this feeder/section
+      else if (rPenyulang && rSection) {
+        const previousRecords = rowData
+          .filter(r => r.penyulang === rPenyulang && r.section === rSection && r.id !== editingId)
+          .sort((a, b) => new Date(b.tanggal || '').getTime() - new Date(a.tanggal || '').getTime());
+        
+        if (previousRecords.length > 0) {
+          const lastRecord = previousRecords[0];
+          const lastSisa = lastRecord.temuanBelumDieksekusi || 0;
+          setRJumlahTemuan(String(lastSisa));
+        }
+      }
+    }
+  }, [rTanggalInspeksi, rPenyulang, rSection, tier1Data, rowData, editingId]);
 
   // Tier 1 Form State
   const [t1Tanggal, setT1Tanggal] = useState('2026-08-08');
@@ -241,9 +269,12 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
     try {
       const id = editingId || `row_${Date.now()}`;
       const statusValue = (Number(rRealisasiPangkas) >= Number(rJumlahTemuan) && Number(rJumlahTemuan) > 0) ? 'Selesai' : 'Perlu Pangkas';
+      const sisa = Math.max(0, Number(rJumlahTemuan) - Number(rRealisasiPangkas));
       const newItem: ROWItem = {
         id,
-        tanggal: rTanggal || '-',
+        tanggal: rTanggal || '-', // Tanggal Eksekusi
+        tanggalInspeksi: rTanggalInspeksi || '-',
+        tanggalEksekusi: rTanggal || '-',
         penyulang: rPenyulang || '-',
         section: rSection || '-',
         jumlahTemuanInspeksi: rJumlahTemuan !== '' ? rJumlahTemuan : '-',
@@ -252,6 +283,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         perluPadam: rPerluPadam !== '' ? rPerluPadam : '-',
         pohonBesar: rPohonBesar !== '' ? rPohonBesar : '-',
         luarTemuan: rLuarTemuan || '-',
+        temuanBelumDieksekusi: sisa,
         // Backward-compatibility properties for DashboardView
         tiangId: 'T-Custom',
         namaPenyulang: rPenyulang || '-',
@@ -260,7 +292,7 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         jenisPohon: rLuarTemuan || 'Pohon Rimbun',
         status: statusValue as any,
         prioritas: 'Sedang',
-        tanggalTemuan: rTanggal || '-'
+        tanggalTemuan: rTanggalInspeksi || rTanggal || '-'
       };
       await setDoc(doc(db, 'pemeliharaan_row', id), sanitizeForFirestore(newItem));
       setIsModalOpen(false);
@@ -594,7 +626,8 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
               <table className="w-full text-left text-xs text-slate-800">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3.5">Tanggal</th>
+                    <th className="px-4 py-3.5">Tgl Inspeksi</th>
+                    <th className="px-4 py-3.5">Tgl Eksekusi</th>
                     <th className="px-4 py-3.5">Penyulang</th>
                     <th className="px-4 py-3.5">Section</th>
                     <th className="px-4 py-3.5 text-center">Jumlah Temuan</th>
@@ -602,61 +635,73 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                     <th className="px-4 py-3.5 text-center">Perlu Izin</th>
                     <th className="px-4 py-3.5 text-center">Perlu Padam</th>
                     <th className="px-4 py-3.5 text-center">Pohon Besar</th>
+                    <th className="px-4 py-3.5 text-center">Temuan Belum Dieksekusi</th>
                     <th className="px-4 py-3.5">Luar Temuan</th>
                     <th className="px-4 py-3.5 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
-                  {filteredRowData.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3.5 font-mono text-slate-600 text-[11px] whitespace-nowrap">{r.tanggal || r.tanggalTemuan || '-'}</td>
-                      <td className="px-4 py-3.5 font-bold text-emerald-700">{r.penyulang || r.namaPenyulang || '-'}</td>
-                      <td className="px-4 py-3.5 font-semibold text-slate-800">{r.section || r.lokasi || '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-blue-600">{r.jumlahTemuanInspeksi !== undefined && r.jumlahTemuanInspeksi !== '-' ? r.jumlahTemuanInspeksi : r.jumlahPohon ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-emerald-600">{r.realisasiPangkas !== undefined && r.realisasiPangkas !== '-' ? r.realisasiPangkas : (r.status === 'Selesai' ? r.jumlahPohon : 0)}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-amber-600">{r.perluIzin !== undefined && r.perluIzin !== '-' ? r.perluIzin : '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-purple-600">{r.perluPadam !== undefined && r.perluPadam !== '-' ? r.perluPadam : '-'}</td>
-                      <td className="px-4 py-3.5 text-center font-bold text-rose-600">{r.pohonBesar !== undefined && r.pohonBesar !== '-' ? r.pohonBesar : '-'}</td>
-                      <td className="px-4 py-3.5 text-slate-600 text-[11px] max-w-xs">{r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '-'}</td>
-                      <td className="px-4 py-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => {
-                              setEditingId(r.id);
-                              setRTanggal(r.tanggal || r.tanggalTemuan || '');
-                              setRPenyulang(r.penyulang || r.namaPenyulang || '');
-                              setRSection(r.section || r.lokasi || '');
-                              setRJumlahTemuan(r.jumlahTemuanInspeksi !== undefined && r.jumlahTemuanInspeksi !== '-' ? String(r.jumlahTemuanInspeksi) : r.jumlahPohon !== undefined ? String(r.jumlahPohon) : '');
-                              setRRealisasiPangkas(r.realisasiPangkas !== undefined && r.realisasiPangkas !== '-' ? String(r.realisasiPangkas) : (r.status === 'Selesai' ? String(r.jumlahPohon) : ''));
-                              setRPerluIzin(r.perluIzin !== undefined && r.perluIzin !== '-' ? String(r.perluIzin) : '');
-                              setRPerluPadam(r.perluPadam !== undefined && r.perluPadam !== '-' ? String(r.perluPadam) : '');
-                              setRPohonBesar(r.pohonBesar !== undefined && r.pohonBesar !== '-' ? String(r.pohonBesar) : '');
-                              setRLuarTemuan(r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '');
-                              setIsModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                            title="Edit Data ROW"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                           <button
-                             onClick={async () => {
-                               registerDeletedId(r.id);
-                               try {
-                                 await deleteDoc(doc(db, 'pemeliharaan_row', r.id));
-                               } catch (error) {
-                                 handleFirestoreError(error, OperationType.DELETE, 'pemeliharaan_row');
-                               }
-                             }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Hapus Data ROW"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredRowData.map((r) => {
+                    const temuanInspeksi = Number(r.jumlahTemuanInspeksi) || Number(r.jumlahPohon) || 0;
+                    const pangkas = Number(r.realisasiPangkas) || 0;
+                    const izin = Number(r.perluIzin) || 0;
+                    const padam = Number(r.perluPadam) || 0;
+                    const besar = Number(r.pohonBesar) || 0;
+                    const sisa = r.temuanBelumDieksekusi !== undefined ? r.temuanBelumDieksekusi : (temuanInspeksi - pangkas);
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3.5 font-mono text-emerald-700 text-[11px] whitespace-nowrap">{r.tanggalInspeksi || r.tanggalTemuan || '-'}</td>
+                        <td className="px-4 py-3.5 font-mono text-slate-600 text-[11px] whitespace-nowrap">{r.tanggal || r.tanggalEksekusi || '-'}</td>
+                        <td className="px-4 py-3.5 font-bold text-emerald-700">{r.penyulang || r.namaPenyulang || '-'}</td>
+                        <td className="px-4 py-3.5 font-semibold text-slate-800">{r.section || r.lokasi || '-'}</td>
+                        <td className="px-4 py-3.5 text-center font-bold text-blue-600">{temuanInspeksi}</td>
+                        <td className="px-4 py-3.5 text-center font-bold text-emerald-600">{pangkas}</td>
+                        <td className="px-4 py-3.5 text-center font-bold text-amber-600">{izin}</td>
+                        <td className="px-4 py-3.5 text-center font-bold text-purple-600">{padam}</td>
+                        <td className="px-4 py-3.5 text-center font-bold text-rose-600">{besar}</td>
+                        <td className="px-4 py-3.5 text-center font-extrabold text-red-600 bg-red-50">{sisa}</td>
+                        <td className="px-4 py-3.5 text-slate-600 text-[11px] max-w-xs">{r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '-'}</td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingId(r.id);
+                                setRTanggalInspeksi(r.tanggalInspeksi || r.tanggalTemuan || '');
+                                setRTanggal(r.tanggal || r.tanggalEksekusi || '');
+                                setRPenyulang(r.penyulang || r.namaPenyulang || '');
+                                setRSection(r.section || r.lokasi || '');
+                                setRJumlahTemuan(r.jumlahTemuanInspeksi !== undefined && r.jumlahTemuanInspeksi !== '-' ? String(r.jumlahTemuanInspeksi) : r.jumlahPohon !== undefined ? String(r.jumlahPohon) : '');
+                                setRRealisasiPangkas(r.realisasiPangkas !== undefined && r.realisasiPangkas !== '-' ? String(r.realisasiPangkas) : (r.status === 'Selesai' ? String(r.jumlahPohon) : ''));
+                                setRPerluIzin(r.perluIzin !== undefined && r.perluIzin !== '-' ? String(r.perluIzin) : '');
+                                setRPerluPadam(r.perluPadam !== undefined && r.perluPadam !== '-' ? String(r.perluPadam) : '');
+                                setRPohonBesar(r.pohonBesar !== undefined && r.pohonBesar !== '-' ? String(r.pohonBesar) : '');
+                                setRLuarTemuan(r.luarTemuan !== undefined && r.luarTemuan !== '-' ? r.luarTemuan : r.jenisPohon || '');
+                                setIsModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Edit Data ROW"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                             <button
+                               onClick={async () => {
+                                 registerDeletedId(r.id);
+                                 try {
+                                   await deleteDoc(doc(db, 'pemeliharaan_row', r.id));
+                                 } catch (error) {
+                                   handleFirestoreError(error, OperationType.DELETE, 'pemeliharaan_row');
+                                 }
+                               }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Hapus Data ROW"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -952,7 +997,16 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
               <form onSubmit={handleSaveROW} className="flex-1 overflow-y-auto py-4 space-y-3.5 text-xs pr-1">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tanggal</label>
+                    <label className="block font-bold text-slate-700 mb-1">Tanggal Inspeksi</label>
+                    <input
+                      type="date"
+                      value={rTanggalInspeksi}
+                      onChange={(e) => setRTanggalInspeksi(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Tanggal Eksekusi</label>
                     <input
                       type="date"
                       value={rTanggal}
@@ -960,6 +1014,9 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 font-medium"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Penyulang</label>
                     <input
@@ -970,17 +1027,16 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 font-medium"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Section</label>
-                  <input
-                    type="text"
-                    value={rSection}
-                    onChange={(e) => setRSection(e.target.value)}
-                    placeholder="e.g. GH Asten - Ujung Jaringan"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 font-medium"
-                  />
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Section</label>
+                    <input
+                      type="text"
+                      value={rSection}
+                      onChange={(e) => setRSection(e.target.value)}
+                      placeholder="e.g. GH Asten - Ujung Jaringan"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

@@ -438,11 +438,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
 
       {/* Floating Bottom Left Badge */}
       <div className="relative z-10 w-full px-6 py-4 flex justify-between items-end pointer-events-none">
-        <div className="pointer-events-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-emerald-300 text-xs font-bold backdrop-blur-md shadow-lg">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <Leaf className="w-3.5 h-3.5 text-emerald-400" />
-          <span>CLEAN GRID PLN ULP BAGUALA • SYSTEM OPERATIONAL 20kV</span>
-        </div>
       </div>
     </div>
   );
