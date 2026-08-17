@@ -48,6 +48,7 @@ export interface FeederData {
   arusIN: number;
   bebanMw: number;
   warna: string;
+  bisaBacaIndikasi?: boolean;
 }
 
 export interface SubstationData {
@@ -246,6 +247,254 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusIN: 3,
         bebanMw: 3.8,
         warna: '#14b8a6'
+      }
+    ]
+  },
+  {
+    id: 'gh-poka',
+    nama: 'GH POKA',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH POKA (PENGHUBUNG SEKTOR POKA)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-poka-utama',
+        namaFeeder: 'POKA UTAMA',
+        panjangKms: 10.5,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT POKA 1',
+        status: 'CLOSED',
+        arusR: 112,
+        arusS: 115,
+        arusT: 110,
+        arusIN: 2,
+        bebanMw: 3.1,
+        warna: '#e11d48'
+      },
+      {
+        id: 'f-poka-2',
+        namaFeeder: 'POKA 2',
+        panjangKms: 8.7,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT POKA 2',
+        status: 'CLOSED',
+        arusR: 95,
+        arusS: 98,
+        arusT: 92,
+        arusIN: 1,
+        bebanMw: 2.5,
+        warna: '#f43f5e'
+      }
+    ]
+  },
+  {
+    id: 'gh-bandara',
+    nama: 'GH BANDARA',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH BANDARA (EXPRESS BANDARA INTERNASIONAL)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-bandara-indah',
+        namaFeeder: 'BANDARA INDAH',
+        panjangKms: 12.1,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT BDR 1',
+        status: 'CLOSED',
+        arusR: 130,
+        arusS: 135,
+        arusT: 128,
+        arusIN: 3,
+        bebanMw: 3.6,
+        warna: '#0ea5e9'
+      },
+      {
+        id: 'f-bandara-vip',
+        namaFeeder: 'BANDARA VIP',
+        panjangKms: 5.4,
+        saklarTipe: 'Recloser Smart',
+        saklarNama: 'REC BDR VIP',
+        status: 'CLOSED',
+        arusR: 85,
+        arusS: 88,
+        arusT: 82,
+        arusIN: 1,
+        bebanMw: 2.1,
+        warna: '#38bdf8'
+      }
+    ]
+  },
+  {
+    id: 'gh-hative-kecil',
+    nama: 'GH HATIVE KECIL',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH HATIVE KECIL (HUB HATIVE DISTRICT)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-hative-1',
+        namaFeeder: 'HATIVE 1',
+        panjangKms: 9.8,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT HTV 1',
+        status: 'CLOSED',
+        arusR: 120,
+        arusS: 122,
+        arusT: 118,
+        arusIN: 2,
+        bebanMw: 3.3,
+        warna: '#3b82f6'
+      },
+      {
+        id: 'f-hative-2',
+        namaFeeder: 'HATIVE 2',
+        panjangKms: 11.2,
+        saklarTipe: 'LBS Motorized',
+        saklarNama: 'LBS HTV 2',
+        status: 'CLOSED',
+        arusR: 110,
+        arusS: 112,
+        arusT: 108,
+        arusIN: 2,
+        bebanMw: 3.0,
+        warna: '#60a5fa'
+      }
+    ]
+  },
+  {
+    id: 'gh-aston',
+    nama: 'GH ASTON',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH ASTON (ZONA APARTEMEN & HOTEL)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-aston-sakti',
+        namaFeeder: 'ASTON SAKTI',
+        panjangKms: 4.2,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT ASTON 1',
+        status: 'CLOSED',
+        arusR: 90,
+        arusS: 92,
+        arusT: 88,
+        arusIN: 1,
+        bebanMw: 2.3,
+        warna: '#10b981'
+      }
+    ]
+  },
+  {
+    id: 'gh-area',
+    nama: 'GH AREA',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH AREA (DISTRIBUSI UMUM)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-area-pusat',
+        namaFeeder: 'AREA PUSAT',
+        panjangKms: 14.3,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT AREA 1',
+        status: 'CLOSED',
+        arusR: 140,
+        arusS: 142,
+        arusT: 138,
+        arusIN: 4,
+        bebanMw: 3.9,
+        warna: '#f59e0b'
+      }
+    ]
+  },
+  {
+    id: 'gh-box-poka',
+    nama: 'GH BOX POKA',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH BOX POKA (ZONA INDUSTRI POKA)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-box-poka-ind',
+        namaFeeder: 'BOX POKA INDUSTRIAL',
+        panjangKms: 7.8,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT BOX POKA 1',
+        status: 'CLOSED',
+        arusR: 115,
+        arusS: 118,
+        arusT: 112,
+        arusIN: 2,
+        bebanMw: 3.2,
+        warna: '#84cc16'
+      }
+    ]
+  },
+  {
+    id: 'gh-box-galala',
+    nama: 'GH BOX GALALA',
+    tipe: 'GH',
+    deskripsiBusbar: 'BUSBAR 20KV GH BOX GALALA (ZONA LOGISTIK GALALA)',
+    teganganKv: 20.0,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-box-galala-harb',
+        namaFeeder: 'BOX GALALA HARBOUR',
+        panjangKms: 6.5,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT BOX GALALA 1',
+        status: 'CLOSED',
+        arusR: 105,
+        arusS: 108,
+        arusT: 102,
+        arusIN: 1,
+        bebanMw: 2.8,
+        warna: '#14b8a6'
+      }
+    ]
+  },
+  {
+    id: 'gi-hative-kecil',
+    nama: 'GI HATIVE KECIL',
+    tipe: 'GI',
+    deskripsiBusbar: 'BUSBAR 20KV GI HATIVE KECIL (MAIN TRANSFORMATION & TRANSMISSION)',
+    teganganKv: 20.3,
+    frekuensiHz: 50.0,
+    feeders: [
+      {
+        id: 'f-gi-hative-inc',
+        namaFeeder: 'GI HATIVE INCOMING',
+        panjangKms: 15.0,
+        saklarTipe: 'PMT CB Incoming',
+        saklarNama: 'PMT INCOMING HTV',
+        status: 'CLOSED',
+        arusR: 250,
+        arusS: 255,
+        arusT: 248,
+        arusIN: 10,
+        bebanMw: 7.2,
+        warna: '#d946ef'
+      },
+      {
+        id: 'f-hative-maju-1',
+        namaFeeder: 'HATIVE MAJU 1',
+        panjangKms: 13.8,
+        saklarTipe: 'PMT CB Outgoing',
+        saklarNama: 'PMT OUTGOING HTV 1',
+        status: 'CLOSED',
+        arusR: 155,
+        arusS: 158,
+        arusT: 152,
+        arusIN: 4,
+        bebanMw: 4.3,
+        warna: '#a855f7'
       }
     ]
   }
@@ -478,8 +727,25 @@ export const SldVisioView: React.FC = () => {
         const snap = await getDoc(doc(db, 'sld_data', 'scada'));
         if (snap.exists()) {
           const data = snap.data();
-          if (data.substations) setSubstations(data.substations);
-          if (data.tieSwitches) setTieSwitches(data.tieSwitches);
+          let loadedSubs = data.substations || [];
+          const loadedTies = data.tieSwitches || [];
+          
+          // Smart merge: check if any substations from INITIAL_SUBSTATIONS are missing and append them
+          const existingIds = new Set(loadedSubs.map((s: any) => s.id));
+          const missingSubs = INITIAL_SUBSTATIONS.filter(s => !existingIds.has(s.id));
+          
+          if (missingSubs.length > 0) {
+            loadedSubs = [...loadedSubs, ...missingSubs];
+            // Instantly sync the merged set back to Firestore
+            await setDoc(doc(db, 'sld_data', 'scada'), {
+              substations: loadedSubs,
+              tieSwitches: loadedTies,
+              updatedAt: new Date().toISOString()
+            });
+          }
+          
+          setSubstations(loadedSubs);
+          setTieSwitches(loadedTies);
         } else {
           // Seed the database if no record exists
           await setDoc(doc(db, 'sld_data', 'scada'), {
@@ -623,6 +889,7 @@ export const SldVisioView: React.FC = () => {
   const [feederSaklarTipe, setFeederSaklarTipe] = useState('PMT CB Outgoing');
   const [feederSaklarNama, setFeederSaklarNama] = useState('');
   const [feederStatus, setFeederStatus] = useState<'CLOSED' | 'OPEN'>('CLOSED');
+  const [feederBisaBacaIndikasi, setFeederBisaBacaIndikasi] = useState<boolean>(true);
   const [feederArusR, setFeederArusR] = useState(120);
   const [feederArusS, setFeederArusS] = useState(122);
   const [feederArusT, setFeederArusT] = useState(118);
@@ -963,6 +1230,7 @@ export const SldVisioView: React.FC = () => {
                     saklarTipe: feederSaklarTipe,
                     saklarNama: feederSaklarNama || feederSaklarTipe,
                     status: feederStatus,
+                    bisaBacaIndikasi: feederBisaBacaIndikasi,
                     arusR: Number(feederArusR),
                     arusS: Number(feederArusS),
                     arusT: Number(feederArusT),
@@ -986,6 +1254,7 @@ export const SldVisioView: React.FC = () => {
         saklarTipe: feederSaklarTipe,
         saklarNama: feederSaklarNama || feederSaklarTipe,
         status: feederStatus,
+        bisaBacaIndikasi: feederBisaBacaIndikasi,
         arusR: Number(feederArusR),
         arusS: Number(feederArusS),
         arusT: Number(feederArusT),
@@ -1012,6 +1281,7 @@ export const SldVisioView: React.FC = () => {
     setFeederSaklarTipe(feeder.saklarTipe);
     setFeederSaklarNama(feeder.saklarNama);
     setFeederStatus(feeder.status);
+    setFeederBisaBacaIndikasi(feeder.bisaBacaIndikasi !== false);
     setFeederArusR(feeder.arusR);
     setFeederArusS(feeder.arusS);
     setFeederArusT(feeder.arusT);
@@ -1612,7 +1882,25 @@ export const SldVisioView: React.FC = () => {
                           </span>
 
                           {/* Substation Edit / Delete Controls */}
-                          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            <button
+                              onClick={() => {
+                                setEditingFeeder(null);
+                                setTargetSubId(sub.id);
+                                setFeederName('');
+                                setFeederKms(10.0);
+                                setFeederSaklarTipe('PMT CB Outgoing');
+                                setFeederSaklarNama('');
+                                setFeederStatus('CLOSED');
+                                setFeederBisaBacaIndikasi(true);
+                                setShowAddFeederModal(true);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all cursor-pointer"
+                              title="Tambah Feeder baru ke GI / GH ini"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>+ Feeder</span>
+                            </button>
                             <button
                               onClick={() => handleOpenEditSubstation(sub)}
                               className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400 transition-colors cursor-pointer"
@@ -1726,6 +2014,21 @@ export const SldVisioView: React.FC = () => {
                                     {feeder.status === 'CLOSED' ? 'CLOSED' : 'OPEN (TRIP)'}
                                   </span>
                                 </button>
+
+                                {/* Telemetry Indication Status */}
+                                <div className="flex justify-center pt-0.5">
+                                  {feeder.bisaBacaIndikasi !== false ? (
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 rounded-xl w-full justify-center shadow-inner">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                      Bisa Baca Indikasi
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-rose-400 font-bold flex items-center gap-1.5 bg-rose-950/30 border border-rose-500/20 px-2.5 py-1 rounded-xl w-full justify-center shadow-inner">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                      Tidak Bisa Baca Indikasi
+                                    </span>
+                                  )}
+                                </div>
 
 
 
@@ -2798,6 +3101,7 @@ export const SldVisioView: React.FC = () => {
                     onChange={(e) => setFeederSaklarTipe(e.target.value)}
                     className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
+                    <option value="PMT CB Incoming">PMT CB Incoming</option>
                     <option value="PMT CB Outgoing">PMT CB Outgoing</option>
                     <option value="LBS Section">LBS Section</option>
                     <option value="Recloser Smart">Recloser Smart</option>
@@ -2828,6 +3132,18 @@ export const SldVisioView: React.FC = () => {
                 >
                   <option value="CLOSED">CLOSED (Menyalur/Berbeban)</option>
                   <option value="OPEN">OPEN (Padam/Trip)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">KEMAMPUAN BACA INDIKASI TELEMETRI</label>
+                <select
+                  value={feederBisaBacaIndikasi ? "true" : "false"}
+                  onChange={(e) => setFeederBisaBacaIndikasi(e.target.value === "true")}
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="true">Bisa Baca Indikasi</option>
+                  <option value="false">Tidak Bisa Baca Indikasi</option>
                 </select>
               </div>
 
