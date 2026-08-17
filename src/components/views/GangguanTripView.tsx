@@ -1083,6 +1083,25 @@ export const GangguanTripView: React.FC<GangguanTripViewProps> = ({
             📊 MATRIKS DISTRIBUSI GANGGUAN PER KODE & BULAN
           </h3>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter Penyulang */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-2xs">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Filter Penyulang</span>
+                <select
+                  value={selectedPenyulang}
+                  onChange={(e) => setSelectedPenyulang(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer mt-0.5"
+                >
+                  <option value="all">Semua Penyulang ({penyulangList.length})</option>
+                  {penyulangList.map((p) => (
+                    <option key={p.id} value={p.namaPenyulang}>
+                      {p.namaPenyulang} ({p.namaGi})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
             {(startDate || endDate) && (
               <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
                 PERIODE: {startDate || 'Awal'} s/d {endDate || 'Akhir'}
