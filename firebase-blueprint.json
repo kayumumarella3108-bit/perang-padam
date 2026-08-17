@@ -365,6 +365,50 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "nomorSurat", "jenisSurat", "tanggalSurat", "perihal", "kepada"]
+    },
+    "SurveyPbPdItem": {
+      "title": "SurveyPbPdItem",
+      "description": "Technical survey records for Pasang Baru (PB) and Perubahan Daya (PD) including feeder, substation, voltages, phase, and connection points",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "noAgenda": { "type": "string" },
+        "idPelanggan": { "type": "string" },
+        "namaPelanggan": { "type": "string" },
+        "noHpPelanggan": { "type": "string" },
+        "jenisTransaksi": { "type": "string" },
+        "tarifLama": { "type": "string" },
+        "dayaLamaVa": { "type": "number" },
+        "tarifBaru": { "type": "string" },
+        "dayaBaruVa": { "type": "number" },
+        "peruntukan": { "type": "string" },
+        "penyulang": { "type": "string" },
+        "noGardu": { "type": "string" },
+        "jurusanGardu": { "type": "string" },
+        "lokasi": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "titikSambungLat": { "type": "number" },
+        "titikSambungLng": { "type": "number" },
+        "tegPangkal": { "type": "number" },
+        "tegTetangga": { "type": "number" },
+        "fasaYangDiambil": { "type": "string" },
+        "titikSambung": { "type": "string" },
+        "panjangSrMeter": { "type": "number" },
+        "jenisKabelSr": { "type": "string" },
+        "statusKelayakan": { "type": "string" },
+        "perkiraanDropTeganganVolt": { "type": "number" },
+        "petugasSurvey": { "type": "string" },
+        "tanggalSurvey": { "type": "string" },
+        "tanggalPenyambungan": { "type": "string" },
+        "rekomendasiTeknis": { "type": "string" },
+        "catatan": { "type": "string" },
+        "fotoLokasi": { "type": "string" },
+        "fotoPengukuranTegangan": { "type": "string" },
+        "fotoTitikSambung": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "namaPelanggan", "jenisTransaksi", "penyulang", "noGardu", "lokasi", "tegPangkal", "tegTetangga", "fasaYangDiambil", "titikSambung", "statusKelayakan", "petugasSurvey", "tanggalSurvey"]
     }
   },
   "firestore": {
@@ -467,6 +511,10 @@
     "konstruksi_gis": {
       "schema": "KonstruksiGisItem",
       "description": "GIS locations and status of 20kV construction and asset projects"
+    },
+    "survey_pb_pd": {
+      "schema": "SurveyPbPdItem",
+      "description": "Technical survey for Pasang Baru and Perubahan Daya (PB/PD) records"
     }
   }
 }

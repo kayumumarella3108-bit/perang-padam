@@ -28,7 +28,8 @@ import {
   InspeksiTier2Thermovision,
   InspeksiTier2Ultrasound,
   PohonGisItem,
-  KonstruksiGisItem
+  KonstruksiGisItem,
+  SurveyPbPdItem
 } from './types';
 import {
   INITIAL_PENYULANG,
@@ -53,7 +54,8 @@ import {
   INITIAL_ASET_JARINGAN,
   INITIAL_JADWAL_PIKET,
   INITIAL_POHON_GIS,
-  INITIAL_KONSTRUKSI_GIS
+  INITIAL_KONSTRUKSI_GIS,
+  INITIAL_SURVEY_PB_PD
 } from './data/mockData';
 import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { sanitizeForFirestore } from './utils/firestoreHelper';
@@ -90,6 +92,7 @@ import { TopologiJaringanView } from './components/views/TopologiJaringanView';
 import { ShareLaporanView } from './components/views/ShareLaporanView';
 import { PetaPohonView } from './components/views/PetaPohonView';
 import { PetaKonstruksiView } from './components/views/PetaKonstruksiView';
+import { SurveyPbPdView } from './components/views/SurveyPbPdView';
 
 export default function App() {
   // Authentication state
@@ -247,6 +250,9 @@ export default function App() {
   const [pohonGisList, setPohonGisList] = useState<PohonGisItem[]>(() => filterDeleted(INITIAL_POHON_GIS));
   const [konstruksiGisList, setKonstruksiGisList] = useState<KonstruksiGisItem[]>(() => filterDeleted(INITIAL_KONSTRUKSI_GIS));
 
+  // Survey Pasang Baru & Perubahan Daya (PB/PD) State
+  const [surveyList, setSurveyList] = useState<SurveyPbPdItem[]>(() => filterDeleted(INITIAL_SURVEY_PB_PD));
+
   // User Management State (RBAC)
   const [usersList, setUsersList] = useState<User[]>(() => filterDeleted([
     { id: 'usr_1', username: 'koordinator_baguala', name: 'Bpk. Ahmad Fauzi', role: 'Koordinator', unit: 'ULP Baguala', status: 'Aktif', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
@@ -402,6 +408,11 @@ export default function App() {
         // Seed konstruksi GIS
         for (const item of INITIAL_KONSTRUKSI_GIS) {
           await setDoc(doc(db, 'konstruksi_gis', item.id), sanitizeForFirestore(item));
+        }
+
+        // Seed survey PB/PD
+        for (const item of INITIAL_SURVEY_PB_PD) {
+          await setDoc(doc(db, 'survey_pb_pd', item.id), sanitizeForFirestore(item));
         }
 
         await setDoc(seedRef, { seeded: true, timestamp: Date.now() });
@@ -665,6 +676,15 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'konstruksi_gis');
     });
 
+    // Survey PB/PD Sync
+    const unsubSurveyPbPd = onSnapshot(collection(db, 'survey_pb_pd'), (snapshot) => {
+      const items: SurveyPbPdItem[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as SurveyPbPdItem));
+      setSurveyList(filterDeleted(items));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'survey_pb_pd');
+    });
+
     return () => {
       unsubStok();
       unsubPemakaian();
@@ -693,6 +713,7 @@ export default function App() {
       unsubscribeJadwal();
       unsubPohonGis();
       unsubKonstruksiGis();
+      unsubSurveyPbPd();
     };
   }, []);
 
@@ -1441,6 +1462,42 @@ export default function App() {
     logActivity('Menghapus titik proyek konstruksi GIS', 'Peta Konstruksi GIS');
   };
 
+  // Handlers for Survey PB/PD
+  const handleAddSurveyPbPd = async (item: SurveyPbPdItem) => {
+    setSurveyList((prev) => [item, ...prev.filter((s) => s.id !== item.id)]);
+    try {
+      await setDoc(doc(db, 'survey_pb_pd', item.id), sanitizeForFirestore(item));
+      logActivity(`Input survey baru untuk pelanggan ${item.namaPelanggan} (${item.jenisTransaksi}) di ${item.lokasi}`, 'Survey PB/PD');
+    } catch (err) {
+      console.error('Error saving survey PB/PD to Firestore:', err);
+      handleFirestoreError(err, OperationType.WRITE, `survey_pb_pd/${item.id}`);
+    }
+  };
+
+  const handleUpdateSurveyPbPd = async (item: SurveyPbPdItem) => {
+    setSurveyList((prev) => prev.map((s) => (s.id === item.id ? item : s)));
+    try {
+      await setDoc(doc(db, 'survey_pb_pd', item.id), sanitizeForFirestore(item));
+      logActivity(`Update data survey pelanggan ${item.namaPelanggan}`, 'Survey PB/PD');
+    } catch (err) {
+      console.error('Error updating survey PB/PD in Firestore:', err);
+      handleFirestoreError(err, OperationType.WRITE, `survey_pb_pd/${item.id}`);
+    }
+  };
+
+  const handleDeleteSurveyPbPd = async (id: string) => {
+    if (!id) return;
+    registerDeletedId(id);
+    setSurveyList((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await deleteDoc(doc(db, 'survey_pb_pd', id));
+      logActivity(`Hapus data survey ID ${id}`, 'Survey PB/PD');
+    } catch (err) {
+      console.error('Error deleting survey PB/PD from Firestore:', err);
+      handleFirestoreError(err, OperationType.DELETE, `survey_pb_pd/${id}`);
+    }
+  };
+
   // If not logged in, display Login Screen
   if (!user) {
     return <LoginScreen onLogin={handleLogin} usersList={usersList} />;
@@ -1670,6 +1727,18 @@ export default function App() {
               onDeletePengukuran={handleDeletePengukuranGardu}
               onAddGardu={handleAddMasterGardu}
               onDeleteGardu={handleDeleteMasterGardu}
+            />
+          )}
+
+          {activeView === 'survey_pb_pd' && (
+            <SurveyPbPdView
+              currentUser={user}
+              surveyList={surveyList}
+              penyulangList={syncedPenyulangList}
+              masterGarduList={masterGarduList}
+              onAddSurvey={handleAddSurveyPbPd}
+              onUpdateSurvey={handleUpdateSurveyPbPd}
+              onDeleteSurvey={handleDeleteSurveyPbPd}
             />
           )}
 

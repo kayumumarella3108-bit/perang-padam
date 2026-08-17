@@ -1,0 +1,1856 @@
+import React, { useState, useMemo } from 'react';
+import {
+  Zap,
+  Plus,
+  Search,
+  Download,
+  FileSpreadsheet,
+  Trash2,
+  Edit3,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  MapPin,
+  FileText,
+  Printer,
+  Share2,
+  Filter,
+  Eye,
+  Sliders,
+  Sparkles,
+  ArrowRight,
+  TrendingDown,
+  Building,
+  UserCheck,
+  Check,
+  ChevronRight,
+  Activity,
+  Layers,
+  Camera,
+  X,
+  Phone,
+  Calendar,
+  Info,
+  Map,
+  Compass
+} from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { SurveyPbPdItem, Penyulang, MasterGardu, User } from '../../types';
+import { canEditData } from '../../utils/permissions';
+import { SurveyMapPicker } from '../modals/SurveyMapPicker';
+import { SurveyPbPdMapTab } from './SurveyPbPdMapTab';
+
+interface SurveyPbPdViewProps {
+  currentUser?: User | null;
+  surveyList: SurveyPbPdItem[];
+  penyulangList: Penyulang[];
+  masterGarduList?: MasterGardu[];
+  onAddSurvey: (item: SurveyPbPdItem) => void;
+  onUpdateSurvey: (item: SurveyPbPdItem) => void;
+  onDeleteSurvey: (id: string) => void;
+}
+
+export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
+  currentUser,
+  surveyList,
+  penyulangList,
+  masterGarduList = [],
+  onAddSurvey,
+  onUpdateSurvey,
+  onDeleteSurvey
+}) => {
+  const [activeTab, setActiveTab] = useState<'daftar' | 'peta' | 'analisis' | 'berita_acara'>('daftar');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPenyulang, setFilterPenyulang] = useState('ALL');
+  const [filterJenis, setFilterJenis] = useState<'ALL' | 'PB' | 'PD'>('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterFasa, setFilterFasa] = useState('ALL');
+
+  // Modal & Form State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<SurveyPbPdItem | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<SurveyPbPdItem | null>(null);
+  const [selectedForBa, setSelectedForBa] = useState<SurveyPbPdItem | null>(null);
+
+  // Form input fields
+  const [formData, setFormData] = useState<Partial<SurveyPbPdItem>>({
+    jenisTransaksi: 'Pasang Baru (PB)',
+    namaPelanggan: '',
+    noAgenda: '',
+    idPelanggan: '',
+    noHpPelanggan: '',
+    tarifLama: '',
+    dayaLamaVa: undefined,
+    tarifBaru: 'R1/1300 VA',
+    dayaBaruVa: 1300,
+    peruntukan: 'Rumah Tangga',
+    penyulang: penyulangList[0]?.namaPenyulang || 'PASSO',
+    noGardu: 'BG-01',
+    jurusanGardu: 'Jurusan 1',
+    lokasi: '',
+    lat: -3.6375,
+    lng: 128.2435,
+    titikSambungLat: -3.6376,
+    titikSambungLng: 128.2433,
+    tegPangkal: 230,
+    tegTetangga: 220,
+    fasaYangDiambil: '1 Fasa (Fasa R)',
+    titikSambung: 'Tiang TR No. 01 Jurusan 1',
+    panjangSrMeter: 15,
+    jenisKabelSr: 'TIC 2x10 mm²',
+    statusKelayakan: 'Layak Sambung',
+    petugasSurvey: currentUser?.name || 'Petugas Survey Lapangan',
+    tanggalSurvey: new Date().toISOString().split('T')[0],
+    rekomendasiTeknis: '',
+    catatan: '',
+    fotoLokasi: '',
+    fotoPengukuranTegangan: '',
+    fotoTitikSambung: ''
+  });
+
+  const canEdit = currentUser ? canEditData(currentUser) : true;
+
+  // Calculation helpers
+  const getDropTegangan = (pangkal: number = 0, tetangga: number = 0) => {
+    if (!pangkal || !tetangga) return { dropVolt: 0, dropPct: 0, status: 'Aman' };
+    const dropVolt = Math.max(0, pangkal - tetangga);
+    const dropPct = (dropVolt / pangkal) * 100;
+    let status = 'Aman (< 5%)';
+    if (dropPct >= 10) status = 'Kritis (≥ 10%) - Tidak Layak';
+    else if (dropPct >= 5) status = 'Waspada (5% - 9.9%)';
+    return { dropVolt, dropPct, status };
+  };
+
+  // Open modal for Create or Edit
+  const handleOpenCreate = () => {
+    setEditingItem(null);
+    setFormData({
+      jenisTransaksi: 'Pasang Baru (PB)',
+      namaPelanggan: '',
+      noAgenda: `54260${Math.floor(1000000 + Math.random() * 9000000)}`,
+      idPelanggan: '',
+      noHpPelanggan: '',
+      tarifLama: '',
+      dayaLamaVa: undefined,
+      tarifBaru: 'R1/1300 VA',
+      dayaBaruVa: 1300,
+      peruntukan: 'Rumah Tangga',
+      penyulang: penyulangList[0]?.namaPenyulang || 'PASSO',
+      noGardu: masterGarduList[0]?.noGardu || 'BG-01',
+      jurusanGardu: 'Jurusan 1',
+      lokasi: '',
+      lat: -3.6375,
+      lng: 128.2435,
+      titikSambungLat: -3.6376,
+      titikSambungLng: 128.2433,
+      tegPangkal: 230,
+      tegTetangga: 220,
+      fasaYangDiambil: '1 Fasa (Fasa R)',
+      titikSambung: 'Tiang TR No. 01 Jurusan 1',
+      panjangSrMeter: 15,
+      jenisKabelSr: 'TIC 2x10 mm²',
+      statusKelayakan: 'Layak Sambung',
+      petugasSurvey: currentUser?.name || 'Petugas Survey ULP Baguala',
+      tanggalSurvey: new Date().toISOString().split('T')[0],
+      rekomendasiTeknis: '',
+      catatan: '',
+      fotoLokasi: '',
+      fotoPengukuranTegangan: '',
+      fotoTitikSambung: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: SurveyPbPdItem) => {
+    setEditingItem(item);
+    setFormData({
+      ...item,
+      lat: item.lat || -3.6375,
+      lng: item.lng || 128.2435,
+      titikSambungLat: item.titikSambungLat || (item.lat ? item.lat - 0.00015 : -3.6376),
+      titikSambungLng: item.titikSambungLng || (item.lng ? item.lng - 0.00015 : 128.2433)
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSaveForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.namaPelanggan || !formData.penyulang || !formData.noGardu || !formData.lokasi) {
+      alert('Mohon lengkapi data wajib: Nama Pelanggan, Penyulang, No Gardu, dan Lokasi.');
+      return;
+    }
+
+    const pangkal = Number(formData.tegPangkal) || 220;
+    const tetangga = Number(formData.tegTetangga) || 220;
+    const dropVolt = Math.max(0, pangkal - tetangga);
+
+    const record: SurveyPbPdItem = {
+      id: editingItem ? editingItem.id : `srv-${Date.now()}`,
+      noAgenda: formData.noAgenda || `54260${Math.floor(1000000 + Math.random() * 9000000)}`,
+      idPelanggan: formData.idPelanggan || '',
+      namaPelanggan: formData.namaPelanggan.trim(),
+      noHpPelanggan: formData.noHpPelanggan || '',
+      jenisTransaksi: formData.jenisTransaksi || 'Pasang Baru (PB)',
+      tarifLama: formData.tarifLama || '',
+      dayaLamaVa: formData.dayaLamaVa ? Number(formData.dayaLamaVa) : undefined,
+      tarifBaru: formData.tarifBaru || 'R1/1300 VA',
+      dayaBaruVa: Number(formData.dayaBaruVa) || 1300,
+      peruntukan: formData.peruntukan || 'Rumah Tangga',
+      penyulang: formData.penyulang || 'PASSO',
+      noGardu: formData.noGardu || 'BG-01',
+      jurusanGardu: formData.jurusanGardu || 'Jurusan 1',
+      lokasi: formData.lokasi.trim(),
+      lat: formData.lat !== undefined ? Number(formData.lat) : undefined,
+      lng: formData.lng !== undefined ? Number(formData.lng) : undefined,
+      titikSambungLat: formData.titikSambungLat !== undefined ? Number(formData.titikSambungLat) : undefined,
+      titikSambungLng: formData.titikSambungLng !== undefined ? Number(formData.titikSambungLng) : undefined,
+      tegPangkal: pangkal,
+      tegTetangga: tetangga,
+      fasaYangDiambil: formData.fasaYangDiambil || '1 Fasa (Fasa R)',
+      titikSambung: formData.titikSambung?.trim() || 'Tiang TR No. 01',
+      panjangSrMeter: Number(formData.panjangSrMeter) || 15,
+      jenisKabelSr: formData.jenisKabelSr || 'TIC 2x10 mm²',
+      statusKelayakan: formData.statusKelayakan || 'Layak Sambung',
+      perkiraanDropTeganganVolt: dropVolt,
+      petugasSurvey: formData.petugasSurvey || currentUser?.name || 'Surveyor Lapangan',
+      tanggalSurvey: formData.tanggalSurvey || new Date().toISOString().split('T')[0],
+      tanggalPenyambungan: formData.tanggalPenyambungan || '',
+      rekomendasiTeknis: formData.rekomendasiTeknis || '',
+      catatan: formData.catatan || '',
+      fotoLokasi: formData.fotoLokasi || '',
+      fotoPengukuranTegangan: formData.fotoPengukuranTegangan || '',
+      fotoTitikSambung: formData.fotoTitikSambung || '',
+      createdAt: editingItem?.createdAt || new Date().toISOString()
+    };
+
+    if (editingItem) {
+      onUpdateSurvey(record);
+    } else {
+      onAddSurvey(record);
+    }
+
+    setIsModalOpen(false);
+    setEditingItem(null);
+  };
+
+  // Image Upload helper
+  const handleImageUpload = (field: 'fotoLokasi' | 'fotoPengukuranTegangan' | 'fotoTitikSambung', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Filtered Survey List
+  const filteredList = useMemo(() => {
+    return surveyList.filter(item => {
+      const matchSearch =
+        searchQuery === '' ||
+        item.namaPelanggan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.noAgenda && item.noAgenda.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.idPelanggan && item.idPelanggan.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        item.noGardu.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.penyulang.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.titikSambung.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.petugasSurvey.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchPenyulang = filterPenyulang === 'ALL' || item.penyulang === filterPenyulang;
+      const matchJenis =
+        filterJenis === 'ALL' ||
+        (filterJenis === 'PB' && item.jenisTransaksi.includes('PB')) ||
+        (filterJenis === 'PD' && item.jenisTransaksi.includes('PD'));
+      const matchStatus = filterStatus === 'ALL' || item.statusKelayakan === filterStatus;
+      const matchFasa =
+        filterFasa === 'ALL' ||
+        (filterFasa === 'R' && item.fasaYangDiambil.includes('R') && !item.fasaYangDiambil.includes('R-S-T')) ||
+        (filterFasa === 'S' && item.fasaYangDiambil.includes('S') && !item.fasaYangDiambil.includes('R-S-T')) ||
+        (filterFasa === 'T' && item.fasaYangDiambil.includes('T') && !item.fasaYangDiambil.includes('R-S-T')) ||
+        (filterFasa === '3F' && (item.fasaYangDiambil.includes('3 Fasa') || item.fasaYangDiambil.includes('RST') || item.fasaYangDiambil.includes('R-S-T')));
+
+      return matchSearch && matchPenyulang && matchJenis && matchStatus && matchFasa;
+    });
+  }, [surveyList, searchQuery, filterPenyulang, filterJenis, filterStatus, filterFasa]);
+
+  // Summary Metrics
+  const metrics = useMemo(() => {
+    const total = surveyList.length;
+    const pbCount = surveyList.filter(s => s.jenisTransaksi.includes('PB')).length;
+    const pdCount = surveyList.filter(s => s.jenisTransaksi.includes('PD')).length;
+    const layakCount = surveyList.filter(s => s.statusKelayakan === 'Layak Sambung').length;
+    const sisipTiangCount = surveyList.filter(s => s.statusKelayakan === 'Perlu Sisip Tiang' || s.statusKelayakan === 'Perlu Perluasan JTR').length;
+    const dropKritisCount = surveyList.filter(s => {
+      const dropPct = ((s.tegPangkal - s.tegTetangga) / (s.tegPangkal || 220)) * 100;
+      return dropPct >= 10 || s.statusKelayakan === 'Drop Tegangan (Tidak Layak)';
+    }).length;
+    const selesaiSambungCount = surveyList.filter(s => s.statusKelayakan === 'Selesai Penyambungan').length;
+
+    return { total, pbCount, pdCount, layakCount, sisipTiangCount, dropKritisCount, selesaiSambungCount };
+  }, [surveyList]);
+
+  // Export CSV
+  const handleExportCsv = () => {
+    if (filteredList.length === 0) {
+      alert('Tidak ada data survey untuk di-export.');
+      return;
+    }
+    const headers = [
+      'No',
+      'No Agenda',
+      'ID Pelanggan',
+      'Nama Pelanggan',
+      'No HP',
+      'Jenis Transaksi',
+      'Tarif/Daya Lama',
+      'Tarif/Daya Baru (VA)',
+      'Penyulang',
+      'No Gardu',
+      'Jurusan',
+      'Lokasi',
+      'Teg Pangkal (V)',
+      'Teg Tetangga (V)',
+      'Drop Tegangan (V)',
+      'Drop (%)',
+      'Fasa yang Diambil',
+      'Titik Sambung',
+      'Panjang SR (m)',
+      'Jenis Kabel SR',
+      'Status Kelayakan',
+      'Petugas Survey',
+      'Tanggal Survey',
+      'Rekomendasi Teknis'
+    ];
+
+    const rows = filteredList.map((s, idx) => {
+      const { dropVolt, dropPct } = getDropTegangan(s.tegPangkal, s.tegTetangga);
+      return [
+        idx + 1,
+        `"${s.noAgenda || '-'}"`,
+        `"${s.idPelanggan || '-'}"`,
+        `"${s.namaPelanggan}"`,
+        `"${s.noHpPelanggan || '-'}"`,
+        `"${s.jenisTransaksi}"`,
+        `"${s.tarifLama ? `${s.tarifLama} (${s.dayaLamaVa} VA)` : '-'}"`,
+        `"${s.tarifBaru} (${s.dayaBaruVa} VA)"`,
+        `"${s.penyulang}"`,
+        `"${s.noGardu}"`,
+        `"${s.jurusanGardu || '-'}"`,
+        `"${s.lokasi.replace(/"/g, '""')}"`,
+        s.tegPangkal,
+        s.tegTetangga,
+        dropVolt,
+        `${dropPct.toFixed(2)}%`,
+        `"${s.fasaYangDiambil}"`,
+        `"${s.titikSambung.replace(/"/g, '""')}"`,
+        s.panjangSrMeter || '-',
+        `"${s.jenisKabelSr || '-'}"`,
+        `"${s.statusKelayakan}"`,
+        `"${s.petugasSurvey}"`,
+        s.tanggalSurvey,
+        `"${(s.rekomendasiTeknis || s.catatan || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Survey_PB_PD_PLN_ULP_Baguala_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Generate Berita Acara PDF
+  const handleExportPDF = (item: SurveyPbPdItem) => {
+    const doc = new jsPDF();
+    const { dropVolt, dropPct, status } = getDropTegangan(item.tegPangkal, item.tegTetangga);
+
+    // Header KOP Surat
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PT PLN (PERSERO) UIW MMU - UP3 AMBON', 14, 12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('UNIT LAYANAN PELANGGAN (ULP) BAGUALA', 14, 18);
+    doc.setFontSize(8);
+    doc.text('Sistem Kelistrikan Passo - Baguala | Form Survey Kelayakan Teknis PB/PD', 14, 23);
+
+    // Title
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BERITA ACARA SURVEY KELAYAKAN TEKNIS PB / PD', 105, 38, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Nomor Dokumen: BA-SRV/${item.penyulang.toUpperCase()}/${item.noGardu}/${item.tanggalSurvey.replace(/-/g, '')}`, 105, 43, { align: 'center' });
+
+    // Table of Information
+    autoTable(doc, {
+      startY: 48,
+      head: [['Parameter', 'Data Hasil Survey Lapangan']],
+      body: [
+        ['Jenis Permohonan / Transaksi', item.jenisTransaksi],
+        ['Nomor Agenda / Registrasi', item.noAgenda || '-'],
+        ['ID Pelanggan / No Meter', item.idPelanggan || '-'],
+        ['Nama Pelanggan / Pemohon', item.namaPelanggan],
+        ['No. Kontak / WhatsApp', item.noHpPelanggan || '-'],
+        ['Peruntukan', item.peruntukan || 'Rumah Tangga'],
+        ['Tarif & Daya Lama (PD)', item.tarifLama ? `${item.tarifLama} / ${item.dayaLamaVa} VA` : '- (Pasang Baru)'],
+        ['Tarif & Daya Baru Dimohon', `${item.tarifBaru} / ${item.dayaBaruVa} VA`],
+        ['Penyulang (Feeder 20kV)', item.penyulang],
+        ['Nomor Gardu Distribusi / GTT', `${item.noGardu} (${item.jurusanGardu || 'Jurusan 1'})`],
+        ['Alamat / Lokasi Sambungan', item.lokasi],
+        ['Tegangan Pangkal / Sumber', `${item.tegPangkal} Volt`],
+        ['Tegangan Ujung / Tetangga', `${item.tegTetangga} Volt`],
+        ['Drop Tegangan (ΔV)', `${dropVolt} Volt (${dropPct.toFixed(2)}%) - ${status}`],
+        ['Fasa yang Diambil', item.fasaYangDiambil],
+        ['Titik Sambung JTR / Tiang', item.titikSambung],
+        ['Panjang Saluran Rumah (SR)', `${item.panjangSrMeter || 15} Meter (Jenis: ${item.jenisKabelSr || 'TIC 2x10 mm²'})`],
+        ['Kesimpulan & Status Kelayakan', item.statusKelayakan.toUpperCase()],
+        ['Rekomendasi Petugas Survey', item.rekomendasiTeknis || 'Memenuhi syarat teknis PLN untuk dilakukan penyambungan.'],
+        ['Petugas Surveyor', item.petugasSurvey],
+        ['Tanggal Pelaksanaan Survey', item.tanggalSurvey]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [14, 116, 144], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 65, fontStyle: 'bold', fillColor: [248, 250, 252] },
+        1: { cellWidth: 125 }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 12;
+
+    // Signatures
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Mengetahui / Menyetujui,', 25, finalY);
+    doc.text('Team Leader / Supervisor Teknik', 25, finalY + 5);
+    doc.text('Petugas Surveyor Lapangan,', 135, finalY);
+    doc.text('ULP Baguala', 135, finalY + 5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Samuel Leimena', 25, finalY + 28);
+    doc.text('TL Teknik ULP Baguala', 25, finalY + 32);
+
+    doc.text(item.petugasSurvey, 135, finalY + 28);
+    doc.text('Surveyor Teknik Lapangan', 135, finalY + 32);
+
+    doc.save(`BA_Survey_${item.namaPelanggan.replace(/\s+/g, '_')}_${item.noGardu}.pdf`);
+  };
+
+  // WhatsApp Share Message Generator
+  const handleShareWhatsapp = (item: SurveyPbPdItem) => {
+    const { dropVolt, dropPct } = getDropTegangan(item.tegPangkal, item.tegTetangga);
+    const text = `⚡ *LAPORAN SURVEY KELAYAKAN TEKNIS PB/PD* ⚡
+*PLN ULP BAGUALA - UP3 AMBON*
+
+📋 *Data Permohonan:*
+• *Jenis Transaksi:* ${item.jenisTransaksi}
+• *No Agenda:* ${item.noAgenda || '-'}
+• *Nama Pelanggan:* ${item.namaPelanggan}
+• *Tarif & Daya Baru:* ${item.tarifBaru} (${item.dayaBaruVa} VA)
+• *Alamat/Lokasi:* ${item.lokasi}
+
+🔌 *Data Teknis Kelistrikan:*
+• *Penyulang:* ${item.penyulang}
+• *No Gardu:* ${item.noGardu} (${item.jurusanGardu || 'Jurusan 1'})
+• *Tegangan Pangkal:* ${item.tegPangkal} V
+• *Tegangan Tetangga:* ${item.tegTetangga} V
+• *Drop Tegangan:* ${dropVolt} V (${dropPct.toFixed(2)}%)
+• *Fasa yang Diambil:* ${item.fasaYangDiambil}
+• *Titik Sambung:* ${item.titikSambung}
+• *Panjang SR:* ${item.panjangSrMeter || 15} Meter (${item.jenisKabelSr || 'TIC 2x10mm²'})
+
+📊 *Hasil & Kesimpulan:*
+• *Status Kelayakan:* *${item.statusKelayakan.toUpperCase()}*
+• *Rekomendasi:* ${item.rekomendasiTeknis || 'Dapat dilakukan penyambungan.'}
+• *Surveyor:* ${item.petugasSurvey} (${item.tanggalSurvey})
+
+_Laporan resmi Sistem Perang Padam ULP Baguala_`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Header View */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 space-y-1.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl shadow-inner">
+              <Zap className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                Survey Pasang Baru & Perubahan Daya (PB/PD)
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                  PLN ULP Baguala
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Pencatatan survei kelayakan teknis jaringan TR, tegangan pangkal/tetangga, beban fasa, dan titik sambung pelanggan.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 relative z-10">
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700/60 shadow-sm transition-all cursor-pointer"
+            title="Export Data ke Excel/CSV"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Export Excel</span>
+          </button>
+
+          {canEdit && (
+            <button
+              onClick={handleOpenCreate}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/20 transition-all cursor-pointer transform active:scale-95"
+            >
+              <Plus className="w-4 h-4 text-slate-950" />
+              <span>+ Input Survey Baru</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Total Survey</span>
+            <Activity className="w-4 h-4 text-indigo-400" />
+          </div>
+          <p className="text-2xl font-black text-white">{metrics.total}</p>
+          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+            <span className="text-amber-400 font-bold">{metrics.pbCount} PB</span>
+            <span>•</span>
+            <span className="text-cyan-400 font-bold">{metrics.pdCount} PD</span>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Pasang Baru (PB)</span>
+            <Zap className="w-4 h-4 text-amber-400" />
+          </div>
+          <p className="text-2xl font-black text-amber-400">{metrics.pbCount}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Permohonan Baru</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Perubahan Daya</span>
+            <Sliders className="w-4 h-4 text-cyan-400" />
+          </div>
+          <p className="text-2xl font-black text-cyan-400">{metrics.pdCount}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Tambah/Turun Daya</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Layak Sambung</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="text-2xl font-black text-emerald-400">{metrics.layakCount}</p>
+          <p className="text-[11px] text-emerald-400/80 mt-1">Tegangan Memenuhi Syarat</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Sisip Tiang / JTR</span>
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          </div>
+          <p className="text-2xl font-black text-amber-400">{metrics.sisipTiangCount}</p>
+          <p className="text-[11px] text-amber-400/80 mt-1">Perluasan JTR/Tiang</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Drop Kritis / TL</span>
+            <XCircle className="w-4 h-4 text-rose-400" />
+          </div>
+          <p className="text-2xl font-black text-rose-400">{metrics.dropKritisCount}</p>
+          <p className="text-[11px] text-rose-400/80 mt-1">Drop &gt; 10% (Trafo Padat)</p>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('daftar')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'daftar'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            📋 Data Hasil Survey ({filteredList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('peta')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'peta'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            <Map className="w-3.5 h-3.5 text-sky-400" />
+            <span>🗺️ Peta GIS Sebaran Survey ({filteredList.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('analisis')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'analisis'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            📊 Analisis Beban & Drop Tegangan
+          </button>
+          <button
+            onClick={() => setActiveTab('berita_acara')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'berita_acara'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            📄 Cetak Berita Acara (BA)
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content: PETA GIS SEBARAN SURVEY */}
+      {activeTab === 'peta' && (
+        <SurveyPbPdMapTab
+          surveyList={filteredList}
+          penyulangList={penyulangList}
+          onSelectDetail={setSelectedDetail}
+          onExportPDF={handleExportPDF}
+          onShareWA={handleShareWhatsapp}
+        />
+      )}
+
+      {/* Tab Content: DAFTAR SURVEY */}
+      {activeTab === 'daftar' && (
+        <div className="space-y-4">
+          {/* Filter Bar */}
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl shadow-md space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Search Bar */}
+              <div className="relative lg:col-span-2">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari nama pemohon, no agenda, no gardu, titik sambung..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/70"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Penyulang */}
+              <div>
+                <select
+                  value={filterPenyulang}
+                  onChange={e => setFilterPenyulang(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="ALL">Semua Penyulang</option>
+                  {penyulangList.map(p => (
+                    <option key={p.id} value={p.namaPenyulang}>
+                      {p.namaPenyulang}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Jenis Transaksi */}
+              <div>
+                <select
+                  value={filterJenis}
+                  onChange={e => setFilterJenis(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="ALL">Semua Transaksi (PB & PD)</option>
+                  <option value="PB">Pasang Baru (PB)</option>
+                  <option value="PD">Perubahan Daya (PD)</option>
+                </select>
+              </div>
+
+              {/* Filter Status Kelayakan */}
+              <div>
+                <select
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="ALL">Semua Status Kelayakan</option>
+                  <option value="Layak Sambung">Layak Sambung</option>
+                  <option value="Perlu Sisip Tiang">Perlu Sisip Tiang</option>
+                  <option value="Perlu Perluasan JTR">Perlu Perluasan JTR</option>
+                  <option value="Drop Tegangan (Tidak Layak)">Drop Tegangan (&gt; 10%)</option>
+                  <option value="Selesai Penyambungan">Selesai Penyambungan</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Quick Fasa Chips */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/60">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                <Filter className="w-3 h-3 text-amber-400" />
+                Filter Fasa:
+              </span>
+              {[
+                { id: 'ALL', label: 'Semua Fasa' },
+                { id: 'R', label: 'Fasa R (Merah)', color: 'border-rose-500/40 text-rose-300' },
+                { id: 'S', label: 'Fasa S (Kuning)', color: 'border-amber-500/40 text-amber-300' },
+                { id: 'T', label: 'Fasa T (Biru)', color: 'border-sky-500/40 text-sky-300' },
+                { id: '3F', label: '3 Fasa (R-S-T)', color: 'border-purple-500/40 text-purple-300' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilterFasa(f.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    filterFasa === f.id
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
+                      : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Survey Table */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-3 w-10 text-center">No</th>
+                    <th className="py-3.5 px-3 min-w-[140px]">Pelanggan & Agenda</th>
+                    <th className="py-3.5 px-3 min-w-[120px]">Transaksi & Daya</th>
+                    <th className="py-3.5 px-3 min-w-[130px]">Penyulang & Gardu</th>
+                    <th className="py-3.5 px-3 min-w-[150px]">Lokasi & Titik Sambung</th>
+                    <th className="py-3.5 px-3 min-w-[120px] text-center">Teg Pangkal / Ujung</th>
+                    <th className="py-3.5 px-3 min-w-[110px] text-center">Fasa Diambil</th>
+                    <th className="py-3.5 px-3 min-w-[120px] text-center">Kelayakan</th>
+                    <th className="py-3.5 px-3 min-w-[100px]">Surveyor</th>
+                    <th className="py-3.5 px-3 w-28 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredList.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Zap className="w-8 h-8 text-slate-600" />
+                          <p className="text-sm font-semibold">Tidak ada data survey yang cocok.</p>
+                          <p className="text-xs text-slate-600">Silakan ubah filter atau tambahkan survey baru.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredList.map((item, idx) => {
+                      const { dropVolt, dropPct } = getDropTegangan(item.tegPangkal, item.tegTetangga);
+
+                      const isPb = item.jenisTransaksi.includes('PB');
+                      const is3Fasa = item.fasaYangDiambil.includes('3 Fasa') || item.fasaYangDiambil.includes('R-S-T');
+                      const isFasaR = item.fasaYangDiambil.includes('R') && !is3Fasa;
+                      const isFasaS = item.fasaYangDiambil.includes('S') && !is3Fasa;
+                      const isFasaT = item.fasaYangDiambil.includes('T') && !is3Fasa;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
+                          {/* No */}
+                          <td className="py-3 px-3 text-center text-slate-500 font-mono text-[11px]">
+                            {idx + 1}
+                          </td>
+
+                          {/* Pelanggan */}
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-white leading-snug">{item.namaPelanggan}</div>
+                            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                              <span>Agd: {item.noAgenda || '-'}</span>
+                            </div>
+                            {item.noHpPelanggan && (
+                              <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>{item.noHpPelanggan}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Transaksi & Daya */}
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold mb-1 ${
+                                isPb
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                              }`}
+                            >
+                              {item.jenisTransaksi}
+                            </span>
+                            <div className="font-semibold text-slate-200 text-[11px]">
+                              {item.tarifBaru} ({item.dayaBaruVa} VA)
+                            </div>
+                            {item.tarifLama && (
+                              <div className="text-[10px] text-slate-500 line-through">
+                                Lama: {item.tarifLama} ({item.dayaLamaVa} VA)
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Penyulang & Gardu */}
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-indigo-300 flex items-center gap-1">
+                              <Building className="w-3 h-3 text-indigo-400 shrink-0" />
+                              <span>{item.penyulang}</span>
+                            </div>
+                            <div className="text-[11px] text-amber-300 font-bold mt-0.5 flex items-center gap-1">
+                              <span>Gardu: {item.noGardu}</span>
+                              {item.jurusanGardu && (
+                                <span className="text-[9px] px-1 py-0.2 bg-slate-800 text-slate-300 rounded">
+                                  {item.jurusanGardu}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Lokasi & Titik Sambung */}
+                          <td className="py-3 px-3">
+                            <div className="text-slate-300 line-clamp-1 flex items-start gap-1">
+                              <MapPin className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />
+                              <span title={item.lokasi}>{item.lokasi}</span>
+                            </div>
+                            <div className="text-[10px] text-amber-400/90 font-semibold mt-1 line-clamp-1">
+                              ⚡ {item.titikSambung}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {item.panjangSrMeter && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                                  SR: {item.panjangSrMeter}m
+                                </span>
+                              )}
+                              {item.lat && item.lng && (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTab('peta')}
+                                  className="text-[9px] px-1.5 py-0.2 rounded bg-sky-950 hover:bg-sky-900 text-sky-400 border border-sky-800/60 font-mono flex items-center gap-0.5 cursor-pointer"
+                                  title="Lihat di Peta GIS"
+                                >
+                                  <Compass className="w-2.5 h-2.5" />
+                                  <span>{item.lat.toFixed(4)}, {item.lng.toFixed(4)}</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Tegangan Pangkal & Ujung */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1 font-mono font-bold">
+                              <span className="text-emerald-400">{item.tegPangkal}V</span>
+                              <span className="text-slate-600">→</span>
+                              <span
+                                className={`${
+                                  item.tegTetangga < 200
+                                    ? 'text-rose-400'
+                                    : item.tegTetangga < 210
+                                    ? 'text-amber-400'
+                                    : 'text-sky-400'
+                                }`}
+                              >
+                                {item.tegTetangga}V
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              ΔV: <span className="font-semibold text-white">{dropVolt}V</span> ({dropPct.toFixed(1)}%)
+                            </div>
+                          </td>
+
+                          {/* Fasa */}
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                is3Fasa
+                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                  : isFasaR
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                  : isFasaS
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                              }`}
+                            >
+                              {item.fasaYangDiambil}
+                            </span>
+                          </td>
+
+                          {/* Kelayakan */}
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
+                                item.statusKelayakan === 'Layak Sambung'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : item.statusKelayakan === 'Selesai Penyambungan'
+                                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                  : item.statusKelayakan === 'Drop Tegangan (Tidak Layak)'
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              }`}
+                            >
+                              {item.statusKelayakan}
+                            </span>
+                          </td>
+
+                          {/* Surveyor */}
+                          <td className="py-3 px-3">
+                            <div className="text-[11px] font-semibold text-slate-300">{item.petugasSurvey}</div>
+                            <div className="text-[10px] text-slate-500">{item.tanggalSurvey}</div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {/* Detail Modal */}
+                              <button
+                                onClick={() => setSelectedDetail(item)}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+                                title="Lihat Detail Survey"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* WhatsApp Share */}
+                              <button
+                                onClick={() => handleShareWhatsapp(item)}
+                                className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-800/50 transition-all cursor-pointer"
+                                title="Share WhatsApp Hasil Survey"
+                              >
+                                <Share2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Cetak BA PDF */}
+                              <button
+                                onClick={() => handleExportPDF(item)}
+                                className="p-1.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900/90 text-indigo-400 border border-indigo-800/50 transition-all cursor-pointer"
+                                title="Cetak Berita Acara PDF"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
+                              {canEdit && (
+                                <>
+                                  <button
+                                    onClick={() => handleOpenEdit(item)}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 transition-all cursor-pointer"
+                                    title="Edit Survey"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Yakin ingin menghapus survey pelanggan ${item.namaPelanggan}?`)) {
+                                        onDeleteSurvey(item.id);
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-rose-400 transition-all cursor-pointer"
+                                    title="Hapus Survey"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: ANALISIS BEBAN & TEGANGAN */}
+      {activeTab === 'analisis' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Analisis Distribusi Fasa */}
+            <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-amber-400" />
+                  Keseimbangan Beban Fasa Survey
+                </h3>
+                <span className="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full font-mono">
+                  Total {surveyList.length}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {[
+                  {
+                    fasa: 'Fasa R',
+                    count: surveyList.filter(s => s.fasaYangDiambil.includes('R') && !s.fasaYangDiambil.includes('3 Fasa')).length,
+                    color: 'bg-rose-500',
+                    border: 'border-rose-500/40',
+                    text: 'text-rose-400'
+                  },
+                  {
+                    fasa: 'Fasa S',
+                    count: surveyList.filter(s => s.fasaYangDiambil.includes('S') && !s.fasaYangDiambil.includes('3 Fasa')).length,
+                    color: 'bg-amber-500',
+                    border: 'border-amber-500/40',
+                    text: 'text-amber-400'
+                  },
+                  {
+                    fasa: 'Fasa T',
+                    count: surveyList.filter(s => s.fasaYangDiambil.includes('T') && !s.fasaYangDiambil.includes('3 Fasa')).length,
+                    color: 'bg-sky-500',
+                    border: 'border-sky-500/40',
+                    text: 'text-sky-400'
+                  },
+                  {
+                    fasa: '3 Fasa (R-S-T)',
+                    count: surveyList.filter(s => s.fasaYangDiambil.includes('3 Fasa') || s.fasaYangDiambil.includes('RST')).length,
+                    color: 'bg-purple-500',
+                    border: 'border-purple-500/40',
+                    text: 'text-purple-400'
+                  }
+                ].map(item => {
+                  const pct = surveyList.length > 0 ? (item.count / surveyList.length) * 100 : 0;
+                  return (
+                    <div key={item.fasa} className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className={item.text}>{item.fasa}</span>
+                        <span className="text-white font-mono">{item.count} Sambungan ({pct.toFixed(0)}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                        <div className={`h-full ${item.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-slate-400 italic">
+                *Rekomendasi sistem: Prioritaskan pengalokasian fasa dengan beban persentase terendah untuk mencegah unbalance trafo.
+              </p>
+            </div>
+
+            {/* Analisis Kualitas Tegangan (Drop Voltage) */}
+            <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-emerald-400" />
+                  Kepatuhan Standar Tegangan PLN
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {[
+                  {
+                    label: 'Sangat Baik (Drop < 5%)',
+                    count: surveyList.filter(s => ((s.tegPangkal - s.tegTetangga) / (s.tegPangkal || 220)) * 100 < 5).length,
+                    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  },
+                  {
+                    label: 'Waspada (Drop 5% - 9.9%)',
+                    count: surveyList.filter(s => {
+                      const p = ((s.tegPangkal - s.tegTetangga) / (s.tegPangkal || 220)) * 100;
+                      return p >= 5 && p < 10;
+                    }).length,
+                    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  },
+                  {
+                    label: 'Kritis / Tidak Layak (Drop ≥ 10%)',
+                    count: surveyList.filter(s => ((s.tegPangkal - s.tegTetangga) / (s.tegPangkal || 220)) * 100 >= 10).length,
+                    badge: 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  }
+                ].map(stat => (
+                  <div key={stat.label} className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-300">{stat.label}</span>
+                    <span className={`text-xs px-2.5 py-0.5 rounded font-black border ${stat.badge}`}>
+                      {stat.count} Lokasi
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 bg-indigo-950/40 border border-indigo-800/40 rounded-xl text-[11px] text-indigo-300">
+                <strong>Standar SPLN:</strong> Batas toleransi drop tegangan pelayanan TR adalah maksimal -10% (+5% / -10% dari 220V = batas bawah 198 Volt).
+              </div>
+            </div>
+
+            {/* Rekap Status Konstruksi */}
+            <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Building className="w-4 h-4 text-cyan-400" />
+                  Kebutuhan Tindak Lanjut JTR
+                </h3>
+              </div>
+              <div className="space-y-2.5">
+                {[
+                  { title: 'Layak Langsung Sambung', count: metrics.layakCount, color: 'text-emerald-400' },
+                  { title: 'Perlu Sisip Tiang JTR', count: surveyList.filter(s => s.statusKelayakan === 'Perlu Sisip Tiang').length, color: 'text-amber-400' },
+                  { title: 'Perlu Perluasan Jaringan JTR', count: surveyList.filter(s => s.statusKelayakan === 'Perlu Perluasan JTR').length, color: 'text-indigo-400' },
+                  { title: 'Perlu Up-rating / Sisip Trafo', count: surveyList.filter(s => s.statusKelayakan === 'Perlu Up-rating Trafo').length, color: 'text-purple-400' },
+                  { title: 'Selesai Penyambungan (Nyala)', count: metrics.selesaiSambungCount, color: 'text-sky-400' }
+                ].map(k => (
+                  <div key={k.title} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-800/50">
+                    <span className="text-slate-300">{k.title}</span>
+                    <span className={`font-black font-mono ${k.color}`}>{k.count} Pelanggan</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: BERITA ACARA */}
+      {activeTab === 'berita_acara' && (
+        <div className="space-y-4">
+          <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-400" />
+              Pusat Cetak Berita Acara (BA) Survey Teknis
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Pilih permohonan survey pelanggan di bawah ini untuk melihat pratinjau dan mengunduh Berita Acara Survey Resmi (Format PDF PLN).
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {surveyList.map(item => (
+                <div
+                  key={item.id}
+                  className="p-4 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold">
+                        {item.noAgenda || item.id}
+                      </span>
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded font-extrabold ${
+                          item.jenisTransaksi.includes('PB')
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        }`}
+                      >
+                        {item.jenisTransaksi}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white mt-2">{item.namaPelanggan}</h4>
+                    <p className="text-xs text-slate-400">{item.lokasi}</p>
+                    <div className="mt-2 text-[11px] text-indigo-300 font-semibold">
+                      {item.penyulang} • Gardu {item.noGardu} • {item.tarifBaru} ({item.dayaBaruVa}VA)
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                    <button
+                      onClick={() => handleExportPDF(item)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Unduh PDF</span>
+                    </button>
+                    <button
+                      onClick={() => handleShareWhatsapp(item)}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs transition-all cursor-pointer"
+                      title="Share WA"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
+      {selectedDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Detail Hasil Survey Kelayakan Teknis</h3>
+                  <p className="text-xs text-slate-400">{selectedDetail.noAgenda || selectedDetail.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDetail(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                <h4 className="font-bold text-amber-400 uppercase text-[10px] tracking-wider">Identitas Permohonan</h4>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Nama Pemohon:</span>
+                  <span className="font-bold text-white">{selectedDetail.namaPelanggan}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Jenis Transaksi:</span>
+                  <span className="font-bold text-amber-300">{selectedDetail.jenisTransaksi}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">No. Agenda:</span>
+                  <span className="font-mono text-slate-200">{selectedDetail.noAgenda || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">ID Pelanggan:</span>
+                  <span className="font-mono text-slate-200">{selectedDetail.idPelanggan || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tarif & Daya Baru:</span>
+                  <span className="font-bold text-emerald-400">{selectedDetail.tarifBaru} ({selectedDetail.dayaBaruVa} VA)</span>
+                </div>
+                {selectedDetail.tarifLama && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Tarif & Daya Lama:</span>
+                    <span className="text-slate-400">{selectedDetail.tarifLama} ({selectedDetail.dayaLamaVa} VA)</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-400">No. HP / WA:</span>
+                  <span className="text-emerald-400 font-semibold">{selectedDetail.noHpPelanggan || '-'}</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                <h4 className="font-bold text-cyan-400 uppercase text-[10px] tracking-wider">Jaringan & Kelistrikan</h4>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Penyulang (Feeder):</span>
+                  <span className="font-bold text-indigo-300">{selectedDetail.penyulang}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">No. Gardu Distribusi:</span>
+                  <span className="font-bold text-amber-300">{selectedDetail.noGardu} ({selectedDetail.jurusanGardu || 'Jurusan 1'})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tegangan Pangkal:</span>
+                  <span className="font-bold text-emerald-400">{selectedDetail.tegPangkal} Volt</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tegangan Tetangga:</span>
+                  <span className="font-bold text-sky-400">{selectedDetail.tegTetangga} Volt</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Drop Tegangan (ΔV):</span>
+                  <span className="font-bold text-white">
+                    {Math.max(0, selectedDetail.tegPangkal - selectedDetail.tegTetangga)} Volt (
+                    {(((selectedDetail.tegPangkal - selectedDetail.tegTetangga) / selectedDetail.tegPangkal) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Fasa Diambil:</span>
+                  <span className="font-bold text-purple-300">{selectedDetail.fasaYangDiambil}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Titik Sambung:</span>
+                  <span className="font-bold text-slate-200">{selectedDetail.titikSambung}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Panjang SR:</span>
+                  <span className="text-slate-300">{selectedDetail.panjangSrMeter || 15}m ({selectedDetail.jenisKabelSr || 'TIC 2x10mm²'})</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Lokasi & Koordinat Geografis */}
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-amber-400" />
+                  Alamat & Titik Koordinat Geografis
+                </h4>
+                <button
+                  onClick={() => {
+                    setActiveTab('peta');
+                    setSelectedDetail(null);
+                  }}
+                  className="px-2 py-0.5 rounded bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-800 font-bold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <Map className="w-3 h-3" />
+                  <span>Buka di Peta GIS</span>
+                </button>
+              </div>
+
+              <p className="text-slate-300">
+                <strong>Alamat:</strong> {selectedDetail.lokasi}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="p-2.5 rounded-lg bg-sky-950/40 border border-sky-800/40 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-sky-300 font-bold">🏠 Bangunan Pelanggan:</div>
+                    <div className="text-[11px] font-mono text-slate-200">
+                      {selectedDetail.lat && selectedDetail.lng
+                        ? `${selectedDetail.lat.toFixed(6)}, ${selectedDetail.lng.toFixed(6)}`
+                        : 'Belum terpasang titik'}
+                    </div>
+                  </div>
+                  {selectedDetail.lat && selectedDetail.lng && (
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedDetail.lat},${selectedDetail.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded bg-sky-900 text-sky-200 hover:text-white"
+                      title="Buka di Google Maps"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-amber-300 font-bold">⚡ Titik Sambung (Tiang JTR):</div>
+                    <div className="text-[11px] font-mono text-slate-200">
+                      {selectedDetail.titikSambungLat && selectedDetail.titikSambungLng
+                        ? `${selectedDetail.titikSambungLat.toFixed(6)}, ${selectedDetail.titikSambungLng.toFixed(6)}`
+                        : 'Belum terpasang titik'}
+                    </div>
+                  </div>
+                  {selectedDetail.titikSambungLat && selectedDetail.titikSambungLng && (
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedDetail.titikSambungLat},${selectedDetail.titikSambungLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded bg-amber-900 text-amber-200 hover:text-white"
+                      title="Buka Titik Sambung di Google Maps"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {selectedDetail.rekomendasiTeknis && (
+                <p className="text-indigo-300 bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-800/40 mt-1">
+                  <strong>Rekomendasi Petugas:</strong> {selectedDetail.rekomendasiTeknis}
+                </p>
+              )}
+              {selectedDetail.catatan && (
+                <p className="text-slate-400 mt-1">
+                  <strong>Catatan Tambahan:</strong> {selectedDetail.catatan}
+                </p>
+              )}
+            </div>
+
+            {/* Footer buttons */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+              <div className="text-[11px] text-slate-400">
+                Disurvei oleh <strong className="text-white">{selectedDetail.petugasSurvey}</strong> pada {selectedDetail.tanggalSurvey}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportPDF(selectedDetail)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak BA</span>
+                </button>
+                <button
+                  onClick={() => handleShareWhatsapp(selectedDetail)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share WA</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE / EDIT SURVEY MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    {editingItem ? 'Edit Formulir Survey PB/PD' : 'Input Formulir Survey Kelayakan PB/PD'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Lengkapi seluruh parameter pengukuran lapangan sesuai standar teknis PLN.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveForm} className="space-y-4 text-xs">
+              {/* Section 1: Data Pelanggan & Permohonan */}
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
+                <h4 className="font-bold text-amber-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  1. Data Pelanggan & Permohonan
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Jenis Transaksi *</label>
+                    <select
+                      value={formData.jenisTransaksi}
+                      onChange={e => setFormData({ ...formData, jenisTransaksi: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="Pasang Baru (PB)">Pasang Baru (PB)</option>
+                      <option value="Perubahan Daya (PD)">Perubahan Daya (PD)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Nama Pelanggan / Pemohon *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Bpk. Marthen Silooy"
+                      value={formData.namaPelanggan || ''}
+                      onChange={e => setFormData({ ...formData, namaPelanggan: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">No. Agenda / Registrasi</label>
+                    <input
+                      type="text"
+                      placeholder="54260..."
+                      value={formData.noAgenda || ''}
+                      onChange={e => setFormData({ ...formData, noAgenda: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">ID Pelanggan (Khusus PD)</label>
+                    <input
+                      type="text"
+                      placeholder="542600..."
+                      value={formData.idPelanggan || ''}
+                      onChange={e => setFormData({ ...formData, idPelanggan: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">No. Kontak / WA Pelanggan</label>
+                    <input
+                      type="text"
+                      placeholder="0812..."
+                      value={formData.noHpPelanggan || ''}
+                      onChange={e => setFormData({ ...formData, noHpPelanggan: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Peruntukan Bangunan</label>
+                    <select
+                      value={formData.peruntukan || 'Rumah Tangga'}
+                      onChange={e => setFormData({ ...formData, peruntukan: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="Rumah Tangga">Rumah Tangga</option>
+                      <option value="Bisnis / Ruko">Bisnis / Ruko</option>
+                      <option value="Industri">Industri</option>
+                      <option value="Sosial / Rumah Ibadah">Sosial / Rumah Ibadah</option>
+                      <option value="Pemerintah / Fasilitas Umum">Pemerintah / Fasilitas Umum</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Tarif & Daya */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800/60">
+                  {formData.jenisTransaksi === 'Perubahan Daya (PD)' && (
+                    <>
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">Tarif Lama</label>
+                        <input
+                          type="text"
+                          placeholder="R1 / B1"
+                          value={formData.tarifLama || ''}
+                          onChange={e => setFormData({ ...formData, tarifLama: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">Daya Lama (VA)</label>
+                        <input
+                          type="number"
+                          placeholder="450 / 900 / 1300"
+                          value={formData.dayaLamaVa || ''}
+                          onChange={e => setFormData({ ...formData, dayaLamaVa: Number(e.target.value) })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Tarif Baru Dimohon *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="R1 / R1M / B1 / S2"
+                      value={formData.tarifBaru || ''}
+                      onChange={e => setFormData({ ...formData, tarifBaru: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Daya Baru (VA) *</label>
+                    <select
+                      value={formData.dayaBaruVa || 1300}
+                      onChange={e => setFormData({ ...formData, dayaBaruVa: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-amber-500"
+                    >
+                      {[450, 900, 1300, 2200, 3500, 4400, 5500, 7700, 11000, 13200, 16500, 23000, 33000, 41500, 53000, 66000].map(
+                        d => (
+                          <option key={d} value={d}>
+                            {d} VA
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Data Jaringan & Kelistrikan (Wajib Sesuai Permintaan User) */}
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
+                <h4 className="font-bold text-cyan-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5" />
+                  2. Parameter Jaringan & Pengukuran Lapangan (Wajib)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Penyulang (Feeder) *</label>
+                    <select
+                      value={formData.penyulang}
+                      onChange={e => setFormData({ ...formData, penyulang: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-cyan-500"
+                    >
+                      {penyulangList.map(p => (
+                        <option key={p.id} value={p.namaPenyulang}>
+                          {p.namaPenyulang} ({p.namaGi})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Nomor Gardu (GTT) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: BG-04 / BG-18 / GTT-TLH-01"
+                      value={formData.noGardu || ''}
+                      onChange={e => setFormData({ ...formData, noGardu: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Jurusan Gardu</label>
+                    <select
+                      value={formData.jurusanGardu || 'Jurusan 1'}
+                      onChange={e => setFormData({ ...formData, jurusanGardu: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="Jurusan 1">Jurusan 1</option>
+                      <option value="Jurusan 2">Jurusan 2</option>
+                      <option value="Jurusan 3">Jurusan 3</option>
+                      <option value="Jurusan 4">Jurusan 4</option>
+                      <option value="Jurusan A">Jurusan A</option>
+                      <option value="Jurusan B">Jurusan B</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Lokasi Alamat */}
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Lokasi / Alamat Pelanggan *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Jl. Wolter Monginsidi RT 03 / RW 02 Passo (Depan Kantor Camat)"
+                    value={formData.lokasi || ''}
+                    onChange={e => setFormData({ ...formData, lokasi: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                {/* Tegangan Pangkal & Tegangan Tetangga & Drop Tegangan */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                  <div>
+                    <label className="block text-emerald-400 font-semibold mb-1">Tegangan Pangkal (V) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={100}
+                      max={260}
+                      placeholder="230"
+                      value={formData.tegPangkal || ''}
+                      onChange={e => setFormData({ ...formData, tegPangkal: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+                    />
+                    <span className="text-[10px] text-slate-500">Tegangan di trafo/tiang awal</span>
+                  </div>
+                  <div>
+                    <label className="block text-sky-400 font-semibold mb-1">Tegangan Tetangga (V) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={100}
+                      max={260}
+                      placeholder="219"
+                      value={formData.tegTetangga || ''}
+                      onChange={e => setFormData({ ...formData, tegTetangga: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sky-400 font-mono font-bold text-sm focus:outline-none focus:border-sky-500"
+                    />
+                    <span className="text-[10px] text-slate-500">Tegangan di tetangga terdekat</span>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Kalkulasi Drop Tegangan</label>
+                    {(() => {
+                      const { dropVolt, dropPct, status } = getDropTegangan(formData.tegPangkal, formData.tegTetangga);
+                      const isDanger = dropPct >= 10;
+                      return (
+                        <div
+                          className={`p-2 rounded-xl border font-mono ${
+                            isDanger
+                              ? 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                              : dropPct >= 5
+                              ? 'bg-amber-950/40 border-amber-800/60 text-amber-300'
+                              : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+                          }`}
+                        >
+                          <div className="font-bold text-sm">
+                            ΔV: {dropVolt} V ({dropPct.toFixed(1)}%)
+                          </div>
+                          <div className="text-[10px] font-sans font-semibold">{status}</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Fasa yang Diambil & Titik Sambung */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Fasa yang Diambil *</label>
+                    <select
+                      value={formData.fasaYangDiambil}
+                      onChange={e => setFormData({ ...formData, fasaYangDiambil: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="1 Fasa (Fasa R)">1 Fasa (Fasa R - Kabel Merah)</option>
+                      <option value="1 Fasa (Fasa S)">1 Fasa (Fasa S - Kabel Kuning)</option>
+                      <option value="1 Fasa (Fasa T)">1 Fasa (Fasa T - Kabel Biru)</option>
+                      <option value="3 Fasa (R-S-T)">3 Fasa (R-S-T / 380 Volt)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Titik Sambung *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Tiang TR No. 04 Jurusan 2 Gardu BG-04"
+                      value={formData.titikSambung || ''}
+                      onChange={e => setFormData({ ...formData, titikSambung: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Interactive Map Picker for Bangunan & Titik Sambung */}
+                <div className="pt-1">
+                  <SurveyMapPicker
+                    bangunanLat={formData.lat}
+                    bangunanLng={formData.lng}
+                    titikSambungLat={formData.titikSambungLat}
+                    titikSambungLng={formData.titikSambungLng}
+                    namaPelanggan={formData.namaPelanggan || 'Bangunan Pelanggan'}
+                    titikSambungNama={formData.titikSambung || 'Tiang JTR'}
+                    penyulang={formData.penyulang}
+                    noGardu={formData.noGardu}
+                    onChangeCoordinates={({ lat, lng, titikSambungLat, titikSambungLng, distanceMeter }) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        lat: lat !== undefined ? lat : prev.lat,
+                        lng: lng !== undefined ? lng : prev.lng,
+                        titikSambungLat: titikSambungLat !== undefined ? titikSambungLat : prev.titikSambungLat,
+                        titikSambungLng: titikSambungLng !== undefined ? titikSambungLng : prev.titikSambungLng,
+                        panjangSrMeter: distanceMeter !== undefined ? distanceMeter : prev.panjangSrMeter
+                      }));
+                    }}
+                  />
+                </div>
+
+                {/* Panjang SR & Kabel */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">
+                      Panjang Saluran Rumah (SR Meter)
+                      <span className="text-[10px] text-amber-400 font-normal ml-1.5">(Otomatis terukur dari peta)</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="15"
+                      value={formData.panjangSrMeter || ''}
+                      onChange={e => setFormData({ ...formData, panjangSrMeter: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Jenis Kabel SR</label>
+                    <select
+                      value={formData.jenisKabelSr || 'TIC 2x10 mm²'}
+                      onChange={e => setFormData({ ...formData, jenisKabelSr: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="TIC 2x10 mm²">TIC 2x10 mm² (Standar 1 Fasa s/d 2200 VA)</option>
+                      <option value="TIC 2x16 mm²">TIC 2x16 mm² (1 Fasa Daya Besar 3500-7700 VA)</option>
+                      <option value="TIC 4x16 mm²">TIC 4x16 mm² (3 Fasa Daya Menengah)</option>
+                      <option value="TIC 4x25 mm²">TIC 4x25 mm² (3 Fasa Daya Besar)</option>
+                      <option value="TIC 4x35 mm²">TIC 4x35 mm²</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Hasil Survey & Rekomendasi */}
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800/80 space-y-3">
+                <h4 className="font-bold text-emerald-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  3. Kesimpulan & Rekomendasi Teknis
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Status Kelayakan *</label>
+                    <select
+                      value={formData.statusKelayakan}
+                      onChange={e => setFormData({ ...formData, statusKelayakan: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white font-bold focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Layak Sambung">Layak Sambung</option>
+                      <option value="Perlu Sisip Tiang">Perlu Sisip Tiang JTR</option>
+                      <option value="Perlu Perluasan JTR">Perlu Perluasan Jaringan JTR</option>
+                      <option value="Perlu Up-rating Trafo">Perlu Up-rating Trafo</option>
+                      <option value="Drop Tegangan (Tidak Layak)">Drop Tegangan (Tidak Layak Sambung)</option>
+                      <option value="Menunggu Material">Menunggu Material SR / Tiang</option>
+                      <option value="Selesai Penyambungan">Selesai Penyambungan</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Petugas Surveyor *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nama Surveyor Lapangan"
+                      value={formData.petugasSurvey || ''}
+                      onChange={e => setFormData({ ...formData, petugasSurvey: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Tanggal Pelaksanaan Survey *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.tanggalSurvey || ''}
+                      onChange={e => setFormData({ ...formData, tanggalSurvey: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Rekomendasi Teknis Petugas</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Contoh: Tegangan stabil 221V. Titik sambung aman di tiang TR-05, disarankan penarikan SR 18 meter tanpa melintasi atap tetangga."
+                    value={formData.rekomendasiTeknis || ''}
+                    onChange={e => setFormData({ ...formData, rekomendasiTeknis: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Catatan Tambahan</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Pemohon meminta penempatan meter di sisi kanan teras rumah."
+                    value={formData.catatan || ''}
+                    onChange={e => setFormData({ ...formData, catatan: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                >
+                  {editingItem ? 'Simpan Perubahan Survey' : 'Simpan Data Survey Baru'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

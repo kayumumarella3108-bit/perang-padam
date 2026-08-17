@@ -507,7 +507,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Pengukuran & Beban Gardu</span>
           </button>
 
-          {/* 9. Saidi Saifi (ACCORDION) */}
+          {/* 9. Survey PB PD */}
+          <button
+            onClick={() => onSelectView('survey_pb_pd')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+              activeView === 'survey_pb_pd'
+                ? 'bg-amber-600/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg shrink-0">
+                <Zap className="w-4 h-4" />
+              </div>
+              <span>Survey PB & PD</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black uppercase">
+              PB / PD
+            </span>
+          </button>
+
+          {/* 10. Saidi Saifi (ACCORDION) */}
           <div>
             <button
               onClick={() => setSaidiSaifiOpen(!saidiSaifiOpen)}

@@ -31,7 +31,8 @@ export type ViewType =
   | 'jadwal_piket'
   | 'gangguan'
   | 'topologi_jaringan'
-  | 'share_laporan';
+  | 'share_laporan'
+  | 'survey_pb_pd';
 
 export type TipeNodeTopologi = 'GI' | 'GH' | 'PERCABANGAN' | 'LBS' | 'REC' | 'FCO' | 'GTT' | 'PMCB' | 'DS' | 'SECTION' | 'INCOMING' | 'OUTGOING' | 'COUPLING';
 
@@ -874,5 +875,48 @@ export interface KonstruksiGisItem {
   keterangan?: string;
   fotoSebelum?: string;
   fotoProgres?: string;
+}
+
+export interface SurveyPbPdItem {
+  id: string;
+  noAgenda?: string; // No Agenda / No Registrasi Permohonan
+  idPelanggan?: string; // ID Pelanggan / No Meter
+  namaPelanggan: string; // Nama Pelanggan / Pemohon
+  noHpPelanggan?: string; // Kontak / No WA Pelanggan
+  jenisTransaksi: 'Pasang Baru (PB)' | 'Perubahan Daya (PD)';
+  tarifLama?: string; // Contoh: R1, B1, S2
+  dayaLamaVa?: number; // Contoh: 450, 900, 1300, 2200, dsb
+  tarifBaru: string; // Contoh: R1M/900VA, R1/1300VA, B1/2200VA, dsb
+  dayaBaruVa: number; // Daya Baru (VA)
+  peruntukan?: 'Rumah Tangga' | 'Bisnis / Ruko' | 'Industri' | 'Sosial / Rumah Ibadah' | 'Pemerintah / Fasilitas Umum' | string;
+
+  // Wajib sesuai permintaan user:
+  penyulang: string; // Penyulang / Feeder
+  noGardu: string; // No Gardu Distribusi / GTT
+  lokasi: string; // Lokasi / Alamat Pelanggan
+  tegPangkal: number; // Tegangan Pangkal (Volt), misal 220V - 235V
+  tegTetangga: number; // Tegangan Tetangga (Volt), misal 205V - 225V
+  fasaYangDiambil: 'R' | 'S' | 'T' | 'R-S' | 'S-T' | 'T-R' | 'R-S-T' | '1 Fasa (Fasa R)' | '1 Fasa (Fasa S)' | '1 Fasa (Fasa T)' | '3 Fasa (R-S-T)' | string; // Fasa yang di ambil
+  titikSambung: string; // Titik Sambung (e.g. Tiang TR No. 04 Jurusan 2, Tiang Besi 9m, Tiang SR-01, dsb)
+
+  // Data Teknis Tambahan:
+  jurusanGardu?: string; // Jurusan 1, Jurusan 2, Jurusan 3, Jurusan 4
+  panjangSrMeter?: number; // Panjang Sambungan Rumah (meter)
+  jenisKabelSr?: string; // TIC 2x10mm², TIC 2x16mm², TIC 4x16mm², dsb
+  perkiraanDropTeganganVolt?: number; // Drop Tegangan (V)
+  lat?: number; // Koordinat Bangunan / Lokasi Pelanggan (Latitude)
+  lng?: number; // Koordinat Bangunan / Lokasi Pelanggan (Longitude)
+  titikSambungLat?: number; // Koordinat Titik Sambung / Tiang TR (Latitude)
+  titikSambungLng?: number; // Koordinat Titik Sambung / Tiang TR (Longitude)
+  statusKelayakan: 'Layak Sambung' | 'Perlu Sisip Tiang' | 'Perlu Perluasan JTR' | 'Perlu Up-rating Trafo' | 'Drop Tegangan (Tidak Layak)' | 'Menunggu Material' | 'Selesai Penyambungan';
+  petugasSurvey: string; // Surveyor Lapangan
+  tanggalSurvey: string; // YYYY-MM-DD
+  tanggalPenyambungan?: string; // YYYY-MM-DD
+  rekomendasiTeknis?: string;
+  catatan?: string;
+  fotoLokasi?: string;
+  fotoPengukuranTegangan?: string;
+  fotoTitikSambung?: string;
+  createdAt?: string;
 }
 

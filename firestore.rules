@@ -153,5 +153,10 @@ service cloud.firestore {
       allow get, write: if isValidId(id);
       allow list: if true;
     }
+
+    match /survey_pb_pd/{id} {
+      allow get, write: if isValidId(id);
+      allow list: if true;
+    }
   }
 }

@@ -33,6 +33,7 @@ const VIEW_NAMES: Record<ViewType, string> = {
   perintah_kerja: 'Perintah Kerja Harian (SPK)',
   format_surat: 'Format Pembuatan Surat',
   pengukuran_gardu: 'Pengukuran & Beban Gardu',
+  survey_pb_pd: 'Survey Pasang Baru & Perubahan Daya (PB/PD)',
   saidi_saifi: 'Realisasi SAIDI & SAIFI',
   estimasi_saidi_saifi: 'Estimasi SAIDI/SAIFI (Event)',
   alker_apd: 'Peralatan & Alker Yantek',
