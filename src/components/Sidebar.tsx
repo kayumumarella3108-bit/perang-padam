@@ -304,7 +304,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>Single Line Diagram (Visio)</span>
+                  <span>SLD</span>
                 </button>
               </div>
             )}

@@ -718,6 +718,7 @@ export const SldVisioView: React.FC = () => {
   // SCADA Grid Model
   const [substations, setSubstations] = useState<SubstationData[]>(INITIAL_SUBSTATIONS);
   const [tieSwitches, setTieSwitches] = useState<TieSwitchData[]>(INITIAL_TIE_SWITCHES);
+  const [deletedSubstationIds, setDeletedSubstationIds] = useState<string[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
 
   // Load from Firestore on mount
@@ -729,10 +730,15 @@ export const SldVisioView: React.FC = () => {
           const data = snap.data();
           let loadedSubs = data.substations || [];
           const loadedTies = data.tieSwitches || [];
+          const loadedDeletedSubs = data.deletedSubstationIds || [];
           
-          // Smart merge: check if any substations from INITIAL_SUBSTATIONS are missing and append them
+          setDeletedSubstationIds(loadedDeletedSubs);
+          
+          // Smart merge: check if any substations from INITIAL_SUBSTATIONS are missing and append them (excluding explicitly deleted ones)
           const existingIds = new Set(loadedSubs.map((s: any) => s.id));
-          const missingSubs = INITIAL_SUBSTATIONS.filter(s => !existingIds.has(s.id));
+          const missingSubs = INITIAL_SUBSTATIONS.filter(
+            s => !existingIds.has(s.id) && !loadedDeletedSubs.includes(s.id)
+          );
           
           if (missingSubs.length > 0) {
             loadedSubs = [...loadedSubs, ...missingSubs];
@@ -740,6 +746,7 @@ export const SldVisioView: React.FC = () => {
             await setDoc(doc(db, 'sld_data', 'scada'), {
               substations: loadedSubs,
               tieSwitches: loadedTies,
+              deletedSubstationIds: loadedDeletedSubs,
               updatedAt: new Date().toISOString()
             });
           }
@@ -751,6 +758,7 @@ export const SldVisioView: React.FC = () => {
           await setDoc(doc(db, 'sld_data', 'scada'), {
             substations: INITIAL_SUBSTATIONS,
             tieSwitches: INITIAL_TIE_SWITCHES,
+            deletedSubstationIds: [],
             updatedAt: new Date().toISOString()
           });
         }
@@ -771,6 +779,7 @@ export const SldVisioView: React.FC = () => {
         await setDoc(doc(db, 'sld_data', 'scada'), {
           substations,
           tieSwitches,
+          deletedSubstationIds,
           updatedAt: new Date().toISOString()
         });
       } catch (err) {
@@ -778,7 +787,7 @@ export const SldVisioView: React.FC = () => {
       }
     }, 1000);
     return () => clearTimeout(saveTimeout);
-  }, [substations, tieSwitches, isInitialLoad]);
+  }, [substations, tieSwitches, deletedSubstationIds, isInitialLoad]);
 
   // Visio Document Document Engine State
   const [visioDoc, setVisioDoc] = useState<VisioDocumentData | null>(null);
@@ -875,6 +884,7 @@ export const SldVisioView: React.FC = () => {
   const [editingSubstation, setEditingSubstation] = useState<SubstationData | null>(null);
   const [editingFeeder, setEditingFeeder] = useState<{ subId: string; feeder: FeederData } | null>(null);
   const [inspectedFeeder, setInspectedFeeder] = useState<{ subId: string; subNama: string; feeder: FeederData } | null>(null);
+  const [isSubstationLocked, setIsSubstationLocked] = useState<boolean>(false);
 
   // Form states for Substation
   const [subName, setSubName] = useState('');
@@ -1205,9 +1215,13 @@ export const SldVisioView: React.FC = () => {
   };
 
   const handleDeleteSubstation = (subId: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus Gardu Induk / GH ini beserta seluruh penyulangnya?')) {
-      setSubstations((prev) => prev.filter((s) => s.id !== subId));
-    }
+    setSubstations((prev) => prev.filter((s) => s.id !== subId));
+    setDeletedSubstationIds((prev) => {
+      if (!prev.includes(subId)) {
+        return [...prev, subId];
+      }
+      return prev;
+    });
   };
 
   // Handle Add / Edit Feeder
@@ -1287,19 +1301,18 @@ export const SldVisioView: React.FC = () => {
     setFeederArusT(feeder.arusT);
     setFeederArusIN(feeder.arusIN);
     setFeederBebanMw(feeder.bebanMw);
+    setIsSubstationLocked(true);
     setShowAddFeederModal(true);
   };
 
   const handleDeleteFeeder = (subId: string, feederId: string) => {
-    if (confirm('Hapus penyulang / bay outgoing ini?')) {
-      setSubstations((prev) =>
-        prev.map((sub) =>
-          sub.id === subId
-            ? { ...sub, feeders: sub.feeders.filter((f) => f.id !== feederId) }
-            : sub
-        )
-      );
-    }
+    setSubstations((prev) =>
+      prev.map((sub) =>
+        sub.id === subId
+          ? { ...sub, feeders: sub.feeders.filter((f) => f.id !== feederId) }
+          : sub
+      )
+    );
   };
 
   // Handle Add Tie Switch
@@ -1329,9 +1342,7 @@ export const SldVisioView: React.FC = () => {
   };
 
   const handleDeleteTieSwitch = (tieId: string) => {
-    if (confirm('Hapus Tie Switch ini?')) {
-      setTieSwitches((prev) => prev.filter((t) => t.id !== tieId));
-    }
+    setTieSwitches((prev) => prev.filter((t) => t.id !== tieId));
   };
 
   // Export JSON
@@ -1351,10 +1362,9 @@ export const SldVisioView: React.FC = () => {
 
   // Reset to default
   const handleResetDefault = () => {
-    if (confirm('Kembalikan Single Line Diagram ke pengaturan awal (Default preset PLN ULP Baguala)?')) {
-      setSubstations(INITIAL_SUBSTATIONS);
-      setTieSwitches(INITIAL_TIE_SWITCHES);
-    }
+    setSubstations(INITIAL_SUBSTATIONS);
+    setTieSwitches(INITIAL_TIE_SWITCHES);
+    setDeletedSubstationIds([]);
   };
 
   // Filtered substations for SCADA view
@@ -1385,55 +1395,19 @@ export const SldVisioView: React.FC = () => {
           <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-base font-black text-white tracking-wide uppercase flex items-center gap-2">
               <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
-              SINGLE LINE DIAGRAM (SLD VISIO 20KV)
+              SINGLE LINE DIAGRAM (SLD)
             </h2>
             <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[11px] font-extrabold uppercase">
               PLN ULP BAGUALA
             </span>
-            {visioDoc && (
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-[11px] font-bold">
-                Visio Loaded: {visioDoc.fileName} ({visioDoc.totalShapes} Shapes)
-              </span>
-            )}
           </div>
           <p className="text-xs text-slate-400">
-            Import, baca, dan visualisasikan file Visio (.vsdx / .vdx / .xml) kelistrikan 20kV secara interaktif.
+            Diagram Satu Garis (SLD) Interaktif Jaringan Kelistrikan 20kV ULP Baguala.
           </p>
         </div>
 
-        {/* Action Buttons & Visio File Import */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          
-          {/* File Input for Visio / JSON */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".vsdx,.vdx,.vssx,.xml,.json"
-            className="hidden"
-          />
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isParsingVisio}
-            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
-          >
-            {isParsingVisio ? (
-              <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
-            ) : (
-              <Upload className="w-4 h-4 text-cyan-300" />
-            )}
-            <span>{isParsingVisio ? 'Membaca Visio...' : 'Import File Visio (.vsdx)'}</span>
-          </button>
-
-          <button
-            onClick={handleLoadSampleVisio}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-amber-500/30 cursor-pointer"
-            title="Muat contoh file Visio SLD 20kV ULP Baguala"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Demo Visio SLD</span>
-          </button>
 
           {/* Export JSON */}
           <button
@@ -1457,58 +1431,7 @@ export const SldVisioView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Feature View Switcher Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-        <button
-          onClick={() => setActiveTab('SCADA')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'SCADA'
-              ? 'bg-blue-600 text-white shadow-lg ring-1 ring-blue-400/50'
-              : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Power className="w-4 h-4 text-amber-400" />
-          <span>SCADA Network Diagram (20kV)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('VISIO_READER')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all relative ${
-            activeTab === 'VISIO_READER'
-              ? 'bg-purple-600 text-white shadow-lg ring-1 ring-purple-400/50'
-              : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Eye className="w-4 h-4 text-purple-300" />
-          <span>Pembaca & Visualizer Visio</span>
-          {visioDoc && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('SHAPE_TABLE')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'SHAPE_TABLE'
-              ? 'bg-indigo-600 text-white shadow-lg ring-1 ring-indigo-400/50'
-              : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-          <span>Inspektur Shape XML Visio</span>
-          {visioDoc && (
-            <span className="px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 text-[10px]">
-              {visioDoc.totalShapes}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TAB 1: INTERACTIVE SCADA NETWORK DIAGRAM */}
-      {/* ========================================================================= */}
-      {activeTab === 'SCADA' && (
-        <div className="space-y-4">
+      <div className="space-y-4">
           
           {/* Substation Controls & Interactive Search Bar */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
@@ -1689,7 +1612,17 @@ export const SldVisioView: React.FC = () => {
                     setEditingFeeder(null);
                     setTargetSubId(substations[0]?.id || '');
                     setFeederName('');
+                    setFeederKms(10.0);
+                    setFeederSaklarTipe('PMT CB Outgoing');
                     setFeederSaklarNama('');
+                    setFeederStatus('CLOSED');
+                    setFeederBisaBacaIndikasi(true);
+                    setFeederArusR(120);
+                    setFeederArusS(122);
+                    setFeederArusT(118);
+                    setFeederArusIN(4);
+                    setFeederBebanMw(3.5);
+                    setIsSubstationLocked(false);
                     setShowAddFeederModal(true);
                   }}
                   className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
@@ -1893,6 +1826,12 @@ export const SldVisioView: React.FC = () => {
                                 setFeederSaklarNama('');
                                 setFeederStatus('CLOSED');
                                 setFeederBisaBacaIndikasi(true);
+                                setFeederArusR(Math.floor(Math.random() * 50) + 110);
+                                setFeederArusS(Math.floor(Math.random() * 50) + 110);
+                                setFeederArusT(Math.floor(Math.random() * 50) + 110);
+                                setFeederArusIN(Math.floor(Math.random() * 3) + 2);
+                                setFeederBebanMw(Number((Math.random() * 2 + 2.5).toFixed(1)));
+                                setIsSubstationLocked(true);
                                 setShowAddFeederModal(true);
                               }}
                               className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all cursor-pointer"
@@ -1928,6 +1867,17 @@ export const SldVisioView: React.FC = () => {
                               setEditingFeeder(null);
                               setTargetSubId(sub.id);
                               setFeederName('');
+                              setFeederKms(10.0);
+                              setFeederSaklarTipe('PMT CB Outgoing');
+                              setFeederSaklarNama('');
+                              setFeederStatus('CLOSED');
+                              setFeederBisaBacaIndikasi(true);
+                              setFeederArusR(Math.floor(Math.random() * 50) + 110);
+                              setFeederArusS(Math.floor(Math.random() * 50) + 110);
+                              setFeederArusT(Math.floor(Math.random() * 50) + 110);
+                              setFeederArusIN(Math.floor(Math.random() * 3) + 2);
+                              setFeederBebanMw(Number((Math.random() * 2 + 2.5).toFixed(1)));
+                              setIsSubstationLocked(true);
                               setShowAddFeederModal(true);
                             }}
                             className="text-blue-400 font-bold hover:underline ml-1 cursor-pointer"
@@ -2115,777 +2065,6 @@ export const SldVisioView: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: PEMBACA & VISUALIZER VISIO (.VSDX) */}
-      {/* ========================================================================= */}
-      {activeTab === 'VISIO_READER' && (
-        <div className="space-y-5">
-          {!visioDoc ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center space-y-4 max-w-2xl mx-auto my-8">
-              <div className="w-16 h-16 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-2xl flex items-center justify-center mx-auto">
-                <Upload className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-white">Belum Ada File Visio Dimuat</h3>
-                <p className="text-xs text-slate-400">
-                  Unggah file `.vsdx`, `.vdx`, atau `.xml` untuk mengekstrak dan menampilkan Single Line Diagram Visio secara langsung.
-                </p>
-              </div>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Pilih File Visio (.vsdx)</span>
-                </button>
-                <button
-                  onClick={handleLoadSampleVisio}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Muat Demo Visio Baguala</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              
-              {/* Document Overview Summary Bar */}
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-white">{visioDoc.fileName}</h3>
-                    <p className="text-[11px] text-slate-400 font-mono">
-                      Ukuran: {visioDoc.fileSize} • Diimpor: {visioDoc.importDate}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg font-bold">
-                      {visioDoc.extractedSubstations} Substation / GI / GH
-                    </span>
-                    <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg font-bold">
-                      {visioDoc.extractedFeeders} Feeder
-                    </span>
-                    <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-lg font-bold">
-                      {visioDoc.extractedSwitches} Saklar / PMT
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={handleSyncVisioToScada}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Konversi ke SCADA Grid</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Page Selector, Mode Selector & Filter Bar */}
-              <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
-                
-                {/* Page Tabs & View Mode Selector */}
-                <div className="flex items-center gap-3 overflow-x-auto">
-                  <div className="flex items-center gap-1.5 shrink-0 bg-slate-950 p-1 border border-slate-800 rounded-xl">
-                    <button
-                      onClick={() => setVisioViewMode('SCHEMATIC')}
-                      className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
-                        visioViewMode === 'SCHEMATIC'
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Tampilan Diagram Skematik SLD Presisi (Gaya Visio - Gambar 2)"
-                    >
-                      <Layers className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Diagram Visual (Gambar 2)</span>
-                    </button>
-                    <button
-                      onClick={() => setVisioViewMode('CARDS')}
-                      className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
-                        visioViewMode === 'CARDS'
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Tampilan Grid Card Shapes Visio XML (Gambar 1)"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-cyan-300" />
-                      <span>Grid Shapes (Gambar 1)</span>
-                    </button>
-                  </div>
-
-                  <span className="h-4 w-px bg-slate-800 shrink-0"></span>
-
-                  <span className="font-bold text-slate-400 shrink-0">Halaman:</span>
-                  {visioDoc.pages.map((p, idx) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPageIndex(idx)}
-                      className={`px-3 py-1.5 rounded-lg font-bold text-xs shrink-0 cursor-pointer transition-all ${
-                        selectedPageIndex === idx
-                          ? 'bg-slate-800 text-amber-300 border border-amber-500/30'
-                          : 'bg-slate-950 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {p.name} ({p.shapes.length})
-                    </button>
-                  ))}
-                </div>
-
-                {/* Filter & Search & Canvas Bg Controls */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
-                    <button
-                      onClick={() => setVisioCanvasBg('LIGHT')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
-                        visioCanvasBg === 'LIGHT' ? 'bg-slate-200 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Latar Terang (Seperti Gambar 2 Asli)"
-                    >
-                      Terang
-                    </button>
-                    <button
-                      onClick={() => setVisioCanvasBg('DARK')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
-                        visioCanvasBg === 'DARK' ? 'bg-slate-800 text-cyan-300 font-extrabold' : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Latar Gelap (SCADA Blueprint)"
-                    >
-                      Gelap
-                    </button>
-                  </div>
-
-                  {/* Zoom Controls */}
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
-                    <button
-                      onClick={() => setVisioZoom(z => Math.max(50, z - 15))}
-                      className="p-1 text-slate-400 hover:text-white cursor-pointer"
-                      title="Zoom Out"
-                    >
-                      <ZoomOut className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 px-1">{visioZoom}%</span>
-                    <button
-                      onClick={() => setVisioZoom(z => Math.min(200, z + 15))}
-                      className="p-1 text-slate-400 hover:text-white cursor-pointer"
-                      title="Zoom In"
-                    >
-                      <ZoomIn className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setVisioZoom(100)}
-                      className="p-1 text-slate-400 hover:text-white cursor-pointer text-[10px] font-bold px-1"
-                      title="Reset 100%"
-                    >
-                      100%
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Cari gardu / section..."
-                      className="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 w-44"
-                    />
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Main Visio Interactive Layout Canvas & Shape Details Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                
-                {/* Visual Canvas Area (2 Columns) */}
-                <div className={`lg:col-span-2 border rounded-2xl p-4 min-h-[580px] overflow-auto relative transition-colors ${
-                  visioCanvasBg === 'LIGHT' ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#060b18] border-slate-800 text-slate-100'
-                }`}>
-                  
-                  {/* Canvas Header Toolbar */}
-                  <div className="flex items-center justify-between border-b pb-2 mb-3 border-slate-200/80">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white shadow">
-                        MVISIO CANVAS — {currentPage?.name}
-                      </span>
-                      <span className="text-xs font-mono text-slate-500 font-bold">
-                        Zoom: {visioZoom}% • Scale Auto-Fit
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        {filteredVisioShapes.length} Shapes Filtered
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* VISIO GRAPHICAL SCHEMATIC CANVAS (IMAGE 2 STYLE) */}
-                  {visioViewMode === 'SCHEMATIC' ? (
-                    <div className="w-full overflow-auto border border-slate-300/60 rounded-xl bg-white shadow-inner p-2 relative min-h-[620px]">
-                      <div
-                        style={{ transform: `scale(${visioZoom / 100})`, transformOrigin: 'top left' }}
-                        className="transition-transform duration-200"
-                      >
-                        <svg
-                          viewBox="0 0 1400 850"
-                          className="w-[1400px] h-[850px] block select-none bg-white"
-                          style={{ minWidth: '1400px', minHeight: '850px' }}
-                        >
-                          {/* Grid Background Lines (Optional clean engineer grid) */}
-                          <defs>
-                            <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f1f5f9" strokeWidth="1" />
-                            </pattern>
-                          </defs>
-                          <rect width="1400" height="850" fill="url(#gridPattern)" />
-
-                          {/* =================================================== */}
-                          {/* HEADER & LOGO PLN (MATCHING IMAGE 2 EXACTLY) */}
-                          {/* =================================================== */}
-                          {/* PLN Blue Square Logo Top Left */}
-                          <g transform="translate(25, 20)">
-                            <rect x="0" y="0" width="38" height="38" rx="3" fill="#0072bc" />
-                            {/* Lightning Bolt */}
-                            <path d="M 22 6 L 12 22 L 20 22 L 16 34 L 28 16 L 20 16 Z" fill="#fff200" />
-                            <text x="45" y="26" fill="#0072bc" font-size="22" font-weight="900" fontFamily="sans-serif">
-                              PLN
-                            </text>
-                          </g>
-
-                          {/* Main Title Center */}
-                          <g transform="translate(700, 32)">
-                            <text textAnchor="middle" y="0" fill="#0033aa" font-size="18" font-weight="900" fontFamily="sans-serif" letterSpacing="0.5">
-                              SINGLE LINE DIAGRAM
-                            </text>
-                            <text textAnchor="middle" y="22" fill="#0033aa" font-size="16" font-weight="900" fontFamily="sans-serif" letterSpacing="0.5">
-                              JARINGAN 20 KV ULP BAGUALA
-                            </text>
-                          </g>
-
-                          {/* =================================================== */}
-                          {/* SUBSTATIONS RED DASHED RECTANGLES (IMAGE 2) */}
-                          {/* =================================================== */}
-
-                          {/* 1. GI HATIVE BESAR */}
-                          {(() => {
-                            const isMatch = searchQuery && 'GI HATIVE BESAR'.toLowerCase().includes(searchQuery.toLowerCase());
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-gi-hative', name: 'GI HATIVE BESAR', type: 'GI', pageName: currentPage?.name || 'p1', text: 'GI HATIVE BESAR - TRAFO 1 30MVA', x: 140, y: 120, width: 220, height: 140, category: 'GI/GH', properties: { Tegangan: '20kV', Status: 'OPERATIONAL' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="140"
-                                  y="110"
-                                  width="220"
-                                  height="140"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="150" y="128" fill="#dc2626" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  GI HATIVE BESAR
-                                </text>
-                                {/* Busbar inside */}
-                                <line x1="160" y1="150" x2="330" y2="150" stroke="#000" strokeWidth="4" />
-                                <text x="245" y="145" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUS 20KV</text>
-                                {/* Trafo 2 Circles */}
-                                <circle cx="200" cy="180" r="12" fill="none" stroke="#000" strokeWidth="2" />
-                                <circle cx="200" cy="198" r="12" fill="none" stroke="#000" strokeWidth="2" />
-                                <text x="220" y="192" fill="#000" font-size="9" font-weight="bold">TRAFO 1 30MVA</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* 2. PLTD POKA */}
-                          {(() => {
-                            const isMatch = searchQuery && 'PLTD POKA'.toLowerCase().includes(searchQuery.toLowerCase());
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-pltd-poka', name: 'PLTD POKA', type: 'Pembangkit', pageName: currentPage?.name || 'p1', text: 'PLTD POKA - 3x GENERATOR', x: 440, y: 120, width: 230, height: 140, category: 'GI/GH', properties: { Kapasitas: '15 MW', Unit: 'PLTD POKA' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="440"
-                                  y="110"
-                                  width="230"
-                                  height="140"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="450" y="128" fill="#0033aa" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  PLTD POKA
-                                </text>
-                                {/* Generators G1, G2, G3 */}
-                                <g transform="translate(470, 160)">
-                                  <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#000" strokeWidth="2" />
-                                  <text x="0" y="4" textAnchor="middle" font-size="10" font-weight="900">G1</text>
-                                  <circle cx="35" cy="0" r="12" fill="#ffffff" stroke="#000" strokeWidth="2" />
-                                  <text x="35" y="4" textAnchor="middle" font-size="10" font-weight="900">G2</text>
-                                  <circle cx="70" cy="0" r="12" fill="#ffffff" stroke="#000" strokeWidth="2" />
-                                  <text x="70" y="4" textAnchor="middle" font-size="10" font-weight="900">G3</text>
-                                </g>
-                                {/* Busbar Poka */}
-                                <line x1="455" y1="200" x2="655" y2="200" stroke="#000" strokeWidth="4" />
-                                <text x="555" y="218" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUS 20KV POKA</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* 3. GIS PASSO & GI PASSO */}
-                          {(() => {
-                            const isMatch = searchQuery && ('GIS PASSO'.toLowerCase().includes(searchQuery.toLowerCase()) || 'GI PASSO'.toLowerCase().includes(searchQuery.toLowerCase()));
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-gis-passo', name: 'GIS PASSO / GI PASSO', type: 'GI', pageName: currentPage?.name || 'p1', text: 'GIS PASSO 20KV (MAIN SUBSTATION ULP BAGUALA)', x: 740, y: 120, width: 250, height: 140, category: 'GI/GH', properties: { Tegangan: '20.2 kV', Trafo: '2x 30 MVA', Status: 'SCADA ON' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="740"
-                                  y="110"
-                                  width="250"
-                                  height="140"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="750" y="128" fill="#0033aa" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  GIS PASSO / GI PASSO
-                                </text>
-                                {/* GIS Busbar */}
-                                <line x1="755" y1="150" x2="975" y2="150" stroke="#000" strokeWidth="4" />
-                                <text x="865" y="145" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUSBAR 20KV GIS PASSO</text>
-                                {/* Breakers / PMT Passo */}
-                                <rect x="780" y="170" width="16" height="16" fill="#10b981" stroke="#000" strokeWidth="1.5" />
-                                <text x="802" y="182" fill="#000" font-size="8" font-weight="bold">PMT PASSO UTAMA</text>
-                                <rect x="780" y="200" width="16" height="16" fill="#10b981" stroke="#000" strokeWidth="1.5" />
-                                <text x="802" y="212" fill="#000" font-size="8" font-weight="bold">PMT WAIHERU 1</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* 4. GH PASSO */}
-                          {(() => {
-                            const isMatch = searchQuery && 'GH PASSO'.toLowerCase().includes(searchQuery.toLowerCase());
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-gh-passo', name: 'GH PASSO', type: 'GH', pageName: currentPage?.name || 'p1', text: 'GARDU HUBUNG PASSO - DISTRIBUTION FEEDERS', x: 680, y: 380, width: 210, height: 130, category: 'GI/GH', properties: { Tipe: 'Gardu Hubung', Feeders: '2 Express' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="680"
-                                  y="380"
-                                  width="210"
-                                  height="130"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="690" y="398" fill="#0033aa" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  GH PASSO
-                                </text>
-                                <line x1="695" y1="420" x2="875" y2="420" stroke="#000" strokeWidth="4" />
-                                <text x="785" y="415" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUS GH PASSO</text>
-                                <rect x="710" y="440" width="14" height="14" fill="#10b981" stroke="#000" strokeWidth="1.5" />
-                                <text x="730" y="452" fill="#000" font-size="8" font-weight="bold">LBS GH-01</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* 5. GH BAGUALA */}
-                          {(() => {
-                            const isMatch = searchQuery && 'GH BAGUALA'.toLowerCase().includes(searchQuery.toLowerCase());
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-gh-baguala', name: 'GH BAGUALA', type: 'GH', pageName: currentPage?.name || 'p1', text: 'GH BAGUALA - EXPRESS DISTRIBUTION', x: 500, y: 670, width: 220, height: 120, category: 'GI/GH', properties: { Tipe: 'Gardu Hubung', Status: 'EXPRESS' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="500"
-                                  y="670"
-                                  width="220"
-                                  height="120"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="510" y="688" fill="#0033aa" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  GH BAGUALA
-                                </text>
-                                <line x1="515" y1="710" x2="705" y2="710" stroke="#000" strokeWidth="4" />
-                                <text x="610" y="705" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUSBAR GH BAGUALA</text>
-                                <rect x="530" y="730" width="14" height="14" fill="#10b981" stroke="#000" strokeWidth="1.5" />
-                                <text x="550" y="742" fill="#000" font-size="8" font-weight="bold">LBS EXPRESS LATERI</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* 6. PLTD HATIVE KECIL */}
-                          {(() => {
-                            const isMatch = searchQuery && 'PLTD HATIVE KECIL'.toLowerCase().includes(searchQuery.toLowerCase());
-                            return (
-                              <g
-                                onClick={() => setSelectedShape({ id: 'v-pltd-hative', name: 'PLTD HATIVE KECIL', type: 'Pembangkit', pageName: currentPage?.name || 'p1', text: 'PLTD HATIVE KECIL - LOCAL BACKUP', x: 100, y: 690, width: 220, height: 120, category: 'GI/GH', properties: { Kapasitas: '8 MW', Status: 'STANDBY' } })}
-                                className="cursor-pointer group"
-                              >
-                                <rect
-                                  x="100"
-                                  y="690"
-                                  width="220"
-                                  height="120"
-                                  fill="none"
-                                  stroke={isMatch ? '#f59e0b' : '#dc2626'}
-                                  strokeWidth={isMatch ? '3.5' : '1.8'}
-                                  strokeDasharray="6,4"
-                                  className={isMatch ? 'animate-pulse' : 'group-hover:stroke-blue-600'}
-                                />
-                                <text x="110" y="708" fill="#0033aa" font-size="11" font-weight="800" fontFamily="sans-serif">
-                                  PLTD HATIVE KECIL
-                                </text>
-                                <circle cx="140" cy="740" r="12" fill="#fff" stroke="#000" strokeWidth="2" />
-                                <text x="140" y="744" textAnchor="middle" font-size="9" font-weight="bold">G</text>
-                                <line x1="115" y1="770" x2="305" y2="770" stroke="#000" strokeWidth="4" />
-                                <text x="210" y="765" textAnchor="middle" fill="#000" font-size="9" font-weight="bold">BUS HATIVE KECIL</text>
-                              </g>
-                            );
-                          })()}
-
-                          {/* =================================================== */}
-                          {/* FEEDER DISTRIBUTION CONNECTING LINES (ORTHOGONAL) */}
-                          {/* =================================================== */}
-
-                          {/* Line 1: GI Hative Besar to Central Grid (Black & Blue) */}
-                          <path d="M 360 150 L 420 150 L 420 300 L 250 300 L 250 450" fill="none" stroke="#000000" strokeWidth="2.2" />
-                          
-                          {/* Line 2: PLTD Poka to GIS Passo (Cyan Feeder Line) */}
-                          <path d="M 655 200 L 710 200 L 710 180 L 755 180" fill="none" stroke="#06b6d4" strokeWidth="2.5" />
-
-                          {/* Line 3: GIS Passo to GH Passo (Red Primary Line) */}
-                          <path d="M 850 250 L 850 320 L 785 320 L 785 380" fill="none" stroke="#ef4444" strokeWidth="2.5" />
-
-                          {/* Line 4: GIS Passo to Distribution Branches (Green Feeder) */}
-                          <path d="M 880 250 L 880 340 L 1100 340 L 1100 500" fill="none" stroke="#10b981" strokeWidth="2" />
-
-                          {/* Line 5: GH Passo to GH Baguala (Orange Feeder Line) */}
-                          <path d="M 785 510 L 785 600 L 610 600 L 610 670" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
-
-                          {/* Line 6: PLTD HATIVE KECIL to GH Baguala (Teal Connector) */}
-                          <path d="M 305 770 L 420 770 L 420 730 L 500 730" fill="none" stroke="#14b8a6" strokeWidth="2.2" />
-
-                          {/* Eastern Grid Distribution Extensions */}
-                          <path d="M 1100 340 L 1350 340 L 1350 600 M 1350 450 L 1250 450" fill="none" stroke="#6366f1" strokeWidth="1.8" />
-                          <path d="M 250 450 L 520 450 L 520 550 M 380 450 L 380 580" fill="none" stroke="#8b5cf6" strokeWidth="1.8" />
-
-                          {/* Distribution Transformer Drops & Spurs (Multiple Load Centers) */}
-                          {[
-                            { x: 250, y: 350, label: 'GD PASSO 1' },
-                            { x: 380, y: 500, label: 'GD LATERI 2' },
-                            { x: 520, y: 520, label: 'GD POKA UTAMA' },
-                            { x: 950, y: 340, label: 'GD TULEHU' },
-                            { x: 1100, y: 420, label: 'GD HALONG' },
-                            { x: 1250, y: 500, label: 'GD WAIHERU 3' },
-                            { x: 1350, y: 380, label: 'GD TELUK AMBON' },
-                          ].map((drop, idx) => (
-                            <g key={idx} transform={`translate(${drop.x}, ${drop.y})`}>
-                              <line x1="0" y1="0" x2="0" y2="15" stroke="#000" strokeWidth="1.5" />
-                              <circle cx="0" cy="22" r="6" fill="#fff" stroke="#000" strokeWidth="1.5" />
-                              <circle cx="0" cy="30" r="6" fill="#fff" stroke="#000" strokeWidth="1.5" />
-                              <text x="10" y="28" fill="#334155" font-size="8" font-weight="bold" fontFamily="sans-serif">
-                                {drop.label}
-                              </text>
-                            </g>
-                          ))}
-
-                          {/* Interactive PMT & Switch Symbols along lines */}
-                          {[
-                            { x: 420, y: 240, id: 'pmt-poka-link', name: 'PMT LINK POKA', status: 'CLOSED' },
-                            { x: 785, y: 335, id: 'rec-pohon-inline', name: 'REC POHON', status: 'CLOSED' },
-                            { x: 1000, y: 340, id: 'lbs-waiheru-inline', name: 'LBS WAIHERU', status: 'CLOSED' },
-                            { x: 785, y: 560, id: 'tie-passo-lateri-inline', name: 'TIE SWITCH MANUVER', status: 'OPEN' },
-                          ].map((sw) => (
-                            <g
-                              key={sw.id}
-                              transform={`translate(${sw.x - 8}, ${sw.y - 8})`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedShape({
-                                  id: sw.id,
-                                  name: sw.name,
-                                  type: 'CircuitBreaker',
-                                  pageName: currentPage?.name || 'p1',
-                                  text: `${sw.name} (STATUS: ${sw.status})`,
-                                  x: sw.x,
-                                  y: sw.y,
-                                  width: 16,
-                                  height: 16,
-                                  category: 'Saklar/PMT',
-                                  properties: { Status: sw.status, Interkoneksi: '20kV Network' }
-                                });
-                              }}
-                              className="cursor-pointer group"
-                            >
-                              <rect
-                                x="0"
-                                y="0"
-                                width="16"
-                                height="16"
-                                fill={sw.status === 'CLOSED' ? '#10b981' : '#ef4444'}
-                                stroke="#000"
-                                strokeWidth="1.5"
-                                className="group-hover:scale-125 transition-transform"
-                              />
-                              <text x="20" y="12" fill="#0f172a" font-size="8" font-weight="bold" fontFamily="sans-serif">
-                                {sw.name}
-                              </text>
-                            </g>
-                          ))}
-
-                          {/* =================================================== */}
-                          {/* SIMBOL / LEGEND BOX (BOTTOM RIGHT - MATCHING IMAGE 2) */}
-                          {/* =================================================== */}
-                          <g transform="translate(1240, 710)">
-                            <rect x="0" y="0" width="135" height="120" fill="#ffffff" stroke="#000000" strokeWidth="1.5" />
-                            <rect x="0" y="0" width="135" height="18" fill="#f8fafc" stroke="#000000" strokeWidth="1" />
-                            <text x="67" y="13" textAnchor="middle" fill="#000000" font-size="9" font-weight="900" fontFamily="sans-serif">
-                              SIMBOL
-                            </text>
-                            
-                            {/* Legend item 1: PMT Closed */}
-                            <rect x="10" y="26" width="10" height="10" fill="#10b981" stroke="#000" strokeWidth="1" />
-                            <text x="26" y="34" fill="#000" font-size="8" font-weight="bold">PMT CLOSED</text>
-
-                            {/* Legend item 2: PMT Open */}
-                            <rect x="10" y="44" width="10" height="10" fill="#ef4444" stroke="#000" strokeWidth="1" />
-                            <text x="26" y="52" fill="#000" font-size="8" font-weight="bold">PMT TRIP / OPEN</text>
-
-                            {/* Legend item 3: Trafo */}
-                            <circle cx="15" cy="66" r="4" fill="none" stroke="#000" strokeWidth="1.2" />
-                            <circle cx="15" cy="72" r="4" fill="none" stroke="#000" strokeWidth="1.2" />
-                            <text x="26" y="71" fill="#000" font-size="8" font-weight="bold">TRAFO 20KV/380V</text>
-
-                            {/* Legend item 4: Generator */}
-                            <circle cx="15" cy="88" r="5" fill="#fff" stroke="#000" strokeWidth="1.2" />
-                            <text x="15" y="91" textAnchor="middle" font-size="7" font-weight="bold">G</text>
-                            <text x="26" y="90" fill="#000" font-size="8" font-weight="bold">PEMBANGKIT</text>
-
-                            {/* Legend item 5: Busbar */}
-                            <line x1="8" y1="106" x2="22" y2="106" stroke="#000" strokeWidth="3" />
-                            <text x="26" y="108" fill="#000" font-size="8" font-weight="bold">BUSBAR 20KV</text>
-                          </g>
-
-                        </svg>
-                      </div>
-                    </div>
-                  ) : (
-                    /* SHAPES CANVAS GRID (MODE CARDS - GAMBAR 1) */
-                    <div className="relative min-h-[420px] p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {filteredVisioShapes.map((shape) => {
-                          const isSelected = selectedShape?.id === shape.id;
-                          return (
-                            <div
-                              key={shape.id}
-                              onClick={() => setSelectedShape(shape)}
-                              className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 relative ${
-                                isSelected
-                                  ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/40 shadow-xl'
-                                  : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                                  shape.category === 'GI/GH' ? 'bg-amber-500/20 text-amber-300' :
-                                  shape.category === 'Feeder' ? 'bg-emerald-500/20 text-emerald-300' :
-                                  shape.category === 'Saklar/PMT' ? 'bg-rose-500/20 text-rose-300' :
-                                  'bg-blue-500/20 text-blue-300'
-                                }`}>
-                                  {shape.category}
-                                </span>
-                                <span className="text-[9px] font-mono text-slate-500">ID: {shape.id}</span>
-                              </div>
-
-                              <div className="font-bold text-xs text-white leading-snug line-clamp-2">
-                                {shape.text || shape.name}
-                              </div>
-
-                              <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between border-t border-slate-800/80 pt-1.5">
-                                <span>Type: {shape.type || 'Shape'}</span>
-                                <span>Pos: ({shape.x}, {shape.y})</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Selected Shape Property Inspector Panel (1 Column) */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="border-b border-slate-800 pb-2">
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
-                      Inspektur Property Shape Visio
-                    </h4>
-                  </div>
-
-                  {!selectedShape ? (
-                    <p className="text-xs text-slate-500 italic text-center py-10">
-                      Klik salah satu shape di canvas untuk melihat detail properti Visio XML.
-                    </p>
-                  ) : (
-                    <div className="space-y-4 text-xs">
-                      
-                      {/* Name & Type */}
-                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Shape ID & Title</span>
-                        <div className="font-bold text-amber-300 text-sm">{selectedShape.text || selectedShape.name}</div>
-                        <div className="text-[11px] font-mono text-slate-400">
-                          ID: {selectedShape.id} • Type: {selectedShape.type}
-                        </div>
-                      </div>
-
-                      {/* Category Badge */}
-                      <div>
-                        <span className="block font-bold text-slate-400 mb-1">Kategori SLD</span>
-                        <span className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg font-bold">
-                          {selectedShape.category}
-                        </span>
-                      </div>
-
-                      {/* Coordinates */}
-                      <div className="grid grid-cols-2 gap-2 text-slate-300">
-                        <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg">
-                          <span className="block text-[10px] text-slate-500 font-bold">PinX Coordinate</span>
-                          <span className="font-mono text-white font-bold">{selectedShape.x} px</span>
-                        </div>
-                        <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg">
-                          <span className="block text-[10px] text-slate-500 font-bold">PinY Coordinate</span>
-                          <span className="font-mono text-white font-bold">{selectedShape.y} px</span>
-                        </div>
-                      </div>
-
-                      {/* Custom Properties Table */}
-                      <div className="space-y-1.5">
-                        <span className="block font-bold text-slate-300 uppercase text-[10px]">
-                          Visio Custom Data Fields
-                        </span>
-                        {Object.keys(selectedShape.properties).length === 0 ? (
-                          <p className="text-[11px] text-slate-500 italic">Tidak ada custom data row dalam shape ini.</p>
-                        ) : (
-                          <div className="p-2 bg-slate-950 border border-slate-800 rounded-xl space-y-1 font-mono text-[11px]">
-                            {Object.entries(selectedShape.properties).map(([k, v]) => (
-                              <div key={k} className="flex justify-between border-b border-slate-900 pb-1">
-                                <span className="text-slate-400">{k}:</span>
-                                <span className="text-emerald-400 font-bold">{v}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  )}
-
-                </div>
-
-              </div>
-
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 3: TABEL SHAPE XML VISIO */}
-      {/* ========================================================================= */}
-      {activeTab === 'SHAPE_TABLE' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                Daftar Seluruh Shape XML Visio yang Terdeteksi
-              </h3>
-              <p className="text-xs text-slate-400">
-                Data mentah elemen diagram Visio untuk verifikasi dan pemetaan atribut kelistrikan.
-              </p>
-            </div>
-
-            {visioDoc && (
-              <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 px-3 py-1 rounded-xl">
-                Total: {visioDoc.totalShapes} Shapes
-              </span>
-            )}
-          </div>
-
-          {!visioDoc ? (
-            <div className="p-10 text-center text-slate-500 text-xs">
-              Belum ada file Visio diimpor. Gunakan tombol "Import File Visio (.vsdx)" atau "Demo Visio SLD" di bagian atas.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-black border-b border-slate-800">
-                  <tr>
-                    <th className="p-3">ID</th>
-                    <th className="p-3">Nama Shape Visio</th>
-                    <th className="p-3">Halaman</th>
-                    <th className="p-3">Teks Content</th>
-                    <th className="p-3">Kategori SLD</th>
-                    <th className="p-3">Koordinat (X, Y)</th>
-                    <th className="p-3">Custom Data</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-                  {visioDoc.pages.flatMap((page) =>
-                    page.shapes.map((shape) => (
-                      <tr key={`${page.id}-${shape.id}`} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-3 font-bold text-amber-400">{shape.id}</td>
-                        <td className="p-3 text-white font-sans font-bold">{shape.name}</td>
-                        <td className="p-3 text-slate-400">{page.name}</td>
-                        <td className="p-3 text-slate-200 font-sans max-w-xs truncate">{shape.text}</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                            {shape.category}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-400">({shape.x}, {shape.y})</td>
-                        <td className="p-3 text-slate-400 max-w-xs truncate">
-                          {Object.entries(shape.properties).map(([k, v]) => `${k}=${v}`).join(', ') || '-'}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL 1: Tambah / Edit Gardu Induk or Gardu Hubung */}
@@ -2995,12 +2174,19 @@ export const SldVisioView: React.FC = () => {
 
             <form onSubmit={handleSaveFeeder} className="mt-4 space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-slate-300 mb-1">GARDU INDUK / GH INDUK</label>
+                <label className="block font-bold text-slate-300 mb-1 flex items-center justify-between">
+                  <span>GARDU INDUK / GH INDUK</span>
+                  {isSubstationLocked && (
+                    <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      Terkunci (Zona {substations.find(s => s.id === targetSubId)?.nama})
+                    </span>
+                  )}
+                </label>
                 <select
                   value={targetSubId}
                   onChange={(e) => setTargetSubId(e.target.value)}
-                  disabled={!!editingFeeder}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                  disabled={!!editingFeeder || isSubstationLocked}
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {substations.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -3024,13 +2210,24 @@ export const SldVisioView: React.FC = () => {
                       setFeederName(p.namaPenyulang);
                       setFeederKms(p.panjangJaringanKms);
                       
-                      // Auto select matching GI / GH
-                      const matchedSub = substations.find(
-                        (s) =>
-                          s.nama.toLowerCase().includes(p.namaGi.toLowerCase()) ||
-                          p.namaGi.toLowerCase().includes(s.nama.toLowerCase())
-                      );
-                      if (matchedSub && !editingFeeder) {
+                      // Auto select matching GI / GH only if it's not locked
+                      const matchedSub = substations.find((s) => {
+                        const sName = s.nama.toLowerCase();
+                        const giName = p.namaGi.toLowerCase();
+                        const pName = p.namaPenyulang.toLowerCase();
+                        
+                        // 1. Check if substation name matches the GI name
+                        if (sName.includes(giName) || giName.includes(sName)) return true;
+                        
+                        // 2. Extract words and see if there is significant overlap
+                        // e.g. "WAIHERU 3" and "WAIHERU 3 POKA"
+                        const cleanS = sName.replace(/feeder|gi|gh|gardu|induk|hubung/g, '').trim();
+                        const cleanP = pName.replace(/feeder|gi|gh|gardu|induk|hubung/g, '').trim();
+                        if (cleanS && cleanP && (cleanP.includes(cleanS) || cleanS.includes(cleanP))) return true;
+                        
+                        return false;
+                      });
+                      if (matchedSub && !editingFeeder && !isSubstationLocked) {
                         setTargetSubId(matchedSub.id);
                       }
                     }

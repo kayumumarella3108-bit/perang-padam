@@ -45,7 +45,7 @@ const VIEW_NAMES: Record<ViewType, string> = {
   peta_pohon: 'Peta Pohon & ROW GIS 20kV',
   peta_konstruksi: 'Peta Konstruksi & Proyek GIS 20kV',
   gangguan: 'Log Gangguan Feeder',
-  sld_visio: 'Single Line Diagram (SLD)'
+  sld_visio: 'SLD'
 };
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
