@@ -49,6 +49,7 @@ export interface FeederData {
   bebanMw: number;
   warna: string;
   bisaBacaIndikasi?: boolean;
+  arealPadam?: string;
 }
 
 export interface SubstationData {
@@ -128,7 +129,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 142,
         arusIN: 5,
         bebanMw: 4.8,
-        warna: '#10b981'
+        warna: '#10b981',
+        arealPadam: 'Desa Passo, Sebagian Desa Lateri, Perumahan Passo Indah, Asrama Militer Passo'
       },
       {
         id: 'f-waiheru-1',
@@ -142,7 +144,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 95,
         arusIN: 3,
         bebanMw: 3.2,
-        warna: '#0284c7'
+        warna: '#0284c7',
+        arealPadam: 'Desa Waiheru, Nania, Perumnas Waiheru, Kampus Unpatti, Negeri Lama'
       },
       {
         id: 'f-rec-pohon',
@@ -156,7 +159,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 215,
         arusIN: 8,
         bebanMw: 6.9,
-        warna: '#f59e0b'
+        warna: '#f59e0b',
+        arealPadam: 'Negeri Latta, Soya, Halong Atas, Areal Hutan Lindung, Kompleks Lantamal IX'
       },
       {
         id: 'f-tulehu-utama',
@@ -170,7 +174,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 185,
         arusIN: 6,
         bebanMw: 5.8,
-        warna: '#8b5cf6'
+        warna: '#8b5cf6',
+        arealPadam: 'Negeri Tulehu, Liang, Waai, Pelabuhan Penyeberangan Tulehu, Kampus Darussalam'
       }
     ]
   },
@@ -194,7 +199,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 108,
         arusIN: 2,
         bebanMw: 2.9,
-        warna: '#06b6d4'
+        warna: '#06b6d4',
+        arealPadam: 'Desa Lateri, Lateri Atas, Kantor Camat Baguala, Citraland Baguala'
       },
       {
         id: 'f-gh-passo-feeder2',
@@ -208,7 +214,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 128,
         arusIN: 4,
         bebanMw: 3.4,
-        warna: '#2563eb'
+        warna: '#2563eb',
+        arealPadam: 'Passo Tengah, Desa Hative Besar, Waiheru Atas, Kawasan Industri Passo'
       }
     ]
   },
@@ -232,7 +239,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 158,
         arusIN: 5,
         bebanMw: 4.5,
-        warna: '#ec4899'
+        warna: '#ec4899',
+        arealPadam: 'Desa Lateri Barat, Halong Baru, Galala, Kawasan Pantai Mardika'
       },
       {
         id: 'f-halong-utama',
@@ -246,7 +254,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 132,
         arusIN: 3,
         bebanMw: 3.8,
-        warna: '#14b8a6'
+        warna: '#14b8a6',
+        arealPadam: 'Desa Halong, Jembatan Merah Putih, Galala Timur, Kompleks TNI AL Halong'
       }
     ]
   },
@@ -270,7 +279,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 110,
         arusIN: 2,
         bebanMw: 3.1,
-        warna: '#e11d48'
+        warna: '#e11d48',
+        arealPadam: 'Desa Poka, Kampus Utama Unpatti, Rektorat Unpatti, JMP Sektor Poka'
       },
       {
         id: 'f-poka-2',
@@ -284,7 +294,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 92,
         arusIN: 1,
         bebanMw: 2.5,
-        warna: '#f43f5e'
+        warna: '#f43f5e',
+        arealPadam: 'Negeri Rumah Tiga, Poka Dalam, Wailela, Sebagian Puncak Wailela'
       }
     ]
   },
@@ -308,7 +319,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 128,
         arusIN: 3,
         bebanMw: 3.6,
-        warna: '#0ea5e9'
+        warna: '#0ea5e9',
+        arealPadam: 'Kawasan Luar Bandara Laha, Desa Laha, Perumahan Angkasa, Negeri Tawiri'
       },
       {
         id: 'f-bandara-vip',
@@ -322,7 +334,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 82,
         arusIN: 1,
         bebanMw: 2.1,
-        warna: '#38bdf8'
+        warna: '#38bdf8',
+        arealPadam: 'Terminal VIP Bandara Pattimura, Tower ATC Bandara, Runway Lighting, Gedung VVIP'
       }
     ]
   },
@@ -346,7 +359,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 118,
         arusIN: 2,
         bebanMw: 3.3,
-        warna: '#3b82f6'
+        warna: '#3b82f6',
+        arealPadam: 'Desa Hative Kecil, Galunggung, Kebun Cengkeh, Batu Merah Dalam'
       },
       {
         id: 'f-hative-2',
@@ -360,7 +374,8 @@ const INITIAL_SUBSTATIONS: SubstationData[] = [
         arusT: 108,
         arusIN: 2,
         bebanMw: 3.0,
-        warna: '#60a5fa'
+        warna: '#60a5fa',
+        arealPadam: 'Kawasan Tantui, Kantor Polda Maluku, Kompi Tantui, Kebun Cengkeh Atas'
       }
     ]
   },
@@ -900,6 +915,7 @@ export const SldVisioView: React.FC = () => {
   const [feederSaklarNama, setFeederSaklarNama] = useState('');
   const [feederStatus, setFeederStatus] = useState<'CLOSED' | 'OPEN'>('CLOSED');
   const [feederBisaBacaIndikasi, setFeederBisaBacaIndikasi] = useState<boolean>(true);
+  const [feederArealPadam, setFeederArealPadam] = useState('');
   const [feederArusR, setFeederArusR] = useState(120);
   const [feederArusS, setFeederArusS] = useState(122);
   const [feederArusT, setFeederArusT] = useState(118);
@@ -1245,6 +1261,7 @@ export const SldVisioView: React.FC = () => {
                     saklarNama: feederSaklarNama || feederSaklarTipe,
                     status: feederStatus,
                     bisaBacaIndikasi: feederBisaBacaIndikasi,
+                    arealPadam: feederArealPadam,
                     arusR: Number(feederArusR),
                     arusS: Number(feederArusS),
                     arusT: Number(feederArusT),
@@ -1269,6 +1286,7 @@ export const SldVisioView: React.FC = () => {
         saklarNama: feederSaklarNama || feederSaklarTipe,
         status: feederStatus,
         bisaBacaIndikasi: feederBisaBacaIndikasi,
+        arealPadam: feederArealPadam,
         arusR: Number(feederArusR),
         arusS: Number(feederArusS),
         arusT: Number(feederArusT),
@@ -1284,6 +1302,7 @@ export const SldVisioView: React.FC = () => {
 
     setFeederName('');
     setFeederSaklarNama('');
+    setFeederArealPadam('');
     setShowAddFeederModal(false);
   };
 
@@ -1296,6 +1315,7 @@ export const SldVisioView: React.FC = () => {
     setFeederSaklarNama(feeder.saklarNama);
     setFeederStatus(feeder.status);
     setFeederBisaBacaIndikasi(feeder.bisaBacaIndikasi !== false);
+    setFeederArealPadam(feeder.arealPadam || '');
     setFeederArusR(feeder.arusR);
     setFeederArusS(feeder.arusS);
     setFeederArusT(feeder.arusT);
@@ -1694,14 +1714,13 @@ export const SldVisioView: React.FC = () => {
 
           {/* Emergency Load Transfer Recommendation Banner */}
           {substations.flatMap(s => s.feeders).some(f => f.status === 'OPEN') && (
-            <div className="p-4 bg-rose-950/40 border border-rose-500/50 rounded-2xl space-y-2 shadow-lg animate-pulse">
+            <div className="p-4 bg-rose-950/40 border border-rose-500/50 rounded-2xl space-y-3 shadow-lg">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 font-bold text-xs text-rose-300">
                   <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                   <span>
                     <strong className="text-white uppercase">⚠️ Deteksi Status Trip / Padam:</strong>{' '}
-                    {substations.flatMap(s => s.feeders.filter(f => f.status === 'OPEN')).map(f => f.namaFeeder).join(', ')}{' '}
-                    dalam kondisi <span className="text-rose-400 underline">OPEN (Padam)</span>.
+                    Ada {substations.flatMap(s => s.feeders.filter(f => f.status === 'OPEN')).length} Penyulang dalam kondisi <span className="text-rose-400 underline">OPEN (Padam)</span>.
                   </span>
                 </div>
 
@@ -1719,7 +1738,23 @@ export const SldVisioView: React.FC = () => {
                 )}
               </div>
 
-              <div className="text-[11px] text-slate-300 font-medium pl-6 border-l-2 border-rose-500/50">
+              {/* List of Tripped Feeders with blackout locations */}
+              <div className="space-y-1.5 border-t border-rose-500/20 pt-2">
+                {substations.flatMap(s => s.feeders.filter(f => f.status === 'OPEN')).map(f => (
+                  <div key={f.id} className="text-xs text-rose-200 pl-6 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3">
+                    <span className="font-extrabold text-white shrink-0">• Penyulang {f.namaFeeder}:</span>
+                    <span className="text-rose-300 font-medium">
+                      {f.arealPadam ? (
+                        <span>Wilayah Padam: <strong className="text-rose-100 font-bold">{f.arealPadam}</strong></span>
+                      ) : (
+                        <span className="italic text-slate-400">Areal desa padam belum diset</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-[11px] text-slate-300 font-medium pl-6 border-l-2 border-rose-500/50 pt-1">
                 💡 <strong>Rekomendasi Dispatcher PLN:</strong> Hubungkan Tie Switch Interkoneksi ({tieSwitches.map(t => t.nama).join(', ')}) ke status <strong>CLOSED</strong> untuk menyalurkan pasokan daya cadangan dari penyulang tetangga secara otomatis.
               </div>
             </div>
@@ -1978,6 +2013,24 @@ export const SldVisioView: React.FC = () => {
                                       Tidak Bisa Baca Indikasi
                                     </span>
                                   )}
+                                </div>
+
+                                {/* Areal Padam Info */}
+                                <div className="pt-1.5 border-t border-slate-800/60">
+                                  <div className={`p-2 rounded-xl text-[10px] space-y-0.5 ${
+                                    feeder.status === 'OPEN'
+                                      ? 'bg-rose-950/40 border border-rose-900/40 text-rose-100 animate-pulse'
+                                      : 'bg-slate-950/50 border border-slate-900/50 text-slate-400'
+                                  }`}>
+                                    <span className={`block font-extrabold uppercase tracking-wider text-[8px] ${
+                                      feeder.status === 'OPEN' ? 'text-rose-400' : 'text-slate-500'
+                                    }`}>
+                                      {feeder.status === 'OPEN' ? '⚠️ AREAL DESA PADAM:' : 'Cakupan Areal Desa:'}
+                                    </span>
+                                    <span className="block font-semibold leading-tight font-sans">
+                                      {feeder.arealPadam || 'Belum ditentukan'}
+                                    </span>
+                                  </div>
                                 </div>
 
 
@@ -2342,6 +2395,18 @@ export const SldVisioView: React.FC = () => {
                   <option value="true">Bisa Baca Indikasi</option>
                   <option value="false">Tidak Bisa Baca Indikasi</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">LOKASI AREAL / DESA YANG PADAM</label>
+                <textarea
+                  value={feederArealPadam}
+                  onChange={(e) => setFeederArealPadam(e.target.value)}
+                  placeholder="Contoh: Desa Passo, Negeri Latta, Sebagian Lateri, Waiheru Dalam, dst."
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-sans"
+                />
+                <p className="text-[10px] text-slate-500 mt-0.5">Sebutkan nama-nama desa atau wilayah yang ikut padam saat penyulang ini mengalami trip / open.</p>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">

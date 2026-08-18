@@ -342,6 +342,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>Dashboard Utama</span>
             </button>
           )}
+
+          {canAccessMenu(currentUser, 'sld_visio') && (
+            <button
+              onClick={() => onSelectView('sld_visio')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                activeView === 'sld_visio'
+                  ? 'bg-amber-600/15 text-amber-400 border border-amber-500/30 shadow-sm ring-1 ring-amber-500/25'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="p-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg shrink-0">
+                <Zap className="w-4 h-4 text-amber-400" />
+              </div>
+              <span>Mini SCADA</span>
+            </button>
+          )}
           {canAccessMenu(currentUser, 'peta') && (
             <div>
               <button
@@ -458,18 +474,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Network className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                     <span>Aset Jaringan JTM/JTR</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('sld_visio')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'sld_visio'
-                        ? 'bg-purple-600/20 text-purple-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>SLD</span>
                   </button>
                 </div>
               )}
