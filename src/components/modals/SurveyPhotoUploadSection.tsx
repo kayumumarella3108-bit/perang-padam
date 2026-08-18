@@ -24,7 +24,7 @@ interface SurveyPhotoUploadSectionProps {
 }
 
 // Client-side image compression helper to ensure lightweight storage
-export async function compressImageFile(file: File, maxWidth = 1280, quality = 0.82): Promise<string> {
+export async function compressImageFile(file: File, maxWidth = 500, quality = 0.4): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);

@@ -208,6 +208,12 @@ export interface User {
   status?: string;
   avatarUrl?: string;
   password?: string;
+  permissions?: {
+    canAddUsers: boolean;
+    canEditData: boolean;
+    canViewDataOnly: boolean;
+  };
+  allowedMenus?: string[];
 }
 
 export interface ActivityLog {
@@ -932,6 +938,8 @@ export interface SurveyPbPdItem {
   fotoLokasi?: string; // Alias foto lokasi
   fotoPengukuranTegangan?: string; // Foto pengukuran multimeter / voltase
   fotoTitikSambung?: string; // URL / Base64 foto titik sambung / tiang TR / SR
+  teamLeaderName?: string; // Nama Team Leader / Supervisor
+  isApproved?: boolean; // Status approval digital signature
   createdAt?: string;
 }
 

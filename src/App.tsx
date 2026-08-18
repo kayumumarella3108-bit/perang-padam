@@ -762,6 +762,14 @@ export default function App() {
 
   // Login handler
   const handleLogin = (authenticatedUser: User) => {
+    // Validate that the user exists in our registered users list
+    const isValid = usersList.some(u => u.username === authenticatedUser.username);
+    
+    if (!isValid) {
+      console.error('Login gagal: User tidak terdaftar dalam sistem.');
+      return; // Do not update user state
+    }
+
     setUser(authenticatedUser);
     logActivity(`User ${authenticatedUser.name} berhasil login ke sistem PLN ULP Baguala`, 'Sistem Auth');
   };

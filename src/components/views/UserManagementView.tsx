@@ -17,10 +17,45 @@ import {
   X,
   Check,
   Building2,
-  ArrowRight
+  ArrowRight,
+  LayoutDashboard,
+  Wrench,
+  FileText,
+  Gauge,
+  Zap,
+  BarChart3,
+  Share2,
+  Key
 } from 'lucide-react';
 import { User } from '../../types';
 import { canEditData, canManageUsers, getRoleCategory } from '../../utils/permissions';
+
+const getMenuBadgeProps = (menuId: string) => {
+  switch (menuId) {
+    case 'dashboard':
+      return { label: 'Dashboard', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+    case 'gangguan':
+      return { label: 'Gangguan', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+    case 'pemeliharaan':
+      return { label: 'Pemeliharaan', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+    case 'spk':
+      return { label: 'Surat & SPK', bg: 'bg-teal-50 text-teal-700 border-teal-200' };
+    case 'pengukuran_gardu':
+      return { label: 'Beban Gardu', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+    case 'survey_pb_pd':
+      return { label: 'Survey PB/PD', bg: 'bg-yellow-50 text-yellow-800 border-yellow-200' };
+    case 'saidi_saifi':
+      return { label: 'SAIDI SAIFI', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+    case 'monitoring_yantek':
+      return { label: 'Yantek', bg: 'bg-sky-50 text-sky-700 border-sky-200' };
+    case 'share_laporan':
+      return { label: 'Share Laporan', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case 'kelola_user':
+      return { label: 'Kelola User', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+    default:
+      return { label: menuId, bg: 'bg-slate-50 text-slate-700 border-slate-200' };
+  }
+};
 
 interface UserManagementViewProps {
   currentUser: User;
@@ -51,9 +86,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [unit, setUnit] = useState('ULP Baguala');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [canAddUsers, setCanAddUsers] = useState(false);
+  const [canEditDataVal, setCanEditDataVal] = useState(true);
+  const [canViewDataOnly, setCanViewDataOnly] = useState(false);
+  const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+  const [formError, setFormError] = useState('');
 
   // Strict check: only Koordinator / System Admin can add/edit/delete users
-  // Admin Teknik is restricted to operational data entry only and CANNOT manage users
   const canEdit = canManageUsers(currentUser);
 
   const PRESET_AVATARS = [
@@ -77,6 +117,36 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     }
   };
 
+  const getMenuPresetsForRole = (roleName: string): string[] => {
+    const roleLower = roleName.toLowerCase().trim();
+    if (roleLower.includes('koordinator') || roleLower.includes('admin system') || roleLower.includes('admin aplikasi') || roleLower === 'admin') {
+      return ['dashboard', 'gangguan', 'pemeliharaan', 'spk', 'pengukuran_gardu', 'survey_pb_pd', 'saidi_saifi', 'monitoring_yantek', 'share_laporan', 'kelola_user'];
+    }
+    if (roleLower.includes('pemasaran')) {
+      return ['dashboard', 'survey_pb_pd'];
+    }
+    if (roleLower.includes('row') || roleLower.includes('inspeksi')) {
+      return ['dashboard', 'pemeliharaan'];
+    }
+    if (roleLower.includes('teknik') || roleLower.includes('leader') || roleLower.includes('manager') || roleLower.includes('up3') || roleLower.includes('uiw') || roleLower.includes('nusadaya')) {
+      return ['dashboard', 'gangguan', 'pemeliharaan', 'spk', 'pengukuran_gardu', 'survey_pb_pd', 'saidi_saifi', 'monitoring_yantek', 'share_laporan'];
+    }
+    return ['dashboard'];
+  };
+
+  const handleRoleChange = (selectedRole: string) => {
+    setRole(selectedRole);
+    // Automatically set default menus for this role, but user can still check/uncheck
+    const presets = getMenuPresetsForRole(selectedRole);
+    setAllowedMenus(presets);
+    
+    // Also set smart defaults for permissions check-buttons
+    const isPowerUser = selectedRole.includes('Koordinator') || selectedRole.includes('Admin Aplikasi') || selectedRole.includes('Admin System');
+    setCanAddUsers(isPowerUser);
+    setCanEditDataVal(!selectedRole.includes('Manager') && !selectedRole.includes('UP3') && !selectedRole.includes('UIW'));
+    setCanViewDataOnly(selectedRole.includes('Manager') || selectedRole.includes('UP3') || selectedRole.includes('UIW'));
+  };
+
   const openAddModal = () => {
     setEditingUser(null);
     setUsername('');
@@ -85,6 +155,12 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setUnit('ULP Baguala');
     setAvatarUrl('');
     setPassword('');
+    setConfirmPassword('');
+    setCanAddUsers(false);
+    setCanEditDataVal(true);
+    setCanViewDataOnly(false);
+    setAllowedMenus(getMenuPresetsForRole('Koordinator'));
+    setFormError('');
     setIsModalOpen(true);
   };
 
@@ -96,34 +172,75 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setUnit(user.unit || 'ULP Baguala');
     setAvatarUrl(user.avatarUrl || '');
     setPassword(user.password || '');
+    setConfirmPassword(user.password || '');
+    setCanAddUsers(user.permissions?.canAddUsers || false);
+    setCanEditDataVal(user.permissions?.canEditData || false);
+    setCanViewDataOnly(user.permissions?.canViewDataOnly || false);
+    setAllowedMenus(user.allowedMenus || getMenuPresetsForRole(user.role));
+    setFormError('');
     setIsModalOpen(true);
+  };
+
+  const toggleMenuAllowed = (menuId: string) => {
+    setAllowedMenus(prev => {
+      if (prev.includes(menuId)) {
+        return prev.filter(id => id !== menuId);
+      } else {
+        return [...prev, menuId];
+      }
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !name.trim()) return;
+    setFormError('');
+
+    if (!username.trim() || !name.trim()) {
+      setFormError('Username dan Nama Lengkap wajib diisi.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFormError('Password dan Ulangi Password tidak cocok.');
+      return;
+    }
+
+    // Determine default capabilities based on checked allowedMenus
+    const editorVal = canEditDataVal;
 
     if (editingUser) {
       const updated: User = {
         ...editingUser,
-        username,
-        name,
+        username: username.trim(),
+        name: name.trim(),
         role: role as any,
         unit,
         avatarUrl,
-        password
+        password,
+        permissions: { 
+          canAddUsers, 
+          canEditData: editorVal, 
+          canViewDataOnly: !editorVal 
+        },
+        allowedMenus: allowedMenus
       };
       onUpdateUser(updated);
     } else {
       const newUser: User = {
         id: `user_${Date.now()}`,
-        username,
-        name,
+        username: username.trim(),
+        name: name.trim(),
         role: role as any,
         unit,
         status: 'Aktif',
         avatarUrl,
-        password
+        password,
+        permissions: { 
+          canAddUsers, 
+          canEditData: editorVal, 
+          canViewDataOnly: !editorVal 
+        },
+        allowedMenus: allowedMenus
       };
       onAddUser(newUser);
     }
@@ -188,154 +305,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         </div>
       )}
 
-      {/* Role Rule Matrix Info Box (3 Tiers) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        {/* Tier 1: Koordinator */}
-        <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-blue-600 text-white">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <span className="px-2 py-0.5 rounded-md bg-blue-200 text-blue-900 font-extrabold text-[10px]">
-                SUPER ADMIN & EDIT
-              </span>
-            </div>
-            <h3 className="font-extrabold text-sm text-blue-950">
-              1. Koordinator (Akses Penuh)
-            </h3>
-            <p className="text-xs text-blue-800 mt-1.5 leading-relaxed">
-              Memiliki wewenang penuh untuk <strong>membuat & mengelola user</strong> serta menginput/mengedit seluruh data operasional sistem.
-            </p>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-blue-200/60">
-            <span className="px-2.5 py-1 rounded-lg bg-white border border-blue-300 text-blue-800 text-xs font-bold inline-block">
-              • Role: Koordinator
-            </span>
-          </div>
-        </div>
 
-        {/* Tier 2: Admin Teknik */}
-        <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-emerald-600 text-white">
-                <Pencil className="w-5 h-5" />
-              </div>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900 font-extrabold text-[10px]">
-                ENTRI DATA OPERASIONAL
-              </span>
-            </div>
-            <h3 className="font-extrabold text-sm text-emerald-950">
-              2. Admin Teknik (Input Data Only)
-            </h3>
-            <p className="text-xs text-emerald-800 mt-1.5 leading-relaxed">
-              Khusus untuk <strong>menginput & mengedit data operasional</strong> (gangguan, ROW, inspeksi, pemeliharaan, SPK). <strong>Tidak bisa membuat user baru atau kelola user.</strong>
-            </p>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-emerald-200/60">
-            <span className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-xs font-bold inline-block">
-              • Role: Admin Teknik
-            </span>
-          </div>
-        </div>
-
-        {/* Tier 3: Monitoring Only */}
-        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="p-2 rounded-xl bg-amber-600 text-white">
-                <Eye className="w-5 h-5" />
-              </div>
-              <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-extrabold text-[10px]">
-                MONITORING ONLY
-              </span>
-            </div>
-            <h3 className="font-extrabold text-sm text-amber-950">
-              3. Hak Akses Monitoring
-            </h3>
-            <p className="text-xs text-amber-800 mt-1.5 leading-relaxed">
-              Dapat memantau dashboard, peta penyulang, tren SAIDI, laporan gangguan, tanpa hak akses entri data atau kelola user.
-            </p>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
-            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">Team Leader</span>
-            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">Manager ULP</span>
-            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">UP3</span>
-            <span className="px-2 py-0.5 bg-white border border-amber-300 text-amber-800 rounded">UIW</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Quick Role Switcher Banner */}
-      {onSwitchUserRole && (
-        <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
-              <RefreshCw className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs font-extrabold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                <span>SIMULASI QUICK ROLE SWITCHER</span>
-                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full text-[10px]">
-                  Aktif: {currentUser.name} ({currentUser.role})
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Uji coba langsung tampilan antarmuka antara Mode Edit vs Mode Monitoring Read-Only.
-              </p>
-            </div>
-          </div>
-
-          {/* Role Buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { role: 'Koordinator', label: 'Koordinator', edit: true },
-              { role: 'Admin Teknik', label: 'Admin Teknik', edit: true },
-              { role: 'Bagian Pemasaran', label: 'Pemasaran', edit: true },
-              { role: 'Bagian Transaksi Energi', label: 'Transaksi Energi', edit: true },
-              { role: 'Petugas Inspeksi', label: 'Petugas Inspeksi', edit: true },
-              { role: 'Petugas ROW', label: 'Petugas ROW', edit: true },
-              { role: 'Bagian Teknik', label: 'Bagian Teknik', edit: false },
-              { role: 'PLN Nusadaya', label: 'PLN Nusadaya', edit: false },
-              { role: 'Team Leader', label: 'Team Leader', edit: false },
-              { role: 'Manager ULP', label: 'Manager ULP', edit: false },
-              { role: 'UP3', label: 'UP3', edit: false },
-              { role: 'UIW', label: 'UIW', edit: false }
-            ].map((r) => {
-              const isActive = currentUser.role === r.role;
-              return (
-                <button
-                  key={r.role}
-                  onClick={() => {
-                    const matched = usersList.find((u) => u.role === r.role);
-                    if (matched) {
-                      onSwitchUserRole(matched);
-                    } else {
-                      onSwitchUserRole({
-                        username: r.role.toLowerCase().replace(/\s+/g, '_'),
-                        name: `User ${r.label}`,
-                        role: r.role as any,
-                        unit: 'PLN ULP Baguala'
-                      });
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${r.edit ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                  <span>{r.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Main Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -455,18 +425,40 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                       </td>
 
                       {/* Hak Akses Badge */}
-                      <td className="py-3.5 px-4">
-                        {isEdit ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Edit & Entri Data</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-bold">
-                            <Eye className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Monitoring Read-Only</span>
-                          </span>
-                        )}
+                      <td className="py-3.5 px-4 max-w-[280px]">
+                        <div className="space-y-1.5">
+                          <div>
+                            {isEdit ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold shadow-2xs">
+                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                <span>Edit & Entri Data</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-extrabold shadow-2xs">
+                                <Eye className="w-3 h-3 text-amber-600" />
+                                <span>Monitoring Read-Only</span>
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* List of checked menus as micro-pills */}
+                          <div className="flex flex-wrap gap-1 max-w-[260px]">
+                            {(() => {
+                              const activeMenus = u.allowedMenus || getMenuPresetsForRole(u.role);
+                              if (activeMenus.length === 0) {
+                                return <span className="text-[10px] text-slate-400 italic">Tidak ada akses menu</span>;
+                              }
+                              return activeMenus.map((m) => {
+                                const props = getMenuBadgeProps(m);
+                                return (
+                                  <span key={m} className={`inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] font-bold ${props.bg}`}>
+                                    {props.label}
+                                  </span>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Status */}
@@ -510,19 +502,19 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       {/* Add / Edit User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
-                  <UserPlus className="w-4 h-4" />
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl">
+                  <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    {editingUser ? 'Edit Role User' : 'Tambah User Baru'}
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">
+                    {editingUser ? 'Edit Hak Akses & Akun User' : 'Tambah User Baru'}
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Konfigurasi hak akses pengguna aplikasi Perang Padam
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Konfigurasi kredensial login, jabatan, dan hak akses menu yang dapat diakses pengguna
                   </p>
                 </div>
               </div>
@@ -530,177 +522,315 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 font-sans text-xs">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
               
-              {/* Username */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Username / ID Pengguna
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: koordinator_baguala"
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
-                />
-              </div>
+              {/* LEFT COLUMN: Account Information & Credentials */}
+              <div className="space-y-5">
+                <div className="border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                    Informasi Akun & Jabatan
+                  </h4>
+                </div>
 
-              {/* Nama Lengkap */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: Bpk. Ahmad Fauzi"
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
-                />
-              </div>
+                {formError && (
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <XCircle className="w-4 h-4 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
-              {/* Role Jabatan */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Role / Jabatan Akses
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
-                >
-                  <optgroup label="✅ Mode Entri Data & Kelola Akses">
-                    <option value="Koordinator">Koordinator (Entri Data & Kelola User)</option>
-                    <option value="Admin Teknik">Admin Teknik (Khusus Entri Data Operasional - Tidak Kelola User)</option>
-                    <option value="Bagian Pemasaran">Bagian Pemasaran (Khusus Entri WO Survey PB/PD - Akses Terbatas)</option>
-                    <option value="Bagian Transaksi Energi">Bagian Transaksi Energi (Entri Data Teknis & Pengukuran Gardu)</option>
-                    <option value="Petugas Inspeksi">Petugas Inspeksi (Inspeksi Jaringan, GTT, Tier 1/2)</option>
-                    <option value="Petugas ROW">Petugas ROW / Pembersihan Pohon</option>
-                  </optgroup>
-                  <optgroup label="👁️ Mode Monitoring Only (Read-Only)">
-                    <option value="Bagian Teknik">Bagian Teknik (Hanya Monitoring)</option>
-                    <option value="PLN Nusadaya">PLN Nusadaya (Monitoring PLN Nusadaya)</option>
-                    <option value="Team Leader">Team Leader (Hanya Monitoring)</option>
-                    <option value="Manager ULP">Manager ULP (Hanya Monitoring)</option>
-                    <option value="UP3">UP3 (Hanya Monitoring)</option>
-                    <option value="UIW">UIW (Hanya Monitoring)</option>
-                  </optgroup>
-                </select>
-              </div>
-
-              {/* Photo Avatar Selection */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Foto Profile User
-                </label>
-                <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Preview"
-                      referrerPolicy="no-referrer"
-                      className="w-12 h-12 rounded-full object-cover border-2 border-blue-500 shadow-sm shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
-                      {name ? name.substring(0, 2).toUpperCase() : 'US'}
-                    </div>
+                {/* Username */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                    Username / ID Pengguna
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Contoh: koordinator_baguala"
+                    required
+                    disabled={!!editingUser}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all text-xs"
+                  />
+                  {!editingUser && (
+                    <p className="text-[10px] text-slate-500 mt-1">Username bersifat unik dan tidak dapat diubah setelah dibuat.</p>
                   )}
-                  <div className="flex-1 space-y-1">
-                    <label className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold cursor-pointer transition-all border border-blue-200">
-                      <span>📁 Pilih dari File...</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
+                </div>
+
+                {/* Nama Lengkap */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                    Nama Lengkap / Nama Petugas
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Contoh: Bpk. Ahmad Fauzi"
+                    required
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-all text-xs"
+                  />
+                </div>
+
+                {/* Grid for Jabatan & Unit */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Role Jabatan */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                      Jabatan / Otoritas
                     </label>
-                    <p className="text-[9px] text-slate-500">Pilih file foto langsung dari HP/Komputer Anda.</p>
+                    <select
+                      value={role}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer text-xs"
+                    >
+                      <option value="Admin Aplikasi">Admin Aplikasi</option>
+                      <option value="Koordinator">Koordinator</option>
+                      <option value="Admin Teknik">Admin Teknik</option>
+                      <option value="Bagian Pemasaran">Bagian Pemasaran</option>
+                      <option value="Bagian Transaksi Energi">Bagian Transaksi Energi</option>
+                      <option value="Petugas Inspeksi">Petugas Inspeksi</option>
+                      <option value="Petugas ROW">Petugas ROW</option>
+                      <option value="Bagian Teknik">Bagian Teknik</option>
+                      <option value="PLN Nusadaya">PLN Nusadaya</option>
+                      <option value="Team Leader">Team Leader</option>
+                      <option value="Manager ULP">Manager ULP</option>
+                      <option value="UP3">UP3</option>
+                      <option value="UIW">UIW</option>
+                    </select>
+                  </div>
+
+                  {/* Unit Kerja */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                      Unit Organisasi PLN
+                    </label>
+                    <select
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer text-xs"
+                    >
+                      <option value="ULP Baguala">ULP Baguala</option>
+                      <option value="PLN Nusa Daya">PLN Nusa Daya</option>
+                      <option value="UP3 Ambon">UP3 Ambon</option>
+                      <option value="UIW M2U">UIW M2U</option>
+                      <option value="PLN Pusat">PLN Pusat</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Password & Confirm Password */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5">
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold">
+                    <Key className="w-4 h-4 text-blue-600" />
+                    <span>Kredensial Password Masuk</span>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1 text-[11px]">
+                      Password Akses
+                    </label>
+                    <input
+                      type="text"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Masukkan password rahasia..."
+                      required
+                      className="w-full px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-slate-950 focus:outline-none focus:border-blue-500 transition-all text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1 text-[11px]">
+                      Ulangi Password
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Ketik ulang password di atas..."
+                      required
+                      className={`w-full px-3.5 py-1.5 bg-white border rounded-xl font-mono text-slate-950 focus:outline-none transition-all text-xs ${
+                        confirmPassword && password !== confirmPassword 
+                          ? 'border-rose-400 focus:border-rose-500 bg-rose-50/30' 
+                          : 'border-slate-200 focus:border-blue-500'
+                      }`}
+                    />
+                    {confirmPassword && password !== confirmPassword && (
+                      <p className="text-[10px] text-rose-600 font-bold mt-1">⚠️ Password tidak cocok.</p>
+                    )}
+                    {confirmPassword && password === confirmPassword && (
+                      <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ Password cocok.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Profile Photo Avatar Selection */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                    Foto Profile Pengguna
+                  </label>
+                  <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Preview"
+                        referrerPolicy="no-referrer"
+                        className="w-14 h-14 rounded-full object-cover border-2 border-blue-500 shadow-sm shrink-0"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-extrabold shrink-0 text-sm">
+                        {name ? name.substring(0, 2).toUpperCase() : 'US'}
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1">
+                      <label className="inline-flex items-center justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold cursor-pointer transition-all border border-blue-200">
+                        <span>📁 Pilih dari File...</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-[9px] text-slate-500">Pilih file foto berukuran kecil langsung dari HP/Komputer Anda.</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Password Akses */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Password Akses Baru
-                </label>
-                <input
-                  type="text"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan password rahasia untuk login..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
-                />
-                <p className="text-[10px] text-slate-500 mt-1 font-sans">Digunakan saat melakukan login ke dalam aplikasi Perang Padam.</p>
-              </div>
+              {/* RIGHT COLUMN: Granular Menu Access Controls */}
+              <div className="space-y-4 flex flex-col">
+                <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                    Hak Akses Menu Aplikasi
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setAllowedMenus([])}
+                    className="text-[11px] text-rose-600 hover:text-rose-700 font-bold transition-colors cursor-pointer"
+                  >
+                    Kosongkan Semua
+                  </button>
+                </div>
 
-              {/* Unit Kerja */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Unit Organisasi PLN
-                </label>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="ULP Baguala">ULP Baguala</option>
-                  <option value="PLN Nusa Daya">PLN Nusa Daya</option>
-                  <option value="UP3">UP3</option>
-                  <option value="UIW">UIW</option>
-                  <option value="PLN">PLN</option>
-                </select>
-              </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed bg-blue-50/50 p-2.5 rounded-xl border border-blue-100">
+                  Pilih menu apa saja yang boleh tampil di navigasi sidebar user ini. Menu yang tidak di-centang akan disembunyikan sepenuhnya dari layar mereka.
+                </p>
 
-              {/* Preview Hak Akses */}
-              <div className={`p-3 rounded-xl border text-xs ${
-                canEditData({ username: '', name: '', role })
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}>
-                <div className="font-extrabold flex items-center gap-1.5">
-                  {canEditData({ username: '', name: '', role }) ? (
-                    <>
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Hasil Akses: Kategori Edit & Entri Data</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-4 h-4 text-amber-600" />
-                      <span>Hasil Akses: Kategori Hanya Monitoring (Read-Only)</span>
-                    </>
-                  )}
+                {/* List of menus displayed with checkboxes 1-by-1 */}
+                <div className="space-y-2.5 overflow-y-auto max-h-[350px] pr-1.5 flex-1 scrollbar-thin">
+                  {[
+                    { id: 'dashboard', label: 'Dashboard & Beranda Utama', icon: LayoutDashboard, color: 'text-blue-500 bg-blue-50 border-blue-200', desc: 'Halaman ringkasan statistik dan monitoring cepat' },
+                    { id: 'gangguan', label: 'Gangguan Trip Feeder', icon: Zap, color: 'text-amber-500 bg-amber-50 border-amber-200', desc: 'Manajemen data laporan gangguan & trip feeder' },
+                    { id: 'pemeliharaan', label: 'Pemeliharaan 20kV (ROW & Inspeksi)', icon: Wrench, color: 'text-rose-500 bg-rose-50 border-rose-200', desc: 'Akses menu Pangkas Pohon (ROW) & checklist Inspeksi Tier 1 & 2' },
+                    { id: 'spk', label: 'Format Surat & SPK', icon: FileText, color: 'text-teal-500 bg-teal-50 border-teal-200', desc: 'Pembuatan Perintah Kerja Harian & surat dinas teknik' },
+                    { id: 'pengukuran_gardu', label: 'Pengukuran & Beban Gardu', icon: Gauge, color: 'text-orange-500 bg-orange-50 border-orange-200', desc: 'Input & monitor beban trafo serta tegangan ujung gardu' },
+                    { id: 'survey_pb_pd', label: 'Survey PB & PD', icon: Zap, color: 'text-yellow-600 bg-yellow-50 border-yellow-200', desc: 'Input hasil survey Pasang Baru & Perubahan Daya' },
+                    { id: 'saidi_saifi', label: 'Realisasi & Estimasi SAIDI SAIFI', icon: BarChart3, color: 'text-indigo-500 bg-indigo-50 border-indigo-200', desc: 'Laporan pemadaman, pemulihan, dan indeks keandalan' },
+                    { id: 'monitoring_yantek', label: 'Monitoring Yantek', icon: Shield, color: 'text-sky-500 bg-sky-50 border-sky-200', desc: 'Kelola Alker/APD, material, jadwal piket, & kendaraan' },
+                    { id: 'share_laporan', label: 'Share Laporan (WA & TG)', icon: Share2, color: 'text-emerald-500 bg-emerald-50 border-emerald-200', desc: 'Kirim rekapitulasi gangguan atau pemeliharaan ke WA/TG' },
+                    { id: 'kelola_user', label: 'Kelola User & Hak Akses', icon: Users, color: 'text-purple-500 bg-purple-50 border-purple-200', desc: 'Menu pengaturan user login (Hanya untuk Admin/Koordinator)' }
+                  ].map((menu) => {
+                    const isChecked = allowedMenus.includes(menu.id);
+                    const MenuIcon = menu.icon;
+                    return (
+                      <label 
+                        key={menu.id} 
+                        className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                          isChecked 
+                            ? 'bg-blue-50/60 border-blue-200 shadow-sm' 
+                            : 'bg-white border-slate-200 hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked}
+                          onChange={() => toggleMenuAllowed(menu.id)}
+                          className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1 rounded-lg border shrink-0 ${menu.color}`}>
+                              <MenuIcon className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-xs">{menu.label}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-1 leading-normal pl-0.5">{menu.desc}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Permission Category Details */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <span className="block font-bold text-slate-700 text-[11px]">Mode Otoritas Data:</span>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={canEditDataVal} 
+                        onChange={(e) => {
+                          setCanEditDataVal(e.target.checked);
+                          if (e.target.checked) setCanViewDataOnly(false);
+                        }} 
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-[11px] font-bold text-slate-800">Mode Editor (Boleh Input/Edit)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={canViewDataOnly} 
+                        onChange={(e) => {
+                          setCanViewDataOnly(e.target.checked);
+                          if (e.target.checked) setCanEditDataVal(false);
+                        }} 
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-[11px] font-bold text-slate-800">Mode Read Only (Hanya Pantau)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* Modal Actions */}
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+            </form>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <div className="text-left">
+                <span className="text-[10px] font-bold text-slate-500 block">HASIL HAK AKSES:</span>
+                <span className="text-[11px] font-black text-slate-800">
+                  {allowedMenus.length} Menu Diaktifkan ({canEditDataVal ? 'Mode Input/Edit' : 'Mode Read Only'})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer"
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors text-xs"
                 >
                   Batal
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20 cursor-pointer flex items-center gap-1.5"
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={password !== confirmPassword}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-md shadow-blue-500/10 cursor-pointer flex items-center gap-1.5 transition-all text-xs"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Simpan User</span>
+                  <Check className="w-4 h-4" />
+                  <span>{editingUser ? 'Simpan Perubahan' : 'Simpan User Baru'}</span>
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

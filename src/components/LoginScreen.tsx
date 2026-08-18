@@ -182,7 +182,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       return;
     }
 
-    // Match against registered users or fallback
+    // Match against registered users
     const matchedUser = usersList.find(
       (u) => (u.username || '').toLowerCase().trim() === (username || '').toLowerCase().trim()
     );
@@ -194,39 +194,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
         return;
       }
       onLogin(matchedUser);
+      if (onLoginSuccess) onLoginSuccess();
     } else {
-      // Fallback user based on entered username
-      let userRole = 'Koordinator';
-      let userName = `User ${username}`;
-      const uLower = username.toLowerCase();
-
-      if (uLower.includes('pemasaran')) {
-        userRole = 'Bagian Pemasaran';
-        userName = 'Staf Bagian Pemasaran';
-      } else if (uLower.includes('transaksi') || uLower.includes('te')) {
-        userRole = 'Bagian Transaksi Energi';
-        userName = 'Staf Transaksi Energi';
-      } else if (uLower.includes('inspeksi')) {
-        userRole = 'Petugas Inspeksi';
-        userName = 'Petugas Inspeksi Lapangan';
-      } else if (uLower.includes('row') || uLower.includes('pohon')) {
-        userRole = 'Petugas ROW';
-        userName = 'Petugas ROW & Pohon';
-      } else if (uLower.includes('admin')) {
-        userRole = 'Admin Teknik';
-      }
-
-      const authenticatedUser: User = {
-        username: username,
-        name: userName,
-        role: userRole as any,
-        unit: 'ULP Baguala',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
-      };
-      onLogin(authenticatedUser);
+      setErrorMsg('Username tidak terdaftar! Silakan hubungi Koordinator atau Admin Aplikasi untuk mendaftarkan akun Anda.');
     }
-
-    if (onLoginSuccess) onLoginSuccess();
   };
 
   return (

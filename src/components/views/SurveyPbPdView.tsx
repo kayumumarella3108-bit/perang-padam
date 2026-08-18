@@ -161,6 +161,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tanggalSurvey: new Date().toISOString().split('T')[0],
       rekomendasiTeknis: 'Diterbitkan dari Bagian Pemasaran. Memerlukan survey pengukuran tegangan & titik sambung di lapangan oleh Tim Teknik.',
       catatan: '',
+      teamLeaderName: '',
       fotoBangunan: '',
       fotoLokasi: '',
       fotoPengukuranTegangan: '',
@@ -206,6 +207,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tanggalSurvey: new Date().toISOString().split('T')[0],
       rekomendasiTeknis: '',
       catatan: '',
+      teamLeaderName: '',
       fotoBangunan: '',
       fotoLokasi: '',
       fotoPengukuranTegangan: '',
@@ -223,13 +225,15 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       titikSambungLat: item.titikSambungLat || (item.lat ? item.lat - 0.00015 : -3.6376),
       titikSambungLng: item.titikSambungLng || (item.lng ? item.lng - 0.00015 : 128.2433),
       fotoBangunan: item.fotoBangunan || item.fotoLokasi || '',
-      fotoTitikSambung: item.fotoTitikSambung || ''
+      fotoTitikSambung: item.fotoTitikSambung || '',
+      teamLeaderName: item.teamLeaderName || ''
     });
     setIsModalOpen(true);
   };
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('DEBUG: handleSaveForm formData:', formData);
     if (!formData.namaPelanggan) {
       alert('Mohon masukkan Nama Pelanggan / Pemohon.');
       return;
@@ -275,6 +279,7 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
       tanggalPenyambungan: formData.tanggalPenyambungan || '',
       rekomendasiTeknis: formData.rekomendasiTeknis || (isPemasaran ? 'WO Survey diterbitkan oleh Bagian Pemasaran. Menunggu pengukuran dan inspeksi teknis lapangan.' : ''),
       catatan: formData.catatan || '',
+      teamLeaderName: formData.teamLeaderName || '',
       fotoBangunan: fotoBangunanVal,
       fotoLokasi: fotoBangunanVal,
       fotoPengukuranTegangan: formData.fotoPengukuranTegangan || '',
@@ -648,7 +653,11 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
   };
 
   // Generate Berita Acara PDF
-  const handleExportPDF = (item: SurveyPbPdItem) => {
+  const handleSaveSurvey = (updatedItem: SurveyPbPdItem) => {
+    onAddSurvey(updatedItem);
+  };
+
+  const handleExportPDF = async (item: SurveyPbPdItem) => {
     const doc = new jsPDF();
     const { dropVolt, dropPct, status } = getDropTegangan(item.tegPangkal, item.tegTetangga);
 
@@ -726,6 +735,23 @@ export const SurveyPbPdView: React.FC<SurveyPbPdViewProps> = ({
 
     doc.text(item.petugasSurvey, 135, finalY + 28);
     doc.text('Surveyor Teknik Lapangan', 135, finalY + 32);
+
+    // Add Images if exist
+    let yPos = finalY + 40;
+    const addPhoto = async (photoUrl: string, title: string) => {
+        if (!photoUrl) return;
+        try {
+            const img = new Image();
+            img.src = photoUrl;
+            await new Promise((resolve) => { img.onload = resolve; });
+            doc.text(title, 14, yPos);
+            doc.addImage(photoUrl, 'JPEG', 14, yPos + 2, 80, 45);
+            yPos += 55;
+        } catch(e) { console.error(e); }
+    };
+    
+    await addPhoto(item.fotoBangunan || item.fotoLokasi || '', 'Foto Bangunan:');
+    await addPhoto(item.fotoTitikSambung || '', 'Foto Titik Sambung:');
 
     doc.save(`BA_Survey_${item.namaPelanggan.replace(/\s+/g, '_')}_${item.noGardu}.pdf`);
   };
@@ -1114,6 +1140,7 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                     <th className="py-3.5 px-3 min-w-[110px] text-center">Fasa Diambil</th>
                     <th className="py-3.5 px-3 min-w-[120px] text-center">Kelayakan</th>
                     <th className="py-3.5 px-3 min-w-[100px]">Surveyor</th>
+                    <th className="py-3.5 px-3 min-w-[100px]">Team Leader</th>
                     <th className="py-3.5 px-3 w-28 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -1323,6 +1350,9 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                           <td className="py-3 px-3">
                             <div className="text-[11px] font-semibold text-slate-300">{item.petugasSurvey}</div>
                             <div className="text-[10px] text-slate-500">{item.tanggalSurvey}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="text-[11px] font-semibold text-slate-300">{item.teamLeaderName || '-'}</div>
                           </td>
 
                           {/* Actions */}
@@ -1609,280 +1639,166 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
 
       {/* DETAIL MODAL */}
       {selectedDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white text-slate-900 rounded-lg max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl p-6 sm:p-10 space-y-6 print:p-0 print:shadow-none print:max-w-none">
+            
+            {/* Print Header - Visible only when printing */}
+            <div className="hidden print:block text-center mb-6">
+              <h2 className="text-xl font-bold uppercase">Berita Acara Survey Kelayakan Teknis</h2>
+              <p className="text-sm">ULP Baguala - Sistem Perang Padam</p>
+            </div>
+
+            {/* Print Signature Info - Visible only when printing */}
+            <div className="hidden print:block text-center mb-6">
+              <div className="flex justify-between items-center px-10">
+                <div className="text-center">
+                  <p>Mengetahui / Menyetujui,</p>
+                  <p>Team Leader / Supervisor Teknik</p>
+                  <br /><br /><br />
+                  <p className="font-bold">{selectedDetail.teamLeaderName || '....................'}</p>
+                  <p>TL Teknik ULP Baguala</p>
+                </div>
+                <div className="text-center">
+                  <p>Petugas Surveyor Lapangan,</p>
+                  <p>ULP Baguala</p>
+                  <br /><br /><br />
+                  <p className="font-bold">{selectedDetail.petugasSurvey}</p>
+                  <p>Surveyor Teknik Lapangan</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 print:hidden">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Detail Hasil Survey Kelayakan Teknis</h3>
-                  <p className="text-xs text-slate-400">{selectedDetail.noAgenda || selectedDetail.id}</p>
+                  <h3 className="text-lg font-bold text-slate-900">Detail Hasil Survey Kelayakan Teknis</h3>
+                  <p className="text-xs text-slate-500">{selectedDetail.noAgenda || selectedDetail.id}</p>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedDetail(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print BA</span>
+                </button>
+                <button
+                  onClick={() => setSelectedDetail(null)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                <h4 className="font-bold text-amber-400 uppercase text-[10px] tracking-wider">Identitas Permohonan</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                <h4 className="font-bold text-amber-700 uppercase text-xs tracking-wider mb-3">Identitas Permohonan</h4>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Nama Pemohon:</span>
-                  <span className="font-bold text-white">{selectedDetail.namaPelanggan}</span>
+                  <span className="text-slate-600">Nama Pemohon:</span>
+                  <span className="font-bold text-slate-900">{selectedDetail.namaPelanggan}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Jenis Transaksi:</span>
-                  <span className="font-bold text-amber-300">{selectedDetail.jenisTransaksi}</span>
+                  <span className="text-slate-600">Jenis Transaksi:</span>
+                  <span className="font-bold text-amber-700">{selectedDetail.jenisTransaksi}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">No. Agenda:</span>
-                  <span className="font-mono text-slate-200">{selectedDetail.noAgenda || '-'}</span>
+                  <span className="text-slate-600">No. Agenda:</span>
+                  <span className="font-mono font-medium text-slate-800">{selectedDetail.noAgenda || '-'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">ID Pelanggan:</span>
-                  <span className="font-mono text-slate-200">{selectedDetail.idPelanggan || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Tarif & Daya Baru:</span>
-                  <span className="font-bold text-emerald-400">{selectedDetail.tarifBaru} ({selectedDetail.dayaBaruVa} VA)</span>
-                </div>
-                {selectedDetail.tarifLama && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Tarif & Daya Lama:</span>
-                    <span className="text-slate-400">{selectedDetail.tarifLama} ({selectedDetail.dayaLamaVa} VA)</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-400">No. HP / WA:</span>
-                  <span className="text-emerald-400 font-semibold">{selectedDetail.noHpPelanggan || '-'}</span>
+                  <span className="text-slate-600">Tarif & Daya Baru:</span>
+                  <span className="font-bold text-emerald-700">{selectedDetail.tarifBaru} ({selectedDetail.dayaBaruVa} VA)</span>
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                <h4 className="font-bold text-cyan-400 uppercase text-[10px] tracking-wider">Jaringan & Kelistrikan</h4>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                <h4 className="font-bold text-cyan-700 uppercase text-xs tracking-wider mb-3">Jaringan & Kelistrikan</h4>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Penyulang (Feeder):</span>
-                  <span className="font-bold text-indigo-300">{selectedDetail.penyulang}</span>
+                  <span className="text-slate-600">Penyulang (Feeder):</span>
+                  <span className="font-bold text-slate-900">{selectedDetail.penyulang}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">No. Gardu Distribusi:</span>
-                  <span className="font-bold text-amber-300">{selectedDetail.noGardu} ({selectedDetail.jurusanGardu || 'Jurusan 1'})</span>
+                  <span className="text-slate-600">No. Gardu Distribusi:</span>
+                  <span className="font-bold text-slate-900">{selectedDetail.noGardu}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Tegangan Pangkal:</span>
-                  <span className="font-bold text-emerald-400">{selectedDetail.tegPangkal} Volt</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Tegangan Tetangga:</span>
-                  <span className="font-bold text-sky-400">{selectedDetail.tegTetangga} Volt</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Drop Tegangan (ΔV):</span>
-                  <span className="font-bold text-white">
+                  <span className="text-slate-600">Drop Tegangan (ΔV):</span>
+                  <span className="font-bold text-slate-900">
                     {Math.max(0, selectedDetail.tegPangkal - selectedDetail.tegTetangga)} Volt (
                     {(((selectedDetail.tegPangkal - selectedDetail.tegTetangga) / selectedDetail.tegPangkal) * 100).toFixed(1)}%)
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Fasa Diambil:</span>
-                  <span className="font-bold text-purple-300">{selectedDetail.fasaYangDiambil}</span>
+              </div>
+            </div>
+
+            {/* Dokumentasi Foto Lapangan - Diperjelas */}
+            <div className="space-y-3 print:mt-10">
+              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider border-b border-slate-200 pb-2">Dokumentasi Foto Lapangan</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-700">Foto Bangunan Pelanggan</p>
+                  {(selectedDetail.fotoBangunan || selectedDetail.fotoLokasi) ? (
+                    <img
+                      src={selectedDetail.fotoBangunan || selectedDetail.fotoLokasi}
+                      alt="Foto Bangunan"
+                      className="w-full aspect-video object-cover rounded-lg border border-slate-200 shadow-sm print:max-h-60"
+                    />
+                  ) : (
+                    <div className="w-full aspect-video flex items-center justify-center bg-slate-100 rounded-lg border border-dashed border-slate-300 text-slate-500 text-xs italic">
+                      Foto belum dilampirkan
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Titik Sambung:</span>
-                  <span className="font-bold text-slate-200">{selectedDetail.titikSambung}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Panjang SR:</span>
-                  <span className="text-slate-300">{selectedDetail.panjangSrMeter || 15}m ({selectedDetail.jenisKabelSr || 'TIC 2x10mm²'})</span>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-700">Foto Titik Sambung (Tiang)</p>
+                  {selectedDetail.fotoTitikSambung ? (
+                    <img
+                      src={selectedDetail.fotoTitikSambung}
+                      alt="Foto Titik Sambung"
+                      className="w-full aspect-video object-cover rounded-lg border border-slate-200 shadow-sm print:max-h-60"
+                    />
+                  ) : (
+                    <div className="w-full aspect-video flex items-center justify-center bg-slate-100 rounded-lg border border-dashed border-slate-300 text-slate-500 text-xs italic">
+                      Foto belum dilampirkan
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Lokasi & Koordinat Geografis */}
-            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                  <Compass className="w-3.5 h-3.5 text-amber-400" />
-                  Alamat & Titik Koordinat Geografis
-                </h4>
-                <button
-                  onClick={() => {
-                    setActiveTab('peta');
-                    setSelectedDetail(null);
-                  }}
-                  className="px-2 py-0.5 rounded bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-800 font-bold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
-                >
-                  <Map className="w-3 h-3" />
-                  <span>Buka di Peta GIS</span>
-                </button>
-              </div>
-
-              <p className="text-slate-300">
-                <strong>Alamat:</strong> {selectedDetail.lokasi}
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                <div className="p-2.5 rounded-lg bg-sky-950/40 border border-sky-800/40 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] text-sky-300 font-bold">🏠 Bangunan Pelanggan:</div>
-                    <div className="text-[11px] font-mono text-slate-200">
-                      {selectedDetail.lat && selectedDetail.lng
-                        ? `${selectedDetail.lat.toFixed(6)}, ${selectedDetail.lng.toFixed(6)}`
-                        : 'Belum terpasang titik'}
-                    </div>
-                  </div>
-                  {selectedDetail.lat && selectedDetail.lng && (
-                    <a
-                      href={`https://www.google.com/maps?q=${selectedDetail.lat},${selectedDetail.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 rounded bg-sky-900 text-sky-200 hover:text-white"
-                      title="Buka di Google Maps"
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                </div>
-
-                <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] text-amber-300 font-bold">⚡ Titik Sambung (Tiang JTR):</div>
-                    <div className="text-[11px] font-mono text-slate-200">
-                      {selectedDetail.titikSambungLat && selectedDetail.titikSambungLng
-                        ? `${selectedDetail.titikSambungLat.toFixed(6)}, ${selectedDetail.titikSambungLng.toFixed(6)}`
-                        : 'Belum terpasang titik'}
-                    </div>
-                  </div>
-                  {selectedDetail.titikSambungLat && selectedDetail.titikSambungLng && (
-                    <a
-                      href={`https://www.google.com/maps?q=${selectedDetail.titikSambungLat},${selectedDetail.titikSambungLng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 rounded bg-amber-900 text-amber-200 hover:text-white"
-                      title="Buka Titik Sambung di Google Maps"
-                    >
-                      <Zap className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+            {/* APPROVAL SECTION - Only visible to Team Leader */}
+            {currentUser?.role === 'Team Leader' && (
+              <div className="pt-4 border-t border-slate-200 bg-slate-50 p-4 rounded-lg">
+                <h4 className="font-bold text-slate-900 text-xs uppercase mb-3">Approval Digital (Team Leader)</h4>
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    value={selectedDetail.teamLeaderName || currentUser.name || ''}
+                    onChange={(e) => setSelectedDetail({ ...selectedDetail, teamLeaderName: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    placeholder="Nama Team Leader"
+                  />
+                  <button
+                    onClick={() => {
+                        handleSaveSurvey({ ...selectedDetail, isApproved: true, teamLeaderName: selectedDetail.teamLeaderName || currentUser.name });
+                        setSelectedDetail(null);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold ${selectedDetail.isApproved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                  >
+                    {selectedDetail.isApproved ? 'Telah Disetujui' : 'Approve Survey'}
+                  </button>
                 </div>
               </div>
-
-              {/* Dokumentasi Foto Bangunan & Titik Sambung */}
-              <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-800/80 space-y-2">
-                <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                  <Camera className="w-3 h-3 text-amber-400" />
-                  <span>Dokumentasi Foto Lapangan</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Foto Bangunan */}
-                  <div className="p-2 bg-slate-950 rounded-lg border border-sky-900/40 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-sky-300">
-                      <span className="flex items-center gap-1">🏠 Foto Bangunan Pelanggan</span>
-                      {(selectedDetail.fotoBangunan || selectedDetail.fotoLokasi) && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-950 text-sky-400 border border-sky-800">Ada Foto</span>
-                      )}
-                    </div>
-                    {(selectedDetail.fotoBangunan || selectedDetail.fotoLokasi) ? (
-                      <div
-                        onClick={() => setPreviewModalPhoto({
-                          url: (selectedDetail.fotoBangunan || selectedDetail.fotoLokasi)!,
-                          title: `Foto Bangunan - ${selectedDetail.namaPelanggan}`,
-                          subtitle: `${selectedDetail.lokasi} (${selectedDetail.lat?.toFixed(6)}, ${selectedDetail.lng?.toFixed(6)})`
-                        })}
-                        className="relative group rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-900 cursor-pointer shadow-md"
-                      >
-                        <img
-                          src={selectedDetail.fotoBangunan || selectedDetail.fotoLokasi}
-                          alt="Foto Bangunan"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity text-white text-xs font-bold">
-                          <Eye className="w-4 h-4 text-sky-400" />
-                          <span>Klik untuk Perbesar</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-lg bg-slate-900/60 border border-dashed border-slate-800 text-center text-slate-500 text-[11px]">
-                        Foto bangunan belum dilampirkan
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Foto Titik Sambung */}
-                  <div className="p-2 bg-slate-950 rounded-lg border border-amber-900/40 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
-                      <span className="flex items-center gap-1">⚡ Foto Titik Sambung (Tiang)</span>
-                      {selectedDetail.fotoTitikSambung && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800">Ada Foto</span>
-                      )}
-                    </div>
-                    {selectedDetail.fotoTitikSambung ? (
-                      <div
-                        onClick={() => setPreviewModalPhoto({
-                          url: selectedDetail.fotoTitikSambung!,
-                          title: `Foto Titik Sambung - ${selectedDetail.titikSambung}`,
-                          subtitle: `Gardu ${selectedDetail.noGardu} (${selectedDetail.titikSambungLat?.toFixed(6)}, ${selectedDetail.titikSambungLng?.toFixed(6)})`
-                        })}
-                        className="relative group rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-900 cursor-pointer shadow-md"
-                      >
-                        <img
-                          src={selectedDetail.fotoTitikSambung}
-                          alt="Foto Titik Sambung"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity text-white text-xs font-bold">
-                          <Eye className="w-4 h-4 text-amber-400" />
-                          <span>Klik untuk Perbesar</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-lg bg-slate-900/60 border border-dashed border-slate-800 text-center text-slate-500 text-[11px]">
-                        Foto titik sambung belum dilampirkan
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {selectedDetail.rekomendasiTeknis && (
-                <p className="text-indigo-300 bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-800/40 mt-1">
-                  <strong>Rekomendasi Petugas:</strong> {selectedDetail.rekomendasiTeknis}
-                </p>
-              )}
-              {selectedDetail.catatan && (
-                <p className="text-slate-400 mt-1">
-                  <strong>Catatan Tambahan:</strong> {selectedDetail.catatan}
-                </p>
-              )}
-            </div>
-
-            {/* Footer buttons */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-              <div className="text-[11px] text-slate-400">
-                Disurvei oleh <strong className="text-white">{selectedDetail.petugasSurvey}</strong> pada {selectedDetail.tanggalSurvey}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleExportPDF(selectedDetail)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak BA</span>
-                </button>
-                <button
-                  onClick={() => handleShareWhatsapp(selectedDetail)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Share WA</span>
-                </button>
+            )}
+            
+            <div className="pt-4 border-t border-slate-200 print:hidden">
+              <div className="text-[11px] text-slate-500">
+                Disurvei oleh <strong className="text-slate-900">{selectedDetail.petugasSurvey}</strong> pada {selectedDetail.tanggalSurvey}
               </div>
             </div>
           </div>
@@ -2353,6 +2269,17 @@ _Laporan resmi Sistem Perang Padam ULP Baguala_`;
                   />
                 </div>
 
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Nama Team Leader</label>
+                  <input
+                    type="text"
+                    placeholder="Nama Team Leader"
+                    value={formData.teamLeaderName || ''}
+                    onChange={e => setFormData({ ...formData, teamLeaderName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                
                 <div>
                   <label className="block text-slate-400 font-semibold mb-1">Catatan Tambahan</label>
                   <input
