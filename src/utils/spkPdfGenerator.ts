@@ -142,7 +142,28 @@ export const generateSpkPDF = async (spk: PerintahKerja) => {
 
   doc.text('Manager PLN ULP Baguala,', 135, nextY);
 
-  if (spk.isApproved) {
+  if (spk.tandaTanganManager) {
+    try {
+      // Draw signature stroke image
+      doc.addImage(spk.tandaTanganManager, 'PNG', 135, nextY + 2, 55, 18);
+      
+      // Verified badge in PDF
+      doc.setDrawColor(16, 185, 129);
+      doc.setFillColor(240, 253, 244);
+      doc.roundedRect(172, nextY + 2, 22, 5, 1, 1, 'FD');
+      doc.setFontSize(5.5);
+      doc.setTextColor(5, 150, 105);
+      doc.setFont('helvetica', 'bold');
+      doc.text('VERIFIED TTD', 183, nextY + 5.5, { align: 'center' });
+    } catch (e) {
+      console.warn('Failed to embed manager signature in PDF:', e);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`( ${spk.namaManager || 'DWI SURYA PERMANA'} )`, 162.5, nextY + 25, { align: 'center' });
+  } else if (spk.isApproved) {
     // Draw Barcode Box for Digital Signature Manager
     doc.setDrawColor(16, 185, 129);
     doc.setFillColor(240, 253, 244);

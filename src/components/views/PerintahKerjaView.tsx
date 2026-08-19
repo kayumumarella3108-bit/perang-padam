@@ -672,7 +672,19 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                 <div className="flex flex-col justify-between min-h-[110px] items-center w-64 shrink-0">
                   <p className="font-semibold text-slate-600 mb-1">Manager PLN ULP Baguala</p>
 
-                  {printItem.isApproved ?? true ? (
+                  {printItem.tandaTanganManager ? (
+                    <div className="my-1.5 p-1.5 bg-slate-50/80 border border-emerald-200 rounded-lg flex flex-col items-center justify-center relative w-full">
+                      <img
+                        src={printItem.tandaTanganManager}
+                        alt="Tanda Tangan Manager"
+                        className="h-14 max-w-[180px] object-contain"
+                      />
+                      <div className="absolute top-1 right-1 px-1.5 py-0.2 text-[7px] font-extrabold bg-emerald-600 text-white rounded flex items-center gap-0.5 shadow-2xs">
+                        <CheckCircle2 className="w-2 h-2 text-white" />
+                        <span>VERIFIED TTD</span>
+                      </div>
+                    </div>
+                  ) : printItem.isApproved ?? true ? (
                     <div className="my-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg flex flex-col items-center justify-center space-y-0.5 shadow-xs w-full">
                       <div className="font-mono text-xs font-black tracking-widest text-emerald-800 select-none">
                         |||| || ||| |||| || |

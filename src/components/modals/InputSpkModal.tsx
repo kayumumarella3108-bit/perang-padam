@@ -26,6 +26,7 @@ import { PerintahKerja, Penyulang, SectionJaringan, PetugasSpkDetail, PetugasMas
 import { INITIAL_MASTER_PETUGAS } from '../../data/mockData';
 import { sendSpkToWhatsApp } from '../../utils/whatsappNotifier';
 import { PLN_LOGO_BASE64 } from '../../utils/plnLogo';
+import { DigitalSignaturePad } from '../common/DigitalSignaturePad';
 
 interface InputSpkModalProps {
   isOpen: boolean;
@@ -94,6 +95,7 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
   const [timAtauPetugas, setTimAtauPetugas] = useState('Tim Yantek ULP Baguala');
   const [namaManager, setNamaManager] = useState('DWI SURYA PERMANA');
   const [isApproved, setIsApproved] = useState(true);
+  const [tandaTanganManager, setTandaTanganManager] = useState<string | null>(null);
   const [catatan, setCatatan] = useState('');
   const [sendWaNotification, setSendWaNotification] = useState(true);
   const [targetPhone, setTargetPhone] = useState('');
@@ -138,6 +140,7 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
 
       setNamaManager(editItem.namaManager || 'DWI SURYA PERMANA');
       setIsApproved(editItem.isApproved ?? true);
+      setTandaTanganManager(editItem.tandaTanganManager || null);
       setCatatan(editItem.catatan || '');
       setSendWaNotification(false);
     } else {
@@ -154,6 +157,7 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
       setJumlahPersonil(4);
       setStatus('Terencana');
       setTimAtauPetugas('Tim Yantek ULP Baguala');
+      setTandaTanganManager(null);
       setPetugasList([
         { id: '1', nama: 'Ahmad Rivai', jabatan: 'Team Leader Yantek' },
         { id: '2', nama: 'Markus Pattipeilohy', jabatan: 'Anggota Yantek 20kV' },
@@ -259,6 +263,7 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
       namaManager: namaManager.trim() || 'DWI SURYA PERMANA',
       isApproved,
       approvalDate: isApproved ? new Date().toISOString() : undefined,
+      tandaTanganManager: tandaTanganManager || undefined,
       catatan: catatan.trim(),
       createdAt: editItem?.createdAt || new Date().toISOString()
     };
@@ -570,9 +575,9 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
               </div>
 
               {/* Pengesahan & Approval Manager ULP */}
-              <div className="p-3.5 bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 rounded-xl border border-blue-200 space-y-2.5">
+              <div className="p-3.5 bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 rounded-xl border border-blue-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-blue-950 flex items-center gap-1.5">
+                  <label className="font-bold text-blue-950 flex items-center gap-1.5 text-xs">
                     <User className="w-4 h-4 text-blue-600" /> Nama Manager ULP Baguala
                   </label>
                   <span className="px-2 py-0.5 text-[9px] font-extrabold bg-blue-600 text-white rounded-md">
@@ -611,6 +616,24 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
                       <Clock className="w-3 h-3 text-amber-600" /> DRAFT
                     </span>
                   )}
+                </div>
+
+                {/* Pad Tanda Tangan Langsung di Layar */}
+                <div className="pt-2 border-t border-blue-100">
+                  <DigitalSignaturePad
+                    value={tandaTanganManager}
+                    onChange={(sig) => {
+                      setTandaTanganManager(sig);
+                      if (sig && !isApproved) {
+                        setIsApproved(true);
+                      }
+                    }}
+                    signerName={namaManager || 'Manager ULP'}
+                    signerTitle="Manager ULP Baguala"
+                    penColor="#0f2b5c"
+                    height={110}
+                    placeholderText="Goreskan tanda tangan Manager langsung di sini (Layar Sentuh / Stylus / Mouse)"
+                  />
                 </div>
               </div>
 
@@ -778,8 +801,20 @@ export const InputSpkModal: React.FC<InputSpkModalProps> = ({
                     <p className="font-semibold text-slate-600 mb-1">Manager PLN ULP Baguala</p>
                   </div>
 
-                  {/* Digital Signature Barcode Component */}
-                  {isApproved ? (
+                  {/* Digital Signature Barcode & Stroke Component */}
+                  {tandaTanganManager ? (
+                    <div className="my-1.5 p-1.5 bg-slate-50/80 border border-emerald-200 rounded-lg flex flex-col items-center justify-center relative w-full">
+                      <img
+                        src={tandaTanganManager}
+                        alt="Tanda Tangan Manager"
+                        className="h-14 max-w-[180px] object-contain"
+                      />
+                      <div className="absolute top-1 right-1 px-1.5 py-0.2 text-[7px] font-extrabold bg-emerald-600 text-white rounded flex items-center gap-0.5 shadow-2xs">
+                        <CheckCircle2 className="w-2 h-2 text-white" />
+                        <span>VERIFIED</span>
+                      </div>
+                    </div>
+                  ) : isApproved ? (
                     <div className="my-3 p-2.5 bg-emerald-50/90 border border-emerald-300 rounded-lg flex flex-col items-center justify-center space-y-0.5 shadow-2xs w-full">
                       <div className="font-mono text-xs font-black tracking-widest text-emerald-800 select-none">
                         |||| || ||| |||| || |

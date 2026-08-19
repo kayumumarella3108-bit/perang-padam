@@ -29,7 +29,10 @@ import {
   Eye,
   RefreshCw,
   FileSpreadsheet,
-  Check
+  Check,
+  FolderTree,
+  Printer,
+  Share2
 } from 'lucide-react';
 import { INITIAL_PENYULANG } from '../../data/mockData';
 
@@ -906,6 +909,13 @@ export const SldVisioView: React.FC = () => {
   const [subType, setSubType] = useState<SubstationType>('GI');
   const [subBusbar, setSubBusbar] = useState('');
   const [subTegangan, setSubTegangan] = useState(20.0);
+
+  // Form states for Trip Report
+  const [tripTime, setTripTime] = useState(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+  const [normalTime, setNormalTime] = useState('');
+  const [indikasiRelay, setIndikasiRelay] = useState('OCR / GFR');
+  const [penyebab, setPenyebab] = useState('');
+  const [tindakan, setTindakan] = useState('');
 
   // Form states for Feeder
   const [targetSubId, setTargetSubId] = useState('');
@@ -1925,27 +1935,31 @@ export const SldVisioView: React.FC = () => {
                           {sub.feeders.map((feeder) => {
                             const isFMatch = isFeederMatch(feeder, scadaSearchQuery);
                             const isFFocused = highlightedElementId === feeder.id;
+                            const isClosed = feeder.status === 'CLOSED';
 
                             return (
                               <div
                                 key={feeder.id}
                                 ref={(el) => { itemRefs.current[feeder.id] = el; }}
-                                className={`p-4 rounded-2xl space-y-3 relative transition-all duration-300 ${
+                                className={`p-4 rounded-2xl space-y-3.5 relative transition-all duration-300 ${
                                   isFFocused
                                     ? 'ring-4 ring-amber-400 border-amber-400 bg-amber-500/25 shadow-[0_0_30px_rgba(245,158,11,0.6)] z-30 scale-[1.04]'
                                     : isSearchActive
                                     ? isFMatch
                                       ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.5)] scale-[1.02] z-20'
-                                      : 'bg-slate-900/40 border-slate-800/40 opacity-25 grayscale-[40%]'
-                                    : feeder.status === 'CLOSED'
-                                    ? 'bg-slate-900/90 border border-slate-800 hover:border-slate-700 shadow-md'
-                                    : 'bg-rose-950/10 border border-rose-900/50'
+                                      : 'bg-[#091122]/40 border-slate-800/40 opacity-25 grayscale-[40%]'
+                                    : isClosed
+                                    ? 'bg-[#0b1329] border border-slate-800 hover:border-slate-700 shadow-xl shadow-black/40'
+                                    : 'bg-[#180a10] border border-rose-900/60 shadow-xl shadow-rose-950/40'
                                 }`}
                               >
                                 {/* Top Feeder Title & Length */}
                                 <div className="flex items-center justify-between gap-1">
                                   <div className="flex items-center gap-1.5 truncate">
-                                    <span className="font-black text-xs truncate" style={{ color: feeder.warna || '#10b981' }}>
+                                    <span
+                                      className="font-black text-sm uppercase tracking-wide truncate"
+                                      style={{ color: feeder.warna || '#10b981' }}
+                                    >
                                       {feeder.namaFeeder}
                                     </span>
                                     {isFMatch && (
@@ -1956,84 +1970,121 @@ export const SldVisioView: React.FC = () => {
                                   </div>
 
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className="text-[10px] font-mono text-slate-400">{feeder.panjangKms} KMS</span>
+                                    <span className="text-[11px] font-mono font-medium text-slate-400">
+                                      {feeder.panjangKms || 0} KMS
+                                    </span>
                                     
                                     <button
                                       onClick={() => setInspectedFeeder({ subId: sub.id, subNama: sub.nama, feeder })}
-                                      className="p-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:text-white hover:bg-blue-600 cursor-pointer transition-colors"
+                                      className="p-1 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:text-white hover:bg-blue-600 cursor-pointer transition-colors"
                                       title="Inspeksi Teknis & Analisis KHA Feeder"
                                     >
-                                      <Activity className="w-3 h-3" />
+                                      <Activity className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       onClick={() => handleOpenEditFeeder(sub.id, feeder)}
                                       className="text-slate-500 hover:text-blue-400 cursor-pointer p-0.5"
                                       title="Edit Penyulang"
                                     >
-                                      <Edit3 className="w-3 h-3" />
+                                      <Edit3 className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteFeeder(sub.id, feeder.id)}
                                       className="text-slate-500 hover:text-rose-400 cursor-pointer p-0.5"
                                       title="Hapus Penyulang"
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 </div>
 
-                                {/* Interactive Circuit Breaker Button */}
+                                {/* Circuit Breaker / Switch Button */}
                                 <button
-                                  onClick={() => toggleFeederSwitch(sub.id, feeder.id)}
+                                  type="button"
+                                  onClick={() => {
+                                    const nextStatus = isClosed ? 'OPEN' : 'CLOSED';
+                                    toggleFeederSwitch(sub.id, feeder.id);
+                                    
+                                    // Ketika diklik menjadi OPEN, otomatis buka form/modal input gangguan & live paper
+                                    if (nextStatus === 'OPEN') {
+                                      if (!tripTime) {
+                                        setTripTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+                                      }
+                                      setInspectedFeeder({
+                                        subId: sub.id,
+                                        subNama: sub.nama,
+                                        feeder: { ...feeder, status: 'OPEN' }
+                                      });
+                                    }
+                                  }}
                                   className={`w-full p-2.5 rounded-xl border font-bold text-xs flex items-center justify-between cursor-pointer transition-all shadow-sm ${
-                                    feeder.status === 'CLOSED'
-                                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20'
-                                      : 'bg-rose-500/15 border-rose-500/50 text-rose-400 hover:bg-rose-500/25'
+                                    isClosed
+                                      ? 'bg-[#071d18]/70 border-emerald-500/50 text-emerald-400 hover:bg-[#071d18] hover:border-emerald-400'
+                                      : 'bg-[#26080e]/80 border-rose-500/60 text-rose-300 hover:bg-[#26080e] hover:border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
                                   }`}
+                                  title={isClosed ? 'Klik untuk Buka / Trip PMT' : 'Klik untuk Tutup / Normalisasi PMT'}
                                 >
-                                  <span className="flex items-center gap-1.5 truncate pr-1">
-                                    <Power className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">{feeder.saklarNama || feeder.saklarTipe}</span>
+                                  <span className="flex items-center gap-2 truncate pr-1">
+                                    <Power className="w-4 h-4 shrink-0 text-emerald-400" />
+                                    <span className="truncate font-bold tracking-wide">
+                                      {feeder.saklarNama || feeder.saklarTipe || 'OG FEEDER'}
+                                    </span>
                                   </span>
-                                  <span className="font-extrabold text-[10px] uppercase shrink-0 px-2 py-0.5 rounded bg-slate-950/60">
-                                    {feeder.status === 'CLOSED' ? 'CLOSED' : 'OPEN (TRIP)'}
+                                  <span
+                                    className={`font-black text-[10px] uppercase shrink-0 px-2 py-0.5 rounded border ${
+                                      isClosed
+                                        ? 'bg-[#032e22] text-emerald-400 border-emerald-500/40'
+                                        : 'bg-[#3d0912] text-rose-300 border-rose-500/50'
+                                    }`}
+                                  >
+                                    {isClosed ? 'CLOSED' : 'OPEN (TRIP)'}
                                   </span>
                                 </button>
 
-                                {/* Telemetry Indication Status */}
-                                <div className="flex justify-center pt-0.5">
+                                {/* Telemetry Indication Status Badge */}
+                                <div className="flex justify-center">
                                   {feeder.bisaBacaIndikasi !== false ? (
-                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 rounded-xl w-full justify-center shadow-inner">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                      Bisa Baca Indikasi
-                                    </span>
+                                    <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-2 bg-[#062019]/60 border border-emerald-500/20 px-3 py-1.5 rounded-full w-full justify-center shadow-inner">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981] animate-pulse"></span>
+                                      <span>Bisa Baca Indikasi</span>
+                                    </div>
                                   ) : (
-                                    <span className="text-[10px] text-rose-400 font-bold flex items-center gap-1.5 bg-rose-950/30 border border-rose-500/20 px-2.5 py-1 rounded-xl w-full justify-center shadow-inner">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                      Tidak Bisa Baca Indikasi
-                                    </span>
+                                    <div className="text-[11px] text-rose-400 font-bold flex items-center gap-2 bg-[#29080e]/60 border border-rose-500/20 px-3 py-1.5 rounded-full w-full justify-center shadow-inner">
+                                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]"></span>
+                                      <span>Tidak Bisa Baca Indikasi</span>
+                                    </div>
                                   )}
                                 </div>
 
-                                {/* Areal Padam Info */}
-                                <div className="pt-1.5 border-t border-slate-800/60">
-                                  <div className={`p-2 rounded-xl text-[10px] space-y-0.5 ${
-                                    feeder.status === 'OPEN'
-                                      ? 'bg-rose-950/40 border border-rose-900/40 text-rose-100 animate-pulse'
-                                      : 'bg-slate-950/50 border border-slate-900/50 text-slate-400'
+                                {/* Cakupan Areal Desa Info Box */}
+                                <div className="pt-1">
+                                  <div className={`p-3 rounded-xl space-y-1 ${
+                                    !isClosed
+                                      ? 'bg-[#29080e]/40 border border-rose-900/40 text-rose-100'
+                                      : 'bg-[#070c18] border border-slate-800/80 text-slate-400'
                                   }`}>
-                                    <span className={`block font-extrabold uppercase tracking-wider text-[8px] ${
-                                      feeder.status === 'OPEN' ? 'text-rose-400' : 'text-slate-500'
+                                    <span className={`block font-black uppercase tracking-wider text-[9px] ${
+                                      !isClosed ? 'text-rose-400' : 'text-slate-400'
                                     }`}>
-                                      {feeder.status === 'OPEN' ? '⚠️ AREAL DESA PADAM:' : 'Cakupan Areal Desa:'}
+                                      {!isClosed ? '⚠️ AREAL DESA PADAM:' : 'CAKUPAN AREAL DESA:'}
                                     </span>
-                                    <span className="block font-semibold leading-tight font-sans">
+                                    <span className="block text-xs font-medium font-sans text-slate-300 leading-relaxed">
                                       {feeder.arealPadam || 'Belum ditentukan'}
                                     </span>
                                   </div>
                                 </div>
 
-
+                                {/* Open State Quick Action */}
+                                {!isClosed && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectedFeeder({ subId: sub.id, subNama: sub.nama, feeder })}
+                                    className="w-full py-1.5 px-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] uppercase tracking-wide rounded-lg flex items-center justify-center gap-1.5 shadow-md animate-pulse cursor-pointer transition-colors"
+                                  >
+                                    <Zap className="w-3 h-3" />
+                                    <span>Input / Edit Data Gangguan</span>
+                                  </button>
+                                )}
 
                               </div>
                             );
@@ -2530,131 +2581,301 @@ export const SldVisioView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: Inspeksi Teknis Feeder & Analisis KHA */}
+      {/* MODAL 4: Inspeksi Teknis Feeder & Analisis KHA (With Trip Report) */}
       {/* ========================================================================= */}
-      {inspectedFeeder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
-                  <Activity className="w-5 h-5" />
+      {inspectedFeeder && (() => {
+        const matchedPenyulang = INITIAL_PENYULANG.find(p => p.namaPenyulang === inspectedFeeder.feeder.namaFeeder);
+        const jmlPelanggan = matchedPenyulang?.jumlahPelanggan || 1500;
+        
+        // Convert times to minutes for duration
+        const tTrip = tripTime.split(':').map(Number);
+        const tNorm = normalTime.split(':').map(Number);
+        let durationMinutes = 0;
+        if (tTrip.length === 2 && tNorm.length === 2) {
+          const tripMins = tTrip[0] * 60 + tTrip[1];
+          let normMins = tNorm[0] * 60 + tNorm[1];
+          if (normMins < tripMins) normMins += 24 * 60; // Next day
+          durationMinutes = normMins - tripMins;
+        }
+
+        const totalPelangganArea = 145000;
+        const estSaidi = durationMinutes > 0 ? ((durationMinutes * jmlPelanggan) / totalPelangganArea).toFixed(4) : '0.0000';
+        const estSaifi = (jmlPelanggan / totalPelangganArea).toFixed(4);
+
+        const isOpen = inspectedFeeder.feeder.status === 'OPEN';
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+            <div className="relative w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl text-slate-100 flex flex-col max-h-[90vh]">
+              
+              <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white">Inspeksi Teknis & Laporan Trip Feeder</h3>
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      {inspectedFeeder.subNama} • {inspectedFeeder.feeder.namaFeeder}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-white">Inspeksi Teknis & Pengukuran Feeder</h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    {inspectedFeeder.subNama} • {inspectedFeeder.feeder.namaFeeder}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setInspectedFeeder(null)}
-                className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Voltage & Switch Status */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl">
-                <span className="text-[10px] text-slate-400 font-bold block">STATUS SAKLAR</span>
-                <span className={`text-xs font-black uppercase ${inspectedFeeder.feeder.status === 'CLOSED' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {inspectedFeeder.feeder.status === 'CLOSED' ? '● CLOSED (BERBEBAN)' : '○ OPEN (TRIP / PADAM)'}
-                </span>
-                <p className="text-[10px] text-slate-500 mt-1">{inspectedFeeder.feeder.saklarNama || inspectedFeeder.feeder.saklarTipe}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl">
-                <span className="text-[10px] text-slate-400 font-bold block">BEBAN & PANJANG</span>
-                <span className="text-xs font-black text-amber-400">
-                  {inspectedFeeder.feeder.status === 'CLOSED' ? `${inspectedFeeder.feeder.bebanMw} MW` : '0 MW'}
-                </span>
-                <p className="text-[10px] text-slate-500 mt-1">{inspectedFeeder.feeder.panjangKms} KMS (SKTM/SUTM)</p>
-              </div>
-            </div>
-
-            {/* Current Measurements R / S / T / Neutral */}
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold border-b border-slate-800 pb-2">
-                <span className="text-slate-300">PENGUKURAN ARUS BEBAN (AMPERE)</span>
-                <span className="text-emerald-400 font-mono text-[10px]">PENGUKURAN TELEMETRI REAL-TIME</span>
+                <button
+                  onClick={() => setInspectedFeeder(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
-                <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-rose-400 font-bold block">FASA R</span>
-                  <span className="font-extrabold text-white">{inspectedFeeder.feeder.status === 'CLOSED' ? `${inspectedFeeder.feeder.arusR} A` : '0 A'}</span>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-amber-400 font-bold block">FASA S</span>
-                  <span className="font-extrabold text-white">{inspectedFeeder.feeder.status === 'CLOSED' ? `${inspectedFeeder.feeder.arusS} A` : '0 A'}</span>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-blue-400 font-bold block">FASA T</span>
-                  <span className="font-extrabold text-white">{inspectedFeeder.feeder.status === 'CLOSED' ? `${inspectedFeeder.feeder.arusT} A` : '0 A'}</span>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold block">NETRAL IN</span>
-                  <span className="font-extrabold text-white">{inspectedFeeder.feeder.status === 'CLOSED' ? `${inspectedFeeder.feeder.arusIN} A` : '0 A'}</span>
-                </div>
-              </div>
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* LEFT COLUMN: Input Form & Data */}
+                <div className="space-y-4">
+                  {/* Master Data Sync info */}
+                  <div className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                      <FolderTree className="w-4 h-4" />
+                      Data Master Sinkron: {matchedPenyulang ? 'Ditemukan' : 'Tidak Ditemukan'}
+                    </div>
+                    <span className="text-xs font-mono font-bold text-white bg-slate-800 px-2 py-1 rounded-lg">
+                      {jmlPelanggan} Pelanggan
+                    </span>
+                  </div>
 
-              {/* KHA Cable Thermal Load Progress */}
-              {(() => {
-                const maxArus = Math.max(inspectedFeeder.feeder.arusR, inspectedFeeder.feeder.arusS, inspectedFeeder.feeder.arusT);
-                const khaRating = 240;
-                const loadPercent = inspectedFeeder.feeder.status === 'CLOSED' ? Math.min(100, Math.round((maxArus / khaRating) * 100)) : 0;
-                return (
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-slate-400">PEMBEBANAN KHA KABEL (KAPASITAS {khaRating}A):</span>
-                      <span className={loadPercent > 85 ? 'text-rose-400' : loadPercent > 70 ? 'text-amber-400' : 'text-emerald-400'}>
-                        {loadPercent}%
+                  {/* Actions to Toggle */}
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block">STATUS PENYULANG</span>
+                      <span className={`text-sm font-black uppercase ${!isOpen ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {!isOpen ? '● NORMAL (BERBEBAN)' : '○ TRIP (PADAM)'}
                       </span>
                     </div>
-                    <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
-                      <div
-                        className={`h-full transition-all duration-500 ${
-                          loadPercent > 85 ? 'bg-rose-500' : loadPercent > 70 ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}
-                        style={{ width: `${loadPercent}%` }}
-                      />
+                    <button
+                      onClick={() => {
+                        if (!isOpen) {
+                          setTripTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+                          setNormalTime('');
+                        }
+                        toggleFeederSwitch(inspectedFeeder.subId, inspectedFeeder.feeder.id);
+                        setInspectedFeeder((prev) =>
+                          prev ? { ...prev, feeder: { ...prev.feeder, status: isOpen ? 'CLOSED' : 'OPEN' } } : null
+                        );
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+                        !isOpen
+                          ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      }`}
+                    >
+                      <Power className="w-4 h-4" />
+                      {!isOpen ? 'Simulasi Trip (Buka PMT)' : 'Normalisasi (Tutup PMT)'}
+                    </button>
+                  </div>
+
+                  {/* Trip Form inputs (only show if OPEN or normalTime filled indicating a recent trip) */}
+                  {(isOpen || (tripTime && normalTime)) && (
+                    <div className="space-y-3 p-4 bg-slate-950 border border-rose-500/30 rounded-2xl">
+                      <h4 className="text-xs font-bold text-rose-400 flex items-center gap-1.5 mb-3 border-b border-slate-800 pb-2">
+                        <Zap className="w-4 h-4" /> Parameter Laporan Gangguan
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-slate-400 font-bold block mb-1">JAM TRIP / PADAM</label>
+                          <input type="time" value={tripTime} onChange={e => setTripTime(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 font-bold block mb-1">JAM MASUK / NORMAL</label>
+                          <input type="time" value={normalTime} onChange={e => setNormalTime(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-slate-400 font-bold block mb-1">INDIKASI RELAY</label>
+                          <input type="text" value={indikasiRelay} onChange={e => setIndikasiRelay(e.target.value)} placeholder="Contoh: OCR, GFR" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 font-bold block mb-1">BEBAN PADAM (MW)</label>
+                          <input type="number" step="0.1" value={inspectedFeeder.feeder.bebanMw} readOnly className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 opacity-70" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-400 font-bold block mb-1">PENYEBAB GANGGUAN (OPSIONAL)</label>
+                        <input type="text" value={penyebab} onChange={e => setPenyebab(e.target.value)} placeholder="Contoh: Pohon tumbang, Hewan, dll" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 font-bold block mb-1">TINDAKAN (OPSIONAL)</label>
+                        <input type="text" value={tindakan} onChange={e => setTindakan(e.target.value)} placeholder="Contoh: Pengamanan aset, pemotongan dahan" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="p-2 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-center">
+                          <span className="text-[10px] font-bold text-indigo-400 block mb-0.5">ESTIMASI SAIDI</span>
+                          <span className="font-mono text-sm font-extrabold text-white">{estSaidi}</span>
+                          <span className="text-[9px] text-slate-400 block">Menit/Plg</span>
+                        </div>
+                        <div className="p-2 bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-xl text-center">
+                          <span className="text-[10px] font-bold text-fuchsia-400 block mb-0.5">ESTIMASI SAIFI</span>
+                          <span className="font-mono text-sm font-extrabold text-white">{estSaifi}</span>
+                          <span className="text-[9px] text-slate-400 block">Kali/Plg</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current Measurements R / S / T / Neutral */}
+                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
+                    <div className="text-[10px] text-slate-400 font-bold">PENGUKURAN TELEMETRI REAL-TIME</div>
+                    <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
+                      <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                        <span className="text-[9px] text-rose-400 font-bold block">FASA R</span>
+                        <span className="font-extrabold text-white">{!isOpen ? `${inspectedFeeder.feeder.arusR} A` : '0 A'}</span>
+                      </div>
+                      <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                        <span className="text-[9px] text-amber-400 font-bold block">FASA S</span>
+                        <span className="font-extrabold text-white">{!isOpen ? `${inspectedFeeder.feeder.arusS} A` : '0 A'}</span>
+                      </div>
+                      <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                        <span className="text-[9px] text-blue-400 font-bold block">FASA T</span>
+                        <span className="font-extrabold text-white">{!isOpen ? `${inspectedFeeder.feeder.arusT} A` : '0 A'}</span>
+                      </div>
+                      <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                        <span className="text-[9px] text-slate-400 font-bold block">NETRAL IN</span>
+                        <span className="font-extrabold text-white">{!isOpen ? `${inspectedFeeder.feeder.arusIN} A` : '0 A'}</span>
+                      </div>
                     </div>
                   </div>
-                );
-              })()}
-            </div>
+                </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => {
-                  toggleFeederSwitch(inspectedFeeder.subId, inspectedFeeder.feeder.id);
-                  setInspectedFeeder((prev) =>
-                    prev ? { ...prev, feeder: { ...prev.feeder, status: prev.feeder.status === 'CLOSED' ? 'OPEN' : 'CLOSED' } } : null
-                  );
-                }}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  inspectedFeeder.feeder.status === 'CLOSED'
-                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                }`}
-              >
-                <Power className="w-4 h-4" />
-                {inspectedFeeder.feeder.status === 'CLOSED' ? 'Simulasi Trip (Buka PMT)' : 'Normalisasi (Tutup PMT)'}
-              </button>
+                {/* RIGHT COLUMN: Format Surat / Live Paper Print Preview */}
+                <div className="bg-white rounded-xl shadow-inner border border-slate-300 text-slate-900 font-serif relative overflow-y-auto flex flex-col">
+                  
+                  {/* Top Bar for Print Actions */}
+                  <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 p-4 flex items-center justify-between z-10 rounded-t-xl">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-bold text-slate-800 font-sans text-sm">Draft Laporan Gangguan Penyulang</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        title="Print Surat Laporan Gangguan"
+                      >
+                        <Printer className="w-3.5 h-3.5" /> Print
+                      </button>
+                      <button
+                        onClick={() => {
+                          const text = `*LAPORAN GANGGUAN PENYULANG (MINI SCADA)*\n*GI/GH:* ${inspectedFeeder.subNama}\n*Penyulang:* ${inspectedFeeder.feeder.namaFeeder}\n*Status:* ${isOpen ? 'TRIP / PADAM' : 'NORMAL'}\n*Jam Trip:* ${tripTime || '-'} WIT\n*Jam Normal:* ${normalTime || '-'} WIT\n*Durasi:* ${durationMinutes > 0 ? `${durationMinutes} Menit` : '-'}\n*Beban Padam:* ${inspectedFeeder.feeder.bebanMw} MW\n*Pelanggan Terdampak:* ${jmlPelanggan.toLocaleString('id-ID')} Plg\n*Indikasi Relay:* ${indikasiRelay || '-'}\n*Penyebab:* ${penyebab || '-'}\n*Tindakan:* ${tindakan || '-'}\n*Estimasi SAIDI:* ${estSaidi} Menit/Plg\n*Estimasi SAIFI:* ${estSaifi} Kali/Plg\n*Areal Padam:* ${inspectedFeeder.feeder.arealPadam || '-'}`;
+                          window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-sans text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        title="Bagikan via WhatsApp"
+                      >
+                        <Share2 className="w-3.5 h-3.5" /> Share WA
+                      </button>
+                    </div>
+                  </div>
 
-              <button
-                onClick={() => setInspectedFeeder(null)}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
-              >
-                Tutup
-              </button>
+                  <div className="p-6 md:p-8 space-y-6 flex-1">
+                    {/* Header Grid like SPK */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left Box: Identitas */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-amber-600 uppercase mb-3 font-sans">IDENTITAS GANGGUAN</h4>
+                        <div className="space-y-2 text-xs font-sans">
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Gardu Induk/Hubung:</span>
+                            <span className="font-bold text-slate-800">{inspectedFeeder.subNama}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Nama Penyulang:</span>
+                            <span className="font-bold text-blue-700">{inspectedFeeder.feeder.namaFeeder}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Beban Padam (MW):</span>
+                            <span className="font-bold text-slate-800">{inspectedFeeder.feeder.bebanMw} MW</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Pelanggan Terdampak:</span>
+                            <span className="font-bold text-emerald-600">{jmlPelanggan.toLocaleString('id-ID')} Pelanggan</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Box: Waktu & Dampak */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-blue-600 uppercase mb-3 font-sans">WAKTU & ANALISIS</h4>
+                        <div className="space-y-2 text-xs font-sans">
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Jam Trip (Padam):</span>
+                            <span className="font-bold text-rose-600">{tripTime || '-'} WIT</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Jam Normal (Masuk):</span>
+                            <span className="font-bold text-emerald-600">{normalTime || '-'} WIT</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Indikasi Relay:</span>
+                            <span className="font-bold text-slate-800">{indikasiRelay || '-'}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span className="text-slate-500">Durasi Padam:</span>
+                            <span className="font-bold text-slate-800">{durationMinutes > 0 ? `${durationMinutes} Menit` : '-'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Areal Padam */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 uppercase mb-2 font-sans border-b border-slate-200 pb-1">AREAL PADAM / TERDAMPAK</h4>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-sans text-slate-700">
+                        {inspectedFeeder.feeder.arealPadam || 'Data areal padam belum diisi pada master data penyulang ini.'}
+                      </div>
+                    </div>
+
+                    {/* Section: Tindak Lanjut */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 uppercase mb-2 font-sans border-b border-slate-200 pb-1">HASIL PENELUSURAN & TINDAK LANJUT</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-sans">
+                           <span className="block text-slate-500 mb-1 font-bold">Penyebab Gangguan:</span>
+                           <span className="text-slate-800">{penyebab || '-'}</span>
+                         </div>
+                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-sans">
+                           <span className="block text-slate-500 mb-1 font-bold">Tindakan Perbaikan:</span>
+                           <span className="text-slate-800">{tindakan || '-'}</span>
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Estimasi SAIDI SAIFI */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 uppercase mb-2 font-sans border-b border-slate-200 pb-1">KALKULASI DAMPAK KEANDALAN</h4>
+                      <div className="flex items-center gap-4">
+                         <div className="bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg p-3 text-xs font-sans flex-1 flex justify-between items-center">
+                           <span className="font-bold">Estimasi SAIDI:</span>
+                           <span><strong className="text-sm">{estSaidi}</strong> Menit/Plg</span>
+                         </div>
+                         <div className="bg-fuchsia-50 border border-fuchsia-100 text-fuchsia-800 rounded-lg p-3 text-xs font-sans flex-1 flex justify-between items-center">
+                           <span className="font-bold">Estimasi SAIFI:</span>
+                           <span><strong className="text-sm">{estSaifi}</strong> Kali/Plg</span>
+                         </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

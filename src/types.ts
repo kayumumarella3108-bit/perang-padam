@@ -313,6 +313,7 @@ export interface PerintahKerja {
   namaManager?: string;
   isApproved?: boolean;
   approvalDate?: string;
+  tandaTanganManager?: string; // Base64 / Data URL digital signature of Manager
   catatan?: string;
   createdAt?: string;
 }
@@ -940,6 +941,8 @@ export interface SurveyPbPdItem {
   fotoTitikSambung?: string; // URL / Base64 foto titik sambung / tiang TR / SR
   teamLeaderName?: string; // Nama Team Leader / Supervisor
   isApproved?: boolean; // Status approval digital signature
+  tandaTanganSurveyor?: string; // Base64 / Data URL digital signature of surveyor
+  tandaTanganTlTeknik?: string; // Base64 / Data URL digital signature of TL Teknik
   createdAt?: string;
 }
 
