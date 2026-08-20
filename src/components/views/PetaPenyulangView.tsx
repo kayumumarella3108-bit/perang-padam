@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
-import 'leaflet.markercluster';
 import JSZip from 'jszip';
 import {
   Upload,
@@ -70,7 +69,6 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'Semua' | 'ROW' | 'Inspeksi' | 'Maintenance'>('Semua');
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
-  const [useClustering, setUseClustering] = useState<boolean>(true);
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
 
@@ -89,7 +87,6 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
-  const markerClusterGroupRef = useRef<any>(null);
 
   // Attach global window handler for manual tiang status selection
   useEffect(() => {
@@ -119,7 +116,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     const map = L.map(mapContainerRef.current, {
       center: [-3.63, 128.23],
       zoom: 12,
-      zoomControl: false
+      zoomControl: false,
+      preferCanvas: true
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -222,50 +220,16 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
   });
 };
 
-  // Render Feeder Line and Custom Markers with Selected Icons (with optional Clustering)
+  // Render Feeder Line and Custom Markers with Selected Icons
   useEffect(() => {
     if (!mapInstanceRef.current || !featureGroupRef.current) return;
-    const map = mapInstanceRef.current;
     const fg = featureGroupRef.current;
     fg.clearLayers();
-
-    // Remove previous marker cluster group if active
-    if (markerClusterGroupRef.current) {
-      map.removeLayer(markerClusterGroupRef.current);
-      markerClusterGroupRef.current = null;
-    }
-
-    let clusterGroup: any = null;
-    if (useClustering) {
-      clusterGroup = (L as any).markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 40,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        disableClusteringAtZoom: 18,
-        iconCreateFunction: (cluster: any) => {
-          const count = cluster.getChildCount();
-          let c = ' marker-cluster-small';
-          if (count >= 100) c = ' marker-cluster-large';
-          else if (count >= 20) c = ' marker-cluster-medium';
-
-          return L.divIcon({
-            html: `<div><span>${count}</span></div>`,
-            className: 'marker-cluster' + c,
-            iconSize: L.point(40, 40)
-          });
-        }
-      });
-      map.addLayer(clusterGroup);
-      markerClusterGroupRef.current = clusterGroup;
-    }
 
     const visibleLayers = layers.filter((l) => l.visible);
 
     visibleLayers.forEach((layer) => {
       if (!layer.coordinates || layer.coordinates.length === 0) return;
-
 
       layer.coordinates.forEach((coord, idx) => {
         const key = `${layer.id}_${idx}`;
@@ -329,8 +293,16 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           `;
         }
 
-        const markerIcon = createLeafletDivIcon(activeIconType, markerColor, borderColor, manualStatus !== 'NORMAL');
-        const marker = L.marker(coord, { icon: markerIcon });
+        // High-Performance Leaflet CircleMarker with small radius and solid color
+        const radius = manualStatus !== 'NORMAL' ? 5.5 : 3.5;
+        const marker = L.circleMarker(coord, {
+          radius: radius,
+          fillColor: markerColor,
+          color: borderColor,
+          weight: manualStatus !== 'NORMAL' ? 2 : 1,
+          opacity: 1,
+          fillOpacity: 0.95
+        });
 
         const popupContent = `
           <div class="p-2 text-slate-900 font-sans min-w-[220px]">
@@ -413,14 +385,10 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
         });
 
-        if (clusterGroup) {
-          clusterGroup.addLayer(marker);
-        } else {
-          fg.addLayer(marker);
-        }
+        fg.addLayer(marker);
       });
     });
-  }, [layers, manualStatuses, useClustering]);
+  }, [layers, manualStatuses]);
 
   // Center map on specific feeder route
   const handleLocateLayer = (layer: MapLayerItem) => {
@@ -666,16 +634,35 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
             </button>
           </div>
 
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari file feeder import..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-            />
+          {/* Search & Category Filter Box */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari file feeder import..."
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+              />
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[10px] font-bold">
+              {(['Semua', 'ROW', 'Inspeksi', 'Maintenance'] as const).map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 cursor-pointer ${
+                    selectedCategory === cat
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -684,14 +671,34 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           <div className="flex items-center justify-between px-1 mb-1">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-blue-600" />
-              PETA FEEDER IMPORT ({filteredLayers.length} FILE)
+              PETA FEEDER ({filteredLayers.length} FILE)
             </span>
-            <button
-              onClick={triggerFileInput}
-              className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-0.5 cursor-pointer"
-            >
-              <Plus className="w-3 h-3" /> Impor KML/KMZ
-            </button>
+            <div className="flex items-center gap-2">
+              {filteredLayers.length > 0 && (
+                <button
+                  onClick={() => {
+                    const allVis = filteredLayers.every((l) => l.visible);
+                    filteredLayers.forEach((l) => {
+                      if (l.visible === allVis) {
+                        onToggleLayer(l.id);
+                      }
+                    });
+                  }}
+                  className="text-[10px] font-bold text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                  title="Toggle Tampilkan / Sembunyikan Semua Layer"
+                >
+                  {filteredLayers.every((l) => l.visible) ? (
+                    <>
+                      <EyeOff className="w-3 h-3 text-slate-500" /> Sembunyikan Semua
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3 h-3 text-blue-600" /> Tampilkan Semua
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {filteredLayers.length === 0 ? (
@@ -706,48 +713,50 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
                   key={layer.id}
                   className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
                     layer.visible
-                      ? 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-slate-50/50 border-slate-100 opacity-60'
+                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+                      : 'bg-slate-50 border-slate-100 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Checkbox visibility */}
-                    <input
-                      type="checkbox"
-                      checked={layer.visible}
-                      onChange={() => onToggleLayer(layer.id)}
-                      className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
-                    />
-
-                    {/* Eye Toggle */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Toggle Switch Visibility */}
                     <button
                       onClick={() => onToggleLayer(layer.id)}
-                      className="text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        layer.visible ? 'bg-blue-600' : 'bg-slate-300'
+                      }`}
+                      title={layer.visible ? 'Sembunyikan Layer' : 'Tampilkan Layer'}
                     >
-                      {layer.visible ? (
-                        <Eye className="w-3.5 h-3.5 text-blue-600" />
-                      ) : (
-                        <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                      )}
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          layer.visible ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
                     </button>
 
-                    {/* Color Pill */}
+                    {/* Color Pill & Icon */}
                     <button
                       onClick={() => setEditingLayer(layer)}
-                      className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 hover:scale-125 transition-transform cursor-pointer"
+                      className="w-4 h-4 rounded-full shrink-0 shadow-xs ring-2 ring-white flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
                       style={{ backgroundColor: layer.color || '#3b82f6' }}
-                      title="Ubah warna marker file peta"
+                      title="Klik untuk mengubah warna atau ikon layer"
                     />
 
                     {/* Text Details */}
-                    <div className="min-w-0">
-                      <h3 className="text-xs font-bold text-slate-800 truncate leading-tight flex items-center gap-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-xs font-bold text-slate-800 truncate leading-tight flex items-center gap-1.5">
                         <LayerIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                         <span className="truncate">{layer.nama}</span>
                       </h3>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {layer.ruteLength} • {layer.tanggalImport}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-slate-500 truncate">
+                          {layer.ruteLength || 'Feeder Line'}
+                        </span>
+                        {layer.kategori && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 uppercase">
+                            {layer.kategori}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -850,20 +859,8 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           )}
         </div>
 
-        {/* Top Right Map Style & Clustering Selector Controls */}
+        {/* Top Right Map Style Selector Controls */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1 p-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-md">
-          <button
-            onClick={() => setUseClustering(!useClustering)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              useClustering
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Kelompokkan marker yang berdekatan untuk meningkatkan performa visual"
-          >
-            <Layers className="w-3.5 h-3.5" /> Cluster: {useClustering ? 'ON' : 'OFF'}
-          </button>
-          <div className="w-[1px] h-4 bg-slate-200 my-auto mx-0.5" />
           <button
             onClick={() => setMapStyle('dark')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
