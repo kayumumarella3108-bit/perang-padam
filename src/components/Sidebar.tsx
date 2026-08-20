@@ -56,10 +56,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser
 }) => {
   // Accordion open/close states
-  const [petaOpen, setPetaOpen] = useState(
-    ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView)
-  );
-
   const [inspeksiOpen, setInspeksiOpen] = useState(
     ['inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu'].includes(activeView)
   );
@@ -78,9 +74,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Auto expand active accordion on activeView change
   useEffect(() => {
-    if (['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView)) {
-      setPetaOpen(true);
-    }
     if (['inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu'].includes(activeView)) {
       setInspeksiOpen(true);
     }
@@ -97,7 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (!isOpen) return null;
 
-  const isPetaActive = ['peta', 'peta_penyulang', 'peta_pohon', 'peta_konstruksi'].includes(activeView);
   const isInspeksiActive = ['inspeksi_tier1', 'inspeksi_tier1_jtm', 'inspeksi_tier1_gtt', 'inspeksi_tier1_switching', 'inspeksi_tier2', 'inspeksi_tier2_thermovision', 'inspeksi_tier2_ultrasound', 'inspeksi_gardu'].includes(activeView);
   const isSuratSpkActive = ['perintah_kerja', 'format_surat'].includes(activeView);
   const isMasterAsetActive = ['master_data', 'aset_jaringan', 'sld_visio'].includes(activeView);
@@ -181,18 +173,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <FileText className="w-4 h-4" />
                 </div>
                 <span>Manajemen & Peta ROW</span>
-              </button>
-
-              <button
-                onClick={() => onSelectView('peta_pohon')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeView === 'peta_pohon' ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <span>Mapping Pohon & Potensi Gangguan</span>
               </button>
             </nav>
           </div>
@@ -337,70 +317,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
 
           {canAccessMenu(currentUser, 'peta') && (
-            <div>
-              <button
-                onClick={() => setPetaOpen(!petaOpen)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  isPetaActive && !petaOpen
-                    ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
-                    <Map className="w-4 h-4" />
-                  </div>
-                  <span>Peta</span>
-                </div>
-                <div>
-                  {petaOpen ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  )}
-                </div>
-              </button>
-
-              {petaOpen && (
-                <div className="pl-4 mt-1 space-y-1 border-l-2 border-emerald-500/30 ml-5">
-                  <button
-                    onClick={() => onSelectView('peta_penyulang')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'peta_penyulang' || activeView === 'peta'
-                        ? 'bg-emerald-600/20 text-emerald-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Peta Penyulang</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('peta_pohon')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'peta_pohon'
-                        ? 'bg-emerald-600/20 text-emerald-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Peta Pohon</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('peta_konstruksi')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'peta_konstruksi'
-                        ? 'bg-amber-600/20 text-amber-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <HardHat className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Peta Konstruksi</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={() => onSelectView('peta_penyulang')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                activeView === 'peta_penyulang' || activeView === 'peta'
+                  ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
+                <Map className="w-4 h-4" />
+              </div>
+              <span>Peta Penyulang</span>
+            </button>
           )}
 
           {canAccessMenu(currentUser, 'master_data') && (
