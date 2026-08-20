@@ -86,7 +86,7 @@ export const MonitoringTargetRealisasiView: React.FC<MonitoringTargetRealisasiPr
         setCustomTargets(map);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.READ, 'target_pemeliharaan_config');
+        handleFirestoreError(error, OperationType.LIST, 'target_pemeliharaan_config');
       }
     );
     return () => unsub();
@@ -277,25 +277,43 @@ export const MonitoringTargetRealisasiView: React.FC<MonitoringTargetRealisasiPr
 
   // Export to CSV
   const handleExportCsv = () => {
-    const rows = filteredStats.map((s) => ({
-      Penyulang: s.penyulang,
-      Target_ROW_Pohon: s.targetRow,
-      Realisasi_ROW_Pohon: s.realisasiRowPohon,
-      Persen_ROW: `${s.pctRow}%`,
-      Target_Inspeksi_Tier1: s.targetTier1,
-      Realisasi_Inspeksi_Tier1: s.realisasiTier1,
-      Persen_Tier1: `${s.pctTier1}%`,
-      Target_Inspeksi_Tier2: s.targetTier2,
-      Realisasi_Inspeksi_Tier2: s.realisasiTier2,
-      Persen_Tier2: `${s.pctTier2}%`,
-      Sisa_Pohon_Pending: s.sisaRowPohon,
-      Perlu_Izin_Warga: s.perluIzin,
-      Perlu_Padam_Pemeliharaan: s.perluPadam,
-      Persentase_Capaian_Overall: `${s.pctOverall}%`,
-      Status_Pencapaian: s.statusLabel
-    }));
+    const headers = [
+      'Penyulang',
+      'Target ROW (Pohon)',
+      'Realisasi ROW (Pohon)',
+      '% ROW',
+      'Target Inspeksi Tier 1',
+      'Realisasi Inspeksi Tier 1',
+      '% Tier 1',
+      'Target Inspeksi Tier 2',
+      'Realisasi Inspeksi Tier 2',
+      '% Tier 2',
+      'Sisa Pohon Pending',
+      'Perlu Izin Warga',
+      'Perlu Padam Pemeliharaan',
+      'Persentase Capaian Overall',
+      'Status Pencapaian'
+    ];
 
-    exportToCSV(rows, `Monitoring_Target_Realisasi_Inspeksi_ROW_${selectedBulan}`);
+    const rows = filteredStats.map((s) => [
+      s.penyulang,
+      s.targetRow,
+      s.realisasiRowPohon,
+      `${s.pctRow}%`,
+      s.targetTier1,
+      s.realisasiTier1,
+      `${s.pctTier1}%`,
+      s.targetTier2,
+      s.realisasiTier2,
+      `${s.pctTier2}%`,
+      s.sisaRowPohon,
+      s.perluIzin,
+      s.perluPadam,
+      `${s.pctOverall}%`,
+      s.statusLabel
+    ]);
+
+    exportToCSV(`Monitoring_Target_Realisasi_Inspeksi_ROW_${selectedBulan}`, headers, rows);
   };
 
   return (

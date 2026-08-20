@@ -38,9 +38,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Ignore non-GET requests and external real-time Firebase/Firestore synchronization connections
+  // Ignore non-GET requests, Vite dev server modules, and external Firebase connections
   if (
     event.request.method !== 'GET' ||
+    requestUrl.pathname.startsWith('/node_modules/') ||
+    requestUrl.pathname.startsWith('/@') ||
+    requestUrl.pathname.startsWith('/src/') ||
+    requestUrl.search.includes('import') ||
+    requestUrl.search.includes('v=') ||
     requestUrl.origin.includes('firestore.googleapis.com') ||
     requestUrl.origin.includes('identitytoolkit.googleapis.com') ||
     requestUrl.origin.includes('securetoken.googleapis.com')

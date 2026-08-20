@@ -30,6 +30,7 @@ const VIEW_NAMES: Record<ViewType, string> = {
   inspeksi_tier2_thermovision: 'Checklist Thermovision (Tier 2)',
   inspeksi_tier2_ultrasound: 'Checklist Ultrasound (Tier 2)',
   pemeliharaan_20kv: 'Monitoring Pemeliharaan 20kV',
+  monitoring_target_realisasi: 'Target & Realisasi Inspeksi/ROW',
   perintah_kerja: 'Perintah Kerja Harian (SPK)',
   format_surat: 'Format Pembuatan Surat',
   pengukuran_gardu: 'Pengukuran & Beban Gardu',

@@ -9,28 +9,25 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Register Service Worker for offline capability
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('ServiceWorker registered with scope: ', registration.scope);
-      })
-      .catch((err) => {
-        console.error('ServiceWorker registration failed: ', err);
-      });
-  });
-} else if ('serviceWorker' in navigator) {
-  // Always register in dev/preview as well for testing offline mode
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('ServiceWorker registered in dev/preview mode with scope: ', registration.scope);
-      })
-      .catch((err) => {
-        console.warn('ServiceWorker registration failed in dev/preview:', err);
-      });
-  });
+// Register Service Worker only in production; unregister in dev to prevent module caching conflicts
+if ('serviceWorker' in navigator) {
+  if (process.env.NODE_ENV === 'production') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((registration) => {
+          console.log('ServiceWorker registered with scope: ', registration.scope);
+        })
+        .catch((err) => {
+          console.error('ServiceWorker registration failed: ', err);
+        });
+    });
+  } else {
+    // Unregister any active service worker during development/preview to avoid caching Vite HMR modules
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    });
+  }
 }
