@@ -39,6 +39,8 @@ import { PengukuranGardu, MasterGardu, Penyulang, User } from '../../types';
 import { canEditData } from '../../utils/permissions';
 import { MasterGarduModal } from '../modals/MasterGarduModal';
 import { PengukuranGarduModal } from '../modals/PengukuranGarduModal';
+import { ImportGarduModal } from '../modals/ImportGarduModal';
+import { ImportPengukuranModal } from '../modals/ImportPengukuranModal';
 import { PetaGarduView } from './PetaGarduView';
 
 interface PengukuranGarduViewProps {
@@ -50,6 +52,8 @@ interface PengukuranGarduViewProps {
   onDeletePengukuran: (id: string) => void;
   onAddGardu: (g: MasterGardu) => void;
   onDeleteGardu: (id: string) => void;
+  onImportGardu?: (items: MasterGardu[]) => void;
+  onImportPengukuran?: (items: PengukuranGardu[]) => void;
 }
 
 export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
@@ -60,7 +64,9 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
   onAddPengukuran,
   onDeletePengukuran,
   onAddGardu,
-  onDeleteGardu
+  onDeleteGardu,
+  onImportGardu,
+  onImportPengukuran
 }) => {
   const [activeTab, setActiveTab] = useState<'pengukuran' | 'monitoring' | 'master_gardu' | 'tren_beban' | 'peta_gardu'>('pengukuran');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,9 +78,11 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
   // Modals state
   const [isPengukuranModalOpen, setIsPengukuranModalOpen] = useState(false);
   const [editingPengukuran, setEditingPengukuran] = useState<PengukuranGardu | null>(null);
+  const [isImportPengukuranModalOpen, setIsImportPengukuranModalOpen] = useState(false);
 
   const [isGarduModalOpen, setIsGarduModalOpen] = useState(false);
   const [editingGardu, setEditingGardu] = useState<MasterGardu | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Chart state
   const [selectedGarduChart, setSelectedGarduChart] = useState<string>('ALL');
@@ -352,27 +360,45 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
           </button>
 
           {activeTab === 'master_gardu' ? (
-            <button
-              onClick={() => {
-                setEditingGardu(null);
-                setIsGarduModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Master Gardu</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Import Excel Gardu</span>
+              </button>
+              <button
+                onClick={() => {
+                  setEditingGardu(null);
+                  setIsGarduModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Master Gardu</span>
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => {
-                setEditingPengukuran(null);
-                setIsPengukuranModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Input Pengukuran Gardu</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsImportPengukuranModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Import Excel Pengukuran</span>
+              </button>
+              <button
+                onClick={() => {
+                  setEditingPengukuran(null);
+                  setIsPengukuranModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Input Pengukuran Gardu</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1010,7 +1036,11 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
 
       {/* TAB 5: PETA LOKASI GARDU */}
       {activeTab === 'peta_gardu' && (
-        <PetaGarduView masterGarduList={masterGarduList} pengukuranList={pengukuranList} />
+        <PetaGarduView
+          masterGarduList={masterGarduList}
+          pengukuranList={pengukuranList}
+          onUpdateGardu={onAddGardu}
+        />
       )}
 
       {/* MODALS */}
@@ -1029,6 +1059,35 @@ export const PengukuranGarduView: React.FC<PengukuranGarduViewProps> = ({
         editingPengukuran={editingPengukuran}
         masterGarduList={masterGarduList}
       />
+
+      {isImportModalOpen && onImportGardu && (
+        <ImportGarduModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={(items) => {
+            onImportGardu(items);
+            setIsImportModalOpen(false);
+          }}
+          penyulangList={penyulangList}
+        />
+      )}
+
+      {isImportPengukuranModalOpen && (
+        <ImportPengukuranModal
+          isOpen={isImportPengukuranModalOpen}
+          onClose={() => setIsImportPengukuranModalOpen(false)}
+          onImport={(items) => {
+            if (onImportPengukuran) {
+              onImportPengukuran(items);
+            } else {
+              items.forEach(onAddPengukuran);
+            }
+            setIsImportPengukuranModalOpen(false);
+          }}
+          masterGarduList={masterGarduList}
+          penyulangList={penyulangList}
+        />
+      )}
 
     </div>
   );

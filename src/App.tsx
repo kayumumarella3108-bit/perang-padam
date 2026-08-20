@@ -57,7 +57,7 @@ import {
   INITIAL_KONSTRUKSI_GIS,
   INITIAL_SURVEY_PB_PD
 } from './data/mockData';
-import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
+import { db, collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, query, limit, OperationType, handleFirestoreError, registerDeletedId, filterDeleted } from './lib/firebase';
 import { sanitizeForFirestore } from './utils/firestoreHelper';
 import { isPemasaranUser, isInspeksiUser, canAccessMenu } from './utils/permissions';
 import { sendWaNotification } from './utils/whatsappNotifier';
@@ -542,7 +542,9 @@ export default function App() {
           visible: data.visible,
           color: data.color,
           coordinates: (data.coordinates || []).map((c: any) => [c.lat, c.lng] as [number, number]),
-          poleNames: data.poleNames || []
+          poleNames: data.poleNames || [],
+          customIcons: data.customIcons || {},
+          customStatuses: data.customStatuses || {}
         } as MapLayerItem;
         items.push(item);
       });
@@ -817,10 +819,10 @@ export default function App() {
   const handleAddMapLayer = async (layer: MapLayerItem) => {
     setMapLayers((prev) => [layer, ...prev]);
     try {
-      const firestoreDoc = {
+      const firestoreDoc = sanitizeForFirestore({
         ...layer,
         coordinates: layer.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
-      };
+      });
       await setDoc(doc(db, 'map_layers', layer.id), firestoreDoc);
       logActivity(`Mengimpor peta feeder baru: ${layer.nama}`, 'Peta Feeder');
     } catch (err) {
@@ -831,10 +833,10 @@ export default function App() {
   const handleUpdateMapLayer = async (updatedLayer: MapLayerItem) => {
     setMapLayers((prev) => prev.map((l) => (l.id === updatedLayer.id ? updatedLayer : l)));
     try {
-      const firestoreDoc = {
+      const firestoreDoc = sanitizeForFirestore({
         ...updatedLayer,
         coordinates: updatedLayer.coordinates.map((c) => ({ lat: c[0], lng: c[1] }))
-      };
+      });
       await setDoc(doc(db, 'map_layers', updatedLayer.id), firestoreDoc);
       logActivity(`Mengubah file layer peta GIS: ${updatedLayer.nama}`, 'Peta Feeder');
     } catch (err) {
@@ -1256,6 +1258,52 @@ export default function App() {
       console.error('Error saving Master Gardu to Firestore:', err);
     }
     logActivity(`Memperbarui/Tambah Master Gardu: ${gardu.noGarduBaru} (${gardu.penyulang})`, gardu.penyulang);
+  };
+
+  const handleImportMasterGardu = async (items: MasterGardu[]) => {
+    const finalItemsToSave: MasterGardu[] = [];
+
+    setMasterGarduList((prev) => {
+      const updatedPrev = prev.map((existingGardu) => {
+        const match = items.find(
+          (item) =>
+            item.id === existingGardu.id ||
+            (item.noGarduBaru &&
+              item.noGarduBaru.trim().toLowerCase() === (existingGardu.noGarduBaru || '').trim().toLowerCase()) ||
+            (item.ssotNumber &&
+              item.ssotNumber !== '-' &&
+              item.ssotNumber.trim().toLowerCase() === (existingGardu.ssotNumber || '').trim().toLowerCase())
+        );
+        if (match) {
+          const merged = { ...existingGardu, ...match, id: existingGardu.id };
+          finalItemsToSave.push(merged);
+          return merged;
+        }
+        return existingGardu;
+      });
+
+      const matchedBaruSet = new Set(
+        finalItemsToSave.map((f) => (f.noGarduBaru || '').trim().toLowerCase())
+      );
+      const trulyNewItems = items.filter(
+        (item) => !matchedBaruSet.has((item.noGarduBaru || '').trim().toLowerCase())
+      );
+
+      trulyNewItems.forEach((newItem) => finalItemsToSave.push(newItem));
+
+      return [...trulyNewItems, ...updatedPrev];
+    });
+
+    try {
+      const batch = writeBatch(db);
+      finalItemsToSave.forEach((g) => {
+        batch.set(doc(db, 'master_gardu', g.id), sanitizeForFirestore(g));
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error('Error batch saving Master Gardu to Firestore:', err);
+    }
+    logActivity(`Import ${items.length} Master Gardu dari Excel`, 'Master Data');
   };
 
   const handleDeleteMasterGardu = async (id: string) => {
@@ -1768,6 +1816,7 @@ export default function App() {
               onDeletePengukuran={handleDeletePengukuranGardu}
               onAddGardu={handleAddMasterGardu}
               onDeleteGardu={handleDeleteMasterGardu}
+              onImportGardu={handleImportMasterGardu}
             />
           )}
 

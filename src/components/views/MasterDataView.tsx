@@ -9,7 +9,8 @@ import {
   Trash2,
   Edit2,
   History,
-  Layers
+  Layers,
+  Zap
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -18,6 +19,7 @@ import { Penyulang, SectionJaringan, ActivityLog, MasterTab } from '../../types'
 import { TambahPenyulangModal } from '../modals/TambahPenyulangModal';
 import { TambahSectionModal } from '../modals/TambahSectionModal';
 import { HealthIndexBanner } from '../HealthIndexBanner';
+import { ElectricIconsShowcase } from '../common/ElectricIconsShowcase';
 
 interface MasterDataViewProps {
   penyulangList: Penyulang[];
@@ -274,7 +276,24 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
           <History className="w-4 h-4" />
           <span>Log Aktivitas ({activities.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('icon_gardu_tiang')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'icon_gardu_tiang'
+              ? 'bg-amber-600 text-white shadow-sm shadow-amber-500/20'
+              : 'bg-white text-amber-700 hover:text-amber-900 border border-amber-200/80 bg-amber-50/50'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-500" />
+          <span>Icon Gardu & Tiang Listrik (7)</span>
+        </button>
       </div>
+
+      {/* TAB: ICON GARDU & TIANG LISTRIK */}
+      {activeTab === 'icon_gardu_tiang' && (
+        <ElectricIconsShowcase />
+      )}
 
       {/* TAB 1: MASTER PENYULANG */}
       {activeTab === 'penyulang' && (

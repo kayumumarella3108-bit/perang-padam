@@ -18,20 +18,24 @@ import {
   Gauge
 } from 'lucide-react';
 import { MasterGardu, PengukuranGardu } from '../../types';
+import { ELECTRIC_ICON_SVG_STRINGS } from '../common/ElectricIcons';
 
 interface PetaGarduViewProps {
   masterGarduList: MasterGardu[];
   pengukuranList: PengukuranGardu[];
+  onUpdateGardu?: (gardu: MasterGardu) => void;
 }
 
 export const PetaGarduView: React.FC<PetaGarduViewProps> = ({
   masterGarduList,
-  pengukuranList
+  pengukuranList,
+  onUpdateGardu
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPenyulang, setSelectedPenyulang] = useState('ALL');
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
   const [activeGardu, setActiveGardu] = useState<MasterGardu | null>(null);
+  const [editingIconGarduId, setEditingIconGarduId] = useState<string | null>(null);
 
   // Map refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -152,20 +156,36 @@ export const PetaGarduView: React.FC<PetaGarduViewProps> = ({
 
       const status = getGarduStatus(gardu);
 
+      const tipeUpper = ((gardu.tipeGardu || '') + ' ' + (gardu.iconType || '')).toUpperCase();
+      let garduSvg = ELECTRIC_ICON_SVG_STRINGS.garduTrafo;
+      if (tipeUpper.includes('BETON') || tipeUpper.includes('KIOS') || tipeUpper.includes('BANGUNAN')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.garduBeton;
+      } else if (tipeUpper.includes('CANTOL')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.garduPortal;
+      } else if (tipeUpper.includes('PORTAL') || tipeUpper.includes('2 TIANG')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.garduPortal;
+      } else if (tipeUpper.includes('SINGLE')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.tiangSingle;
+      } else if (tipeUpper.includes('DOUBLE')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.tiangDouble;
+      } else if (tipeUpper.includes('LBS') || tipeUpper.includes('SWITCH')) {
+        garduSvg = ELECTRIC_ICON_SVG_STRINGS.tiangLBS;
+      }
+
       const customIcon = L.divIcon({
         className: 'custom-gardu-marker',
         html: `
           <div style="position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-            <div style="width: 32px; height: 32px; border-radius: 50%; background: #0f172a; border: 2.5px solid ${status.color}; box-shadow: 0 4px 10px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #ffffff;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${status.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+            <div style="width: 34px; height: 34px; border-radius: 10px; background: #0f172a; border: 2px solid ${status.color}; box-shadow: 0 4px 12px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: ${status.color};">
+              ${garduSvg}
             </div>
             <div style="position: absolute; bottom: -16px; background: #0f172a; color: #f8fafc; font-size: 8.5px; font-weight: 800; padding: 1px 6px; border-radius: 4px; border: 1px solid ${status.color}; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
               ${gardu.noGarduBaru || gardu.noGarduLama || 'Gardu'}
             </div>
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
         popupAnchor: [0, -18]
       });
 
@@ -426,6 +446,87 @@ export const PetaGarduView: React.FC<PetaGarduViewProps> = ({
               <span>Underload / Normal</span>
             </div>
           </div>
+
+          {/* Active Gardu Drawer & Icon Selector Per Titik */}
+          {activeGardu && (
+            <div className="absolute top-4 left-4 z-30 bg-slate-900/95 text-white backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-2xl max-w-sm w-full space-y-3 animate-in fade-in slide-in-from-top-3 duration-200">
+              <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2.5">
+                <div>
+                  <div className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                    ⚡ {activeGardu.noGarduBaru || activeGardu.noGarduLama}
+                  </div>
+                  <div className="text-[11px] text-slate-300 font-semibold mt-0.5">
+                    {activeGardu.penyulang} &bull; {activeGardu.daya || 160} kVA
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveGardu(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Icon Selector Per Titik (1-Click Change) */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider block">
+                  🎨 Ubah Icon Marker Titik Ini:
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: 'GTT Trafo', value: 'GTT Trafo', emoji: '⚡' },
+                    { label: 'Gardu Beton', value: 'Gardu Beton', emoji: '🏢' },
+                    { label: 'Gardu Cantol', value: 'Gardu Cantol', emoji: '🔌' },
+                    { label: 'Gardu Portal', value: 'Gardu Portal', emoji: '📐' },
+                    { label: 'Tiang Single', value: 'Tiang Single', emoji: '💈' },
+                    { label: 'Tiang Double', value: 'Tiang Double', emoji: '🗼' }
+                  ].map((opt) => {
+                    const isCurrent =
+                      (activeGardu.tipeGardu || '').toLowerCase().includes(opt.value.toLowerCase()) ||
+                      (activeGardu.iconType || '').toLowerCase().includes(opt.value.toLowerCase());
+
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...activeGardu,
+                            tipeGardu: opt.value,
+                            iconType: opt.value
+                          };
+                          setActiveGardu(updated);
+                          if (onUpdateGardu) {
+                            onUpdateGardu(updated);
+                          }
+                        }}
+                        className={`px-2 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 justify-center ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                            : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <span>{opt.emoji}</span>
+                        <span className="truncate">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 border-t border-slate-800/80 pt-2 flex items-center justify-between">
+                <span>Alamat: {activeGardu.alamatGardu || '-'}</span>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${activeGardu.latt},${activeGardu.long}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline font-bold"
+                >
+                  GPS ↗
+                </a>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

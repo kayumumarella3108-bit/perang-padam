@@ -64,10 +64,14 @@ export const TREE_ICON_MAP: Record<string, TreeIconOption> = {
   leaf: { emoji: '🍃', label: 'Daun / Sulur', desc: 'Rambatan tanaman & sulur di kawat JTM', category: 'pohon', categoryLabel: 'Pohon & ROW' },
   saw: { emoji: '🪚', label: 'Gergaji ROW', desc: 'Target eksekusi tim pemangkasan ROW', category: 'pohon', categoryLabel: 'Pohon & ROW' },
   tiang: { emoji: '🗼', label: 'Tiang JTM / Distribusi', desc: 'Tiang SUTM, Span & Pole 20kV', category: 'tiang', categoryLabel: 'Tiang Listrik' },
-  tiang_besi: { emoji: '💈', label: 'Tiang Percabangan', desc: 'Tiang ujung, sudut, percabangan', category: 'tiang', categoryLabel: 'Tiang Listrik' },
+  tiang_single: { emoji: '💈', label: 'Tiang Listrik Single', desc: 'Tiang beton 1 level travers', category: 'tiang', categoryLabel: 'Tiang Listrik' },
+  tiang_besi: { emoji: '📍', label: 'Tiang Percabangan', desc: 'Tiang ujung, sudut, percabangan', category: 'tiang', categoryLabel: 'Tiang Listrik' },
   pin: { emoji: '📍', label: 'Pin Tagging GPS', desc: 'Titik koordinat tagging acuan lapangan', category: 'tiang', categoryLabel: 'Tiang Listrik' },
   konstruksi: { emoji: '🏗️', label: 'Konstruksi & Travers', desc: 'Crossarm, Isolator, Rekonstruksi JTM', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
   gardu: { emoji: '⚡', label: 'Gardu Trafo / GTT', desc: 'Trafo distribusi 20kV / Gardu tiang', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
+  gardu_beton: { emoji: '🏢', label: 'Gardu Beton (Kios)', desc: 'Bangunan gardu kios PLN Listrik Pintar', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
+  gardu_cantol: { emoji: '🔌', label: 'Gardu Cantol', desc: 'Gardu trafo gantung / cantol 20kV', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
+  gardu_portal: { emoji: '📐', label: 'Gardu Portal (H-Frame)', desc: 'Konstruksi gardu portal 2 tiang', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
   crane: { emoji: '🚜', label: 'Alat Berat / Har', desc: 'Mobil Skylift & Tim Har Jaringan', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' },
   warning: { emoji: '⚠️', label: 'Bahaya Kritis / Anomali', desc: 'Rawan gangguan kawat / pohon roboh', category: 'konstruksi', categoryLabel: 'Konstruksi & Gardu' }
 };

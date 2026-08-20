@@ -55,7 +55,7 @@ export interface NodeTopologi {
   isScadaRemote?: boolean;
 }
 
-export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'petugas' | 'log_aktivitas';
+export type MasterTab = 'penyulang' | 'section' | 'gardu' | 'petugas' | 'log_aktivitas' | 'icon_gardu_tiang';
 
 export interface Penyulang {
   id: string;
@@ -239,6 +239,8 @@ export interface MapLayerItem {
   color: string;
   coordinates: [number, number][];
   poleNames?: string[];
+  customIcons?: Record<string, string>;
+  customStatuses?: Record<string, string>;
 }
 
 export interface SldComponent {
@@ -334,6 +336,8 @@ export interface MasterGardu {
   penyulang: string; // Penyulang
   daya: number; // Daya (kVA) e.g. 100, 160, 250, 400
   jumlahFasa: '1 Fasa' | '3 Fasa' | string; // Jumlah Fasa
+  tipeGardu?: string; // Tipe Gardu (GTT, Beton, Cantol, Portal, Tiang)
+  iconType?: string; // Marker Icon Type (GTT Trafo, Gardu Beton, Gardu Cantol, Gardu Portal, Tiang Single, Tiang Double)
 }
 
 export interface JurusanData {

@@ -14,6 +14,7 @@ import {
   query,
   limit,
   orderBy,
+  writeBatch,
   enableMultiTabIndexedDbPersistence
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
@@ -135,5 +136,6 @@ export {
   deleteDoc,
   query,
   limit,
-  orderBy
+  orderBy,
+  writeBatch
 };

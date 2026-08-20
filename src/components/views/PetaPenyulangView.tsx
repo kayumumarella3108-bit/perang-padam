@@ -31,6 +31,16 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { MapLayerItem } from '../../types';
+import {
+  IconGarduTrafo,
+  IconTiangSingleCrossarm,
+  IconTiangDoubleCrossarm,
+  IconTiangLBS,
+  IconGarduPortal,
+  IconGarduBeton,
+  IconTiangPortal3Pole,
+  ELECTRIC_ICON_SVG_STRINGS
+} from '../common/ElectricIcons';
 
 interface PetaPenyulangViewProps {
   layers: MapLayerItem[];
@@ -49,6 +59,13 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 }) => {
   const getLayerIconComponent = (type?: string) => {
     switch (type) {
+      case 'tiang-single':
+      case 'tiang-listrik': return IconTiangSingleCrossarm;
+      case 'tiang-double': return IconTiangDoubleCrossarm;
+      case 'gardu-trafo': return IconGarduTrafo;
+      case 'gardu-beton': return IconGarduBeton;
+      case 'gardu-cantol': return IconGarduPortal;
+      case 'gardu-portal': return IconTiangPortal3Pole;
       case 'git-branch': return GitBranch;
       case 'map-pin': return MapPin;
       case 'building': return Building2;
@@ -71,6 +88,15 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
+  const [editingMarkerModal, setEditingMarkerModal] = useState<{
+    layerId: string;
+    layerName: string;
+    nodeIndex: number;
+    poleName: string;
+    coord: [number, number];
+    currentIcon: string;
+    currentStatus: string;
+  } | null>(null);
 
   const [manualStatuses, setManualStatuses] = useState<Record<string, 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'>>({
     'ml1_0': 'PENYULANG',
@@ -82,29 +108,128 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     'ml4_1': 'PENYULANG'
   });
 
+  const [nodeIcons, setNodeIcons] = useState<Record<string, string>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
 
-  // Attach global window handler for manual tiang status selection
+  const layersRef = useRef(layers);
+  const onUpdateLayerRef = useRef(onUpdateLayer);
+
+  useEffect(() => {
+    layersRef.current = layers;
+    onUpdateLayerRef.current = onUpdateLayer;
+  }, [layers, onUpdateLayer]);
+
+  // Sync layer customIcons & customStatuses to local state
+  useEffect(() => {
+    const syncedIcons: Record<string, string> = {};
+    const syncedStatuses: Record<string, 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL'> = {};
+
+    layers.forEach((layer) => {
+      if (layer.customIcons) {
+        Object.entries(layer.customIcons).forEach(([idxStr, iconVal]) => {
+          if (iconVal) {
+            syncedIcons[`${layer.id}_${idxStr}`] = iconVal as string;
+          }
+        });
+      }
+      if (layer.customStatuses) {
+        Object.entries(layer.customStatuses).forEach(([idxStr, statusVal]) => {
+          if (statusVal) {
+            syncedStatuses[`${layer.id}_${idxStr}`] = statusVal as any;
+          }
+        });
+      }
+    });
+
+    setNodeIcons((prev) => ({ ...syncedIcons, ...prev }));
+    setManualStatuses((prev) => ({ ...syncedStatuses, ...prev }));
+  }, [layers]);
+
+  // Attach global window handler for manual tiang status & icon selection with real-time Firestore persistence
   useEffect(() => {
     (window as any).setTiangManualStatus = (layerId: string, nodeIdx: number, status: 'PENYULANG' | 'POHON' | 'KONSTRUKSI' | 'GANGGUAN' | 'PEMELIHARAAN' | 'NORMAL') => {
       const key = `${layerId}_${nodeIdx}`;
       setManualStatuses((prev) => {
         const next = { ...prev };
-        if (status === 'NORMAL') {
+        if (status === 'NORMAL' || status === 'PENYULANG') {
           delete next[key];
         } else {
           next[key] = status;
         }
         return next;
       });
+
+      const targetLayer = layersRef.current.find((l) => l.id === layerId);
+      if (targetLayer && onUpdateLayerRef.current) {
+        const nextCustomStatuses = { ...(targetLayer.customStatuses || {}) };
+        if (status === 'NORMAL' || status === 'PENYULANG') {
+          delete nextCustomStatuses[nodeIdx.toString()];
+        } else {
+          nextCustomStatuses[nodeIdx.toString()] = status;
+        }
+        onUpdateLayerRef.current({
+          ...targetLayer,
+          customStatuses: nextCustomStatuses
+        });
+      }
+    };
+
+    (window as any).setTiangCustomIcon = (layerId: string, nodeIdx: number, iconType: string) => {
+      const key = `${layerId}_${nodeIdx}`;
+      setNodeIcons((prev) => {
+        const next = { ...prev };
+        if (iconType === 'RESET') {
+          delete next[key];
+        } else {
+          next[key] = iconType;
+        }
+        return next;
+      });
+
+      const targetLayer = layersRef.current.find((l) => l.id === layerId);
+      if (targetLayer && onUpdateLayerRef.current) {
+        const nextCustomIcons = { ...(targetLayer.customIcons || {}) };
+        if (iconType === 'RESET') {
+          delete nextCustomIcons[nodeIdx.toString()];
+        } else {
+          nextCustomIcons[nodeIdx.toString()] = iconType;
+        }
+        onUpdateLayerRef.current({
+          ...targetLayer,
+          customIcons: nextCustomIcons
+        });
+      }
+    };
+
+    (window as any).openEditMarkerModal = (layerId: string, nodeIdx: number) => {
+      const targetLayer = layersRef.current.find((l) => l.id === layerId);
+      if (!targetLayer) return;
+      const key = `${layerId}_${nodeIdx}`;
+      const poleName = targetLayer.poleNames?.[nodeIdx] || `${targetLayer.nama}-${nodeIdx + 1}`;
+      const coord = targetLayer.coordinates[nodeIdx] || [0, 0];
+      const currentIcon = targetLayer.customIcons?.[nodeIdx.toString()] || targetLayer.iconType || 'zap';
+      const currentStatus = targetLayer.customStatuses?.[nodeIdx.toString()] || 'PENYULANG';
+
+      setEditingMarkerModal({
+        layerId,
+        layerName: targetLayer.nama,
+        nodeIndex: nodeIdx,
+        poleName,
+        coord,
+        currentIcon,
+        currentStatus
+      });
     };
 
     return () => {
       delete (window as any).setTiangManualStatus;
+      delete (window as any).setTiangCustomIcon;
+      delete (window as any).openEditMarkerModal;
     };
   }, []);
 
@@ -160,6 +285,19 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
 
 const getIconSvgHtml = (iconType?: string, size = 12) => {
   switch (iconType) {
+    case 'tiang-single':
+    case 'tiang-listrik':
+      return ELECTRIC_ICON_SVG_STRINGS.tiangSingle;
+    case 'tiang-double':
+      return ELECTRIC_ICON_SVG_STRINGS.tiangDouble;
+    case 'gardu-trafo':
+      return ELECTRIC_ICON_SVG_STRINGS.garduTrafo;
+    case 'gardu-beton':
+      return ELECTRIC_ICON_SVG_STRINGS.garduBeton;
+    case 'gardu-cantol':
+      return ELECTRIC_ICON_SVG_STRINGS.garduPortal;
+    case 'gardu-portal':
+      return ELECTRIC_ICON_SVG_STRINGS.tiangPortal3Pole;
     case 'git-branch':
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>`;
     case 'map-pin':
@@ -188,24 +326,26 @@ const getIconSvgHtml = (iconType?: string, size = 12) => {
   }
 };
 
-const createLeafletDivIcon = (iconType: string | undefined, color: string, borderColor: string, isManualStatus: boolean) => {
-  const containerSize = isManualStatus ? 26 : 22;
-  const svgSize = isManualStatus ? 14 : 12;
+const createLeafletDivIcon = (iconType: string | undefined, color: string, isCustomNode: boolean) => {
+  const containerSize = isCustomNode ? 22 : 18;
+  const svgSize = isCustomNode ? 13 : 10;
   const svgHtml = getIconSvgHtml(iconType, svgSize);
 
+  // Desain icon bersih, sederhana, TANPA ARSIRAN/BORDER PUTIH (border: none)
   const html = `
     <div style="
       width: ${containerSize}px;
       height: ${containerSize}px;
       background-color: ${color};
-      border: 2px solid ${borderColor};
+      border: none !important;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #ffffff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
       cursor: pointer;
+      transition: transform 0.15s ease;
     ">
       ${svgHtml}
     </div>
@@ -231,19 +371,32 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
     visibleLayers.forEach((layer) => {
       if (!layer.coordinates || layer.coordinates.length === 0) return;
 
+      // 1. RENDER GARIS JALUR FEEDER (POLYLINE)
+      if (layer.coordinates.length > 1) {
+        const polyline = L.polyline(layer.coordinates, {
+          color: layer.color || '#3b82f6',
+          weight: 4,
+          opacity: 0.85,
+          smoothFactor: 1
+        });
+        fg.addLayer(polyline);
+      }
+
+      // 2. RENDER ICON POINT DENGAN KINERJA TINGGI & TANPA ARSIRAN PUTIH
+      const totalCoords = layer.coordinates.length;
+
       layer.coordinates.forEach((coord, idx) => {
         const key = `${layer.id}_${idx}`;
         const manualStatus = manualStatuses[key] || 'NORMAL';
+        const customIcon = nodeIcons[key];
 
         let markerColor = layer.color || '#3b82f6';
-        let borderColor = '#ffffff';
-        let activeIconType = layer.iconType || 'zap';
+        let activeIconType = customIcon || layer.iconType || 'zap';
         let statusBadgeHtml = '';
 
         if (manualStatus === 'POHON') {
           markerColor = '#22c55e'; // Hijau Pohon
-          borderColor = '#dcfce7';
-          activeIconType = 'trees';
+          if (!customIcon) activeIconType = 'trees';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
@@ -252,8 +405,7 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           `;
         } else if (manualStatus === 'KONSTRUKSI') {
           markerColor = '#a855f7'; // Ungu Temuan Konstruksi
-          borderColor = '#f3e8ff';
-          activeIconType = 'wrench';
+          if (!customIcon) activeIconType = 'wrench';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
@@ -262,8 +414,7 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           `;
         } else if (manualStatus === 'GANGGUAN') {
           markerColor = '#ef4444'; // Red Merah
-          borderColor = '#fee2e2';
-          activeIconType = 'activity';
+          if (!customIcon) activeIconType = 'activity';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-black text-[11px] flex items-center gap-1.5 animate-pulse">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
@@ -272,8 +423,7 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
           `;
         } else if (manualStatus === 'PEMELIHARAAN') {
           markerColor = '#f97316'; // Orange Oranye
-          borderColor = '#ffedd5';
-          activeIconType = 'wrench';
+          if (!customIcon) activeIconType = 'wrench';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
@@ -283,29 +433,20 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
         } else {
           // Default / PENYULANG -> Menggunakan Warna Pilihan File Import / Layer Peta
           markerColor = layer.color || '#3b82f6';
-          borderColor = '#ffffff';
-          activeIconType = layer.iconType || 'zap';
+          if (!customIcon) activeIconType = layer.iconType || 'zap';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${markerColor}"></span>
-              📍 WARNA LAYER IMPORT (${layer.nama})
+              📍 WARNA LAYER (${layer.nama})
             </div>
           `;
         }
 
-        // High-Performance Leaflet CircleMarker with small radius and solid color
-        const radius = manualStatus !== 'NORMAL' ? 5.5 : 3.5;
-        const marker = L.circleMarker(coord, {
-          radius: radius,
-          fillColor: markerColor,
-          color: borderColor,
-          weight: manualStatus !== 'NORMAL' ? 2 : 1,
-          opacity: 1,
-          fillOpacity: 0.95
-        });
+        const isCustomNode = manualStatus !== 'NORMAL' || !!customIcon || idx === 0 || idx === totalCoords - 1;
 
+        // Popup Content standar untuk semua titik
         const popupContent = `
-          <div class="p-2 text-slate-900 font-sans min-w-[220px]">
+          <div class="p-2 text-slate-900 font-sans min-w-[240px]">
             <div class="font-black text-xs text-blue-800 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
               <span class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full inline-block shadow-xs" style="background-color: ${markerColor}"></span>
@@ -320,10 +461,90 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
               <div class="font-bold text-blue-600">ID Tiang: ${layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`}</div>
               <div><span class="font-semibold">Koordinat:</span> ${coord[0].toFixed(5)}, ${coord[1].toFixed(5)}</div>
               <div><span class="font-semibold">Kategori Feeder:</span> <span class="font-bold text-amber-600">${layer.kategori}</span></div>
+              <div><span class="font-semibold">Icon Aktif:</span> <span class="font-bold text-indigo-600 uppercase">${activeIconType}</span></div>
             </div>
 
             ${statusBadgeHtml}
 
+            <!-- EDIT ICON PER TITIK -->
+            <div class="mt-2.5 pt-2 border-t border-slate-200">
+              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>🎨 Edit Icon Titik Ini:</span>
+                ${customIcon ? `<span class="text-blue-600 font-bold">Kustom</span>` : `<span class="text-slate-400">Layer</span>`}
+              </div>
+              <div class="grid grid-cols-4 gap-1">
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-single')"
+                  class="p-1 rounded ${activeIconType === 'tiang-single' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Tiang Listrik Single"
+                >💈 Tiang</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-double')"
+                  class="p-1 rounded ${activeIconType === 'tiang-double' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Tiang 2 Travers"
+                >🗼 2-Trv</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-trafo')"
+                  class="p-1 rounded ${activeIconType === 'gardu-trafo' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Gardu Trafo"
+                >⚡ Trafo</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-beton')"
+                  class="p-1 rounded ${activeIconType === 'gardu-beton' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Gardu Beton"
+                >🏢 Beton</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-cantol')"
+                  class="p-1 rounded ${activeIconType === 'gardu-cantol' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Gardu Cantol"
+                >🔌 Cantol</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-portal')"
+                  class="p-1 rounded ${activeIconType === 'gardu-portal' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Gardu Portal"
+                >📐 Portal</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'lbs')"
+                  class="p-1 rounded ${activeIconType === 'lbs' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="LBS Switch"
+                >🔘 LBS</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'recloser')"
+                  class="p-1 rounded ${activeIconType === 'recloser' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Recloser"
+                >🔄 Rec</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'trees')"
+                  class="p-1 rounded ${activeIconType === 'trees' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 hover:bg-emerald-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Pohon ROW"
+                >🌳 Pohon</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'wrench')"
+                  class="p-1 rounded ${activeIconType === 'wrench' ? 'bg-purple-600 text-white font-black' : 'bg-slate-100 hover:bg-purple-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Har / Maint."
+                >🔧 Har</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'activity')"
+                  class="p-1 rounded ${activeIconType === 'activity' ? 'bg-rose-600 text-white font-black' : 'bg-slate-100 hover:bg-rose-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Gangguan / Trip"
+                >💥 Trip</button>
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'zap')"
+                  class="p-1 rounded ${activeIconType === 'zap' ? 'bg-amber-500 text-white font-black' : 'bg-slate-100 hover:bg-amber-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                  title="Zap Feeder"
+                >⚡ Zap</button>
+              </div>
+              ${customIcon ? `
+                <button
+                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'RESET')"
+                  class="w-full mt-1.5 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded flex items-center justify-center gap-1 cursor-pointer transition-all"
+                >
+                  ✓ Reset Icon Ke Default Layer
+                </button>
+              ` : ''}
+            </div>
+
+            <!-- PILIHAN STATUS / WARNA TIANG -->
             <div class="mt-2.5 pt-2 border-t border-slate-200 space-y-1">
               <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                 Pilihan Status / Warna Tiang:
@@ -375,20 +596,54 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
                 ` : ''}
               </div>
             </div>
+
+            <!-- TOMBOL BUKA MODAL EDIT INDIVIDUAL TITIK -->
+            <div class="mt-2.5 pt-2 border-t border-slate-200">
+              <button
+                onclick="window.openEditMarkerModal('${layer.id}', ${idx})"
+                class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                ✏️ Edit Marker Individual (Modal)
+              </button>
+            </div>
           </div>
         `;
 
-        marker.bindPopup(popupContent);
-        marker.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
-          permanent: false, 
-          direction: 'top',
-          className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
-        });
+        if (isCustomNode || totalCoords < 60) {
+          // Render Marker DivIcon yang Sederhana & Bersih TANPA ARSIRAN/BORDER PUTIH
+          const markerDivIcon = createLeafletDivIcon(activeIconType, markerColor, isCustomNode);
+          const marker = L.marker(coord, { icon: markerDivIcon });
 
-        fg.addLayer(marker);
+          marker.bindPopup(popupContent);
+          marker.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
+            permanent: false, 
+            direction: 'top',
+            className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
+          });
+
+          fg.addLayer(marker);
+        } else {
+          // Render titik biasa dengan CircleMarker (Canvas Renderer untuk Performa Super Cepat 60 FPS)
+          const circle = L.circleMarker(coord, {
+            radius: 3.5,
+            fillColor: markerColor,
+            color: markerColor,
+            weight: 1,
+            fillOpacity: 0.85
+          });
+
+          circle.bindPopup(popupContent);
+          circle.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
+            permanent: false, 
+            direction: 'top',
+            className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
+          });
+
+          fg.addLayer(circle);
+        }
       });
     });
-  }, [layers, manualStatuses]);
+  }, [layers, manualStatuses, nodeIcons]);
 
   // Center map on specific feeder route
   const handleLocateLayer = (layer: MapLayerItem) => {
@@ -576,6 +831,75 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
     const matchesCat = selectedCategory === 'Semua' || layer.kategori === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  const handleSaveMarkerModal = (modalData: {
+    layerId: string;
+    layerName: string;
+    nodeIndex: number;
+    poleName: string;
+    coord: [number, number];
+    currentIcon: string;
+    currentStatus: string;
+  }) => {
+    const { layerId, nodeIndex, poleName, currentIcon, currentStatus } = modalData;
+    const key = `${layerId}_${nodeIndex}`;
+
+    // 1. Update local state
+    setNodeIcons((prev) => {
+      const next = { ...prev };
+      if (currentIcon === 'RESET') {
+        delete next[key];
+      } else {
+        next[key] = currentIcon;
+      }
+      return next;
+    });
+
+    setManualStatuses((prev) => {
+      const next = { ...prev };
+      if (currentStatus === 'PENYULANG' || currentStatus === 'NORMAL') {
+        delete next[key];
+      } else {
+        next[key] = currentStatus as any;
+      }
+      return next;
+    });
+
+    // 2. Prepare updated layer and save to Firestore real-time
+    const targetLayer = layers.find((l) => l.id === layerId);
+    if (targetLayer && onUpdateLayer) {
+      const nextCustomIcons = { ...(targetLayer.customIcons || {}) };
+      if (currentIcon === 'RESET') {
+        delete nextCustomIcons[nodeIndex.toString()];
+      } else {
+        nextCustomIcons[nodeIndex.toString()] = currentIcon;
+      }
+
+      const nextCustomStatuses = { ...(targetLayer.customStatuses || {}) };
+      if (currentStatus === 'PENYULANG' || currentStatus === 'NORMAL') {
+        delete nextCustomStatuses[nodeIndex.toString()];
+      } else {
+        nextCustomStatuses[nodeIndex.toString()] = currentStatus;
+      }
+
+      const updatedPoleNames = [...(targetLayer.poleNames || [])];
+      while (updatedPoleNames.length <= nodeIndex) {
+        updatedPoleNames.push(`${targetLayer.nama}-${updatedPoleNames.length + 1}`);
+      }
+      updatedPoleNames[nodeIndex] = poleName;
+
+      const updatedLayer: MapLayerItem = {
+        ...targetLayer,
+        customIcons: nextCustomIcons,
+        customStatuses: nextCustomStatuses,
+        poleNames: updatedPoleNames
+      };
+
+      onUpdateLayer(updatedLayer);
+    }
+
+    setEditingMarkerModal(null);
+  };
 
   return (
     <div className="relative w-full h-[calc(100vh-3.5rem)] flex overflow-hidden bg-slate-50 font-sans">
@@ -965,9 +1289,15 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Pemilihan Icon Marker Feeder
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1">
                   {[
                     { id: 'zap', label: 'Feeder (Zap)', icon: Zap },
+                    { id: 'tiang-single', label: 'Tiang Listrik', icon: IconTiangSingleCrossarm },
+                    { id: 'tiang-double', label: 'Tiang 2 Travers', icon: IconTiangDoubleCrossarm },
+                    { id: 'gardu-trafo', label: 'Gardu Trafo', icon: IconGarduTrafo },
+                    { id: 'gardu-beton', label: 'Gardu Beton', icon: IconGarduBeton },
+                    { id: 'gardu-cantol', label: 'Gardu Cantol', icon: IconGarduPortal },
+                    { id: 'gardu-portal', label: 'Gardu Portal', icon: IconTiangPortal3Pole },
                     { id: 'git-branch', label: 'Percabangan', icon: GitBranch },
                     { id: 'map-pin', label: 'Titik Lokasi', icon: MapPin },
                     { id: 'building', label: 'Gardu GI', icon: Building2 },
@@ -1065,6 +1395,179 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, borde
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT MARKER INDIVIDUAL DENGAN REAL-TIME FIRESTORE */}
+      {editingMarkerModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-600/30 text-blue-400 border border-blue-500/30">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white flex items-center gap-2">
+                    Edit Marker Individual
+                    <span className="px-2 py-0.5 rounded bg-blue-600/40 text-blue-200 text-xs font-mono font-bold">
+                      Titik #{editingMarkerModal.nodeIndex + 1}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Feeder: <span className="text-amber-400 font-semibold">{editingMarkerModal.layerName}</span> | {editingMarkerModal.coord[0].toFixed(5)}, {editingMarkerModal.coord[1].toFixed(5)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMarkerModal(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4">
+              {/* Input ID / Nama Tiang */}
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                  🏷️ ID / Nama Tiang Listrik:
+                </label>
+                <input
+                  type="text"
+                  value={editingMarkerModal.poleName}
+                  onChange={(e) => setEditingMarkerModal({ ...editingMarkerModal, poleName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 font-bold text-slate-800 text-sm outline-none transition-all"
+                  placeholder="Contoh: BGL-12A"
+                />
+              </div>
+
+              {/* Opsi Icon Marker */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                    🎨 Opsi Icon Marker Titik:
+                  </label>
+                  <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    Aktif: {editingMarkerModal.currentIcon.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-200">
+                  {[
+                    { id: 'tiang-single', label: 'Tiang 1 Travers', icon: IconTiangSingleCrossarm },
+                    { id: 'tiang-double', label: 'Tiang 2 Travers', icon: IconTiangDoubleCrossarm },
+                    { id: 'gardu-trafo', label: 'Gardu Trafo GTT', icon: IconGarduTrafo },
+                    { id: 'gardu-beton', label: 'Gardu Beton', icon: IconGarduBeton },
+                    { id: 'gardu-cantol', label: 'Gardu Cantol', icon: IconGarduPortal },
+                    { id: 'gardu-portal', label: 'Gardu Portal 3 Pole', icon: IconTiangPortal3Pole },
+                    { id: 'lbs', label: 'LBS Switch', icon: ToggleRight },
+                    { id: 'recloser', label: 'Recloser', icon: RotateCcw },
+                    { id: 'pmcb', label: 'PMCB Saklar', icon: Power },
+                    { id: 'git-branch', label: 'Cabang Feeder', icon: GitBranch },
+                    { id: 'map-pin', label: 'Titik Lokasi', icon: MapPin },
+                    { id: 'building', label: 'Gardu GI', icon: Building2 },
+                    { id: 'gardu-dist', label: 'Gardu Distribusi', icon: Cpu },
+                    { id: 'trees', label: 'Pohon ROW', icon: Trees },
+                    { id: 'wrench', label: 'Pemeliharaan', icon: Wrench },
+                    { id: 'activity', label: 'Lokasi Gangguan', icon: Activity },
+                    { id: 'shield', label: 'Proteksi', icon: Shield },
+                    { id: 'zap', label: 'Zap Feeder', icon: Zap }
+                  ].map((iconItem) => {
+                    const IconComponent = iconItem.icon;
+                    const isSelected = editingMarkerModal.currentIcon === iconItem.id;
+                    return (
+                      <button
+                        key={iconItem.id}
+                        type="button"
+                        onClick={() => setEditingMarkerModal({ ...editingMarkerModal, currentIcon: iconItem.id })}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer text-center ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-700 shadow-md scale-[1.02] font-black'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                          <IconComponent className="w-5 h-5" />
+                        </div>
+                        <span className="text-[10px] font-bold leading-tight">{iconItem.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Opsi Status / Highlight Warna */}
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                  🚦 Status Condition / Highlight Warna Peta:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'PENYULANG', label: '📍 Sesuai Warna Layer', bg: 'bg-slate-100 text-slate-800 border-slate-300' },
+                    { id: 'POHON', label: '🌳 Temuan Pohon (Hijau)', bg: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
+                    { id: 'KONSTRUKSI', label: '🏗️ Temuan Konstruksi (Ungu)', bg: 'bg-purple-50 text-purple-800 border-purple-300' },
+                    { id: 'GANGGUAN', label: '⚡ Lokasi Gangguan (Merah)', bg: 'bg-rose-50 text-rose-800 border-rose-300' },
+                    { id: 'PEMELIHARAAN', label: '🔧 Pemeliharaan (Oranye)', bg: 'bg-amber-50 text-amber-800 border-amber-300' }
+                  ].map((statusOpt) => {
+                    const isSelected = editingMarkerModal.currentStatus === statusOpt.id;
+                    return (
+                      <button
+                        key={statusOpt.id}
+                        type="button"
+                        onClick={() => setEditingMarkerModal({ ...editingMarkerModal, currentStatus: statusOpt.id })}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                          isSelected
+                            ? 'ring-2 ring-blue-600 font-black shadow-xs ' + statusOpt.bg
+                            : 'hover:bg-slate-50 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full shrink-0 ${isSelected ? 'scale-110' : 'opacity-60'}`} />
+                        <span>{statusOpt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingMarkerModal({
+                    ...editingMarkerModal,
+                    currentIcon: 'RESET',
+                    currentStatus: 'PENYULANG'
+                  });
+                }}
+                className="px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-200 hover:bg-slate-300 rounded-xl transition-all cursor-pointer"
+              >
+                🔄 Reset Ke Default Layer
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingMarkerModal(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveMarkerModal(editingMarkerModal)}
+                  className="px-5 py-2 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Simpan Real-Time
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -219,35 +219,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* 6. Pemeliharaan 20kV (Monitoring) */}
           {canAccessMenu(currentUser, 'pemeliharaan') && (
-            <>
-              <button
-                onClick={() => onSelectView('monitoring_target_realisasi')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeView === 'monitoring_target_realisasi'
-                    ? 'bg-amber-600/15 text-amber-400 border border-amber-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="p-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg shrink-0">
-                  <Target className="w-4 h-4" />
-                </div>
-                <span>Target & Realisasi Inspeksi/ROW</span>
-              </button>
-
-              <button
-                onClick={() => onSelectView('pemeliharaan_20kv')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeView === 'pemeliharaan_20kv'
-                    ? 'bg-rose-600/15 text-rose-400 border border-rose-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="p-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg shrink-0">
-                  <Wrench className="w-4 h-4" />
-                </div>
-                <span>Monitoring Pemeliharaan</span>
-              </button>
-            </>
+            <button
+              onClick={() => onSelectView('pemeliharaan_20kv')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                activeView === 'pemeliharaan_20kv'
+                  ? 'bg-rose-600/15 text-rose-400 border border-rose-500/30 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="p-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg shrink-0">
+                <Wrench className="w-4 h-4" />
+              </div>
+              <span>Monitoring Pemeliharaan</span>
+            </button>
           )}
 
           {/* 7. Format Surat & SPK (ACCORDION) */}
@@ -401,218 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* 10. Monitoring Yantek (ACCORDION) */}
-          {canAccessMenu(currentUser, 'monitoring_yantek') && (
-            <div>
-              <button
-                onClick={() => setMonitoringYantekOpen(!monitoringYantekOpen)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  isMonitoringYantekActive && !monitoringYantekOpen
-                    ? 'bg-sky-600/15 text-sky-400 border border-sky-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-lg shrink-0">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <span>Monitoring Yantek</span>
-                </div>
-                <div>
-                  {monitoringYantekOpen ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-sky-400" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  )}
-                </div>
-              </button>
 
-              {monitoringYantekOpen && (
-                <div className="pl-4 mt-1 space-y-1 border-l-2 border-sky-500/30 ml-5">
-                  <button
-                    onClick={() => onSelectView('alker_apd')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'alker_apd'
-                        ? 'bg-sky-600/20 text-sky-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Shield className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                    <span>Peralatan & Alker Yantek</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('material')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'material'
-                        ? 'bg-sky-600/20 text-sky-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Package className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Stok & Pemakaian Material</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('jadwal_piket')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'jadwal_piket'
-                        ? 'bg-sky-600/20 text-sky-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Jadwal Piket Petugas</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('kendaraan_operasional')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'kendaraan_operasional'
-                        ? 'bg-sky-600/20 text-sky-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Car className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span>Kendaraan Operasional</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 11. ROW (Manajemen & Peta ROW) */}
-          {canAccessMenu(currentUser, 'pemeliharaan') && (
-            <button
-              onClick={() => onSelectView('row')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                activeView === 'row'
-                  ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg shrink-0">
-                <Trees className="w-4 h-4" />
-              </div>
-              <span>ROW & Pangkas Pohon</span>
-            </button>
-          )}
-
-          {/* 12. Inspeksi (ACCORDION) */}
-          {canAccessMenu(currentUser, 'pemeliharaan') && (
-            <div>
-              <button
-                onClick={() => setInspeksiOpen(!inspeksiOpen)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                  isInspeksiActive && !inspeksiOpen
-                    ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg shrink-0">
-                    <Search className="w-4 h-4" />
-                  </div>
-                  <span>Inspeksi Jaringan & Gardu</span>
-                </div>
-                <div>
-                  {inspeksiOpen ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  )}
-                </div>
-              </button>
-
-              {inspeksiOpen && (
-                <div className="pl-4 mt-1 space-y-1 border-l-2 border-blue-500/30 ml-5">
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier1')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier1'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <ClipboardList className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Inspeksi Tier 1 (Simple)</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier1_jtm')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier1_jtm'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Checklist JTM (Tier 1)</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier1_gtt')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier1_gtt'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Factory className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Checklist GTT (Tier 1)</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier1_switching')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier1_switching'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <GitGraph className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span>Checklist Switching (Tier 1)</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier2')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier2'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Search className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span>Inspeksi Tier 2</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier2_thermovision')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier2_thermovision'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Thermometer className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                    <span>Checklist Thermovision (Tier 2)</span>
-                  </button>
-
-                  <button
-                    onClick={() => onSelectView('inspeksi_tier2_ultrasound')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                      activeView === 'inspeksi_tier2_ultrasound'
-                        ? 'bg-blue-600/20 text-blue-300 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <Network className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span>Checklist Ultrasound (Tier 2)</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* 13. Share Laporan (WhatsApp Web & Telegram) */}
           {canAccessMenu(currentUser, 'share_laporan') && (
