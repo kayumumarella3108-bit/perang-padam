@@ -9,11 +9,12 @@ import {
   Trash2,
   Pencil,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Target
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ROWItem, InspeksiItem, ViewType, Tier1Item, Tier2Item, MonitoringPemeliharaanItem } from '../../types';
+import { ROWItem, InspeksiItem, ViewType, Tier1Item, Tier2Item, MonitoringPemeliharaanItem, User } from '../../types';
 import { exportToCSV } from '../../utils/exportCsv';
 import { db, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, registerDeletedId } from '../../lib/firebase';
 import { sanitizeForFirestore } from '../../utils/firestoreHelper';
@@ -24,6 +25,8 @@ interface PemeliharaanViewProps {
   tier1List: Tier1Item[];
   tier2List: Tier2Item[];
   monitoringList: MonitoringPemeliharaanItem[];
+  currentUser?: User;
+  onSelectSubView?: (view: ViewType) => void;
 }
 
 const INITIAL_ROW_DATA: ROWItem[] = [
@@ -131,7 +134,9 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
   rowList,
   tier1List,
   tier2List,
-  monitoringList
+  monitoringList,
+  currentUser,
+  onSelectSubView
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -509,6 +514,16 @@ export const PemeliharaanView: React.FC<PemeliharaanViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onSelectSubView && (
+            <button
+              onClick={() => onSelectSubView('monitoring_target_realisasi')}
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-amber-500/20"
+              title="Lihat Monitoring Target vs Realisasi Inspeksi dan ROW"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Target & Realisasi</span>
+            </button>
+          )}
           <button
             onClick={handleExportPDF}
             className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-red-600/20"

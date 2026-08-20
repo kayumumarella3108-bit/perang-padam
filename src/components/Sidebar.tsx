@@ -38,6 +38,7 @@ import {
   Building2,
   Workflow,
   ShieldCheck,
+  Target,
   Eye
 } from 'lucide-react';
 import { ViewType, User } from '../types';
@@ -218,19 +219,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* 6. Pemeliharaan 20kV (Monitoring) */}
           {canAccessMenu(currentUser, 'pemeliharaan') && (
-            <button
-              onClick={() => onSelectView('pemeliharaan_20kv')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                activeView === 'pemeliharaan_20kv'
-                  ? 'bg-rose-600/15 text-rose-400 border border-rose-500/30 shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="p-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg shrink-0">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <span>Monitoring Pemeliharaan</span>
-            </button>
+            <>
+              <button
+                onClick={() => onSelectView('monitoring_target_realisasi')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeView === 'monitoring_target_realisasi'
+                    ? 'bg-amber-600/15 text-amber-400 border border-amber-500/30 shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="p-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg shrink-0">
+                  <Target className="w-4 h-4" />
+                </div>
+                <span>Target & Realisasi Inspeksi/ROW</span>
+              </button>
+
+              <button
+                onClick={() => onSelectView('pemeliharaan_20kv')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeView === 'pemeliharaan_20kv'
+                    ? 'bg-rose-600/15 text-rose-400 border border-rose-500/30 shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="p-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg shrink-0">
+                  <Wrench className="w-4 h-4" />
+                </div>
+                <span>Monitoring Pemeliharaan</span>
+              </button>
+            </>
           )}
 
           {/* 7. Format Surat & SPK (ACCORDION) */}

@@ -16,6 +16,7 @@ export type ViewType =
   | 'inspeksi_tier2_thermovision'
   | 'inspeksi_tier2_ultrasound'
   | 'pemeliharaan_20kv'
+  | 'monitoring_target_realisasi'
   | 'perintah_kerja'
   | 'format_surat'
   | 'master_data'
@@ -208,6 +209,8 @@ export interface User {
   status?: string;
   avatarUrl?: string;
   password?: string;
+  nip?: string;
+  phone?: string;
   permissions?: {
     canAddUsers: boolean;
     canEditData: boolean;
@@ -945,5 +948,15 @@ export interface SurveyPbPdItem {
   tandaTanganSurveyor?: string; // Base64 / Data URL digital signature of surveyor
   tandaTanganTlTeknik?: string; // Base64 / Data URL digital signature of TL Teknik
   createdAt?: string;
+}
+
+export interface TargetPemeliharaanPenyulang {
+  id: string;
+  penyulang: string;
+  targetRowPohon: number;
+  targetInspeksiTier1: number;
+  targetInspeksiTier2: number;
+  bulanTarget?: string;
+  catatan?: string;
 }
 

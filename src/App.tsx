@@ -72,6 +72,7 @@ import { PetaPenyulangView } from './components/views/PetaPenyulangView';
 import { HealthIndexView } from './components/views/HealthIndexView';
 import { GangguanTripView } from './components/views/GangguanTripView';
 import { PemeliharaanView } from './components/views/PemeliharaanView';
+import { MonitoringTargetRealisasiView } from './components/views/MonitoringTargetRealisasiView';
 import { MasterDataView } from './components/views/MasterDataView';
 import { SaidiSaifiView } from './components/views/SaidiSaifiView';
 import { MaterialView } from './components/views/MaterialView';
@@ -1632,6 +1633,15 @@ export default function App() {
             />
           )}
 
+          {activeView === 'monitoring_target_realisasi' && (
+            <MonitoringTargetRealisasiView
+              currentUser={user}
+              rowList={rowList}
+              tier1List={tier1List}
+              tier2List={tier2List}
+            />
+          )}
+
           {(activeView === 'row' ||
             activeView === 'inspeksi_tier1' ||
             activeView === 'inspeksi_tier2' ||
@@ -1643,6 +1653,7 @@ export default function App() {
               tier1List={tier1List}
               tier2List={tier2List}
               monitoringList={monitoringList}
+              onSelectSubView={setActiveView}
             />
           )}
 
