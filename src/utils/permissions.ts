@@ -58,14 +58,24 @@ export const canManageUsers = (user: User | null | undefined): boolean => {
 export const canEditData = (user: User | null | undefined): boolean => {
   if (!user) return false;
   
-  // If the user has explicit permissions object defined, respect it
-  if (user.permissions && typeof user.permissions.canEditData === 'boolean') {
-    return user.permissions.canEditData;
+  // 1. If explicit permissions object defined on user, respect it
+  if (user.permissions) {
+    if (user.permissions.canViewDataOnly === true) {
+      return false;
+    }
+    if (typeof user.permissions.canEditData === 'boolean') {
+      return user.permissions.canEditData;
+    }
   }
 
   if (!user.role) return false;
   const roleLower = user.role.toLowerCase().trim();
   
+  // Upper management roles default to Read-Only monitoring unless explicitly enabled
+  if (roleLower.includes('manager') || roleLower.includes('up3') || roleLower.includes('uiw')) {
+    return false;
+  }
+
   return (
     roleLower.includes('koordinator') ||
     roleLower.includes('admin teknik') ||
@@ -80,8 +90,12 @@ export const canEditData = (user: User | null | undefined): boolean => {
 };
 
 export const canEditModule = (user: User | null | undefined, moduleName: string): boolean => {
-  if (!user || !user.role) return false;
-  const roleLower = user.role.toLowerCase().trim();
+  if (!user) return false;
+  
+  // Check if user has write access at all
+  if (!canEditData(user)) return false;
+
+  const roleLower = (user.role || '').toLowerCase().trim();
   const mod = moduleName.toLowerCase();
 
   // Bagian Pemasaran is strictly limited to survey_pb_pd
@@ -113,24 +127,18 @@ export const canEditModule = (user: User | null | undefined, moduleName: string)
   return false;
 };
 
-export const getRoleCategory = (roleStr: string): 'Edit & Entri Data' | 'Hanya Monitoring (Read Only)' => {
-  if (canEditData({ username: '', name: '', role: roleStr })) {
+export const getRoleCategory = (userOrRole: User | string): 'Edit & Entri Data' | 'Monitoring Read-Only' => {
+  const userObj: User = typeof userOrRole === 'string' ? { username: '', name: '', role: userOrRole } : userOrRole;
+  if (canEditData(userObj)) {
     return 'Edit & Entri Data';
   }
-  return 'Hanya Monitoring (Read Only)';
+  return 'Monitoring Read-Only';
 };
 
 export const canAccessMenu = (user: User | null | undefined, menuKey: string): boolean => {
   if (!user) return false;
-  
-  const roleLower = (user.role || '').toLowerCase().trim();
-  
-  // Koordinator / Super Admin always has full access to all menus
-  if (roleLower.includes('koordinator') || roleLower.includes('admin system') || roleLower === 'admin' || roleLower === 'admin aplikasi') {
-    return true;
-  }
 
-  // Check if explicit allowedMenus is defined for the user
+  // 1. Check if explicit allowedMenus is defined for the user (Source of truth from User Management)
   if (user.allowedMenus && Array.isArray(user.allowedMenus)) {
     if (user.allowedMenus.length === 0) return false;
     
@@ -139,17 +147,26 @@ export const canAccessMenu = (user: User | null | undefined, menuKey: string): b
     
     // Check key aliases
     if ((menuKey === 'matriks_gangguan' || menuKey === 'gangguan') && (user.allowedMenus.includes('gangguan') || user.allowedMenus.includes('matriks_gangguan'))) return true;
-    if ((menuKey === 'peta_penyulang' || menuKey === 'peta_pohon' || menuKey === 'peta_konstruksi' || menuKey === 'peta') && user.allowedMenus.includes('peta')) return true;
-    if ((menuKey === 'master_data' || menuKey === 'aset_jaringan' || menuKey === 'sld_visio') && user.allowedMenus.includes('master_data')) return true;
-    if ((menuKey === 'row' || menuKey.startsWith('inspeksi_') || menuKey === 'pemeliharaan_20kv' || menuKey === 'pemeliharaan') && user.allowedMenus.includes('pemeliharaan')) return true;
-    if ((menuKey === 'perintah_kerja' || menuKey === 'format_surat' || menuKey === 'spk') && (user.allowedMenus.includes('spk') || user.allowedMenus.includes('format_surat'))) return true;
-    if ((menuKey === 'saidi_saifi' || menuKey === 'estimasi_saidi_saifi') && user.allowedMenus.includes('saidi_saifi')) return true;
-    if ((menuKey === 'alker_apd' || menuKey === 'material' || menuKey === 'jadwal_piket' || menuKey === 'kendaraan_operasional' || menuKey === 'monitoring_yantek') && user.allowedMenus.includes('monitoring_yantek')) return true;
+    if ((menuKey === 'peta_penyulang' || menuKey === 'peta_pohon' || menuKey === 'peta_konstruksi' || menuKey === 'peta') && (user.allowedMenus.includes('peta') || user.allowedMenus.includes('peta_penyulang'))) return true;
+    if ((menuKey === 'master_data' || menuKey === 'aset_jaringan' || menuKey === 'sld_visio') && (user.allowedMenus.includes('master_data') || user.allowedMenus.includes('aset_jaringan'))) return true;
+    if (menuKey === 'health_index' && (user.allowedMenus.includes('health_index') || user.allowedMenus.includes('master_data'))) return true;
+    if ((menuKey === 'row' || menuKey.startsWith('inspeksi_') || menuKey === 'pemeliharaan_20kv' || menuKey === 'pemeliharaan') && (user.allowedMenus.includes('pemeliharaan') || user.allowedMenus.includes('row') || user.allowedMenus.includes('inspeksi'))) return true;
+    if ((menuKey === 'perintah_kerja' || menuKey === 'format_surat' || menuKey === 'spk') && (user.allowedMenus.includes('spk') || user.allowedMenus.includes('perintah_kerja') || user.allowedMenus.includes('format_surat'))) return true;
+    if (menuKey === 'pengukuran_gardu' && (user.allowedMenus.includes('pengukuran_gardu') || user.allowedMenus.includes('beban_gardu'))) return true;
+    if ((menuKey === 'survey_pb_pd' || menuKey === 'wo_survey') && (user.allowedMenus.includes('survey_pb_pd') || user.allowedMenus.includes('survey'))) return true;
+    if ((menuKey === 'saidi_saifi' || menuKey === 'estimasi_saidi_saifi') && (user.allowedMenus.includes('saidi_saifi') || user.allowedMenus.includes('estimasi_saidi_saifi'))) return true;
+    if ((menuKey === 'alker_apd' || menuKey === 'material' || menuKey === 'jadwal_piket' || menuKey === 'kendaraan_operasional' || menuKey === 'monitoring_yantek') && (user.allowedMenus.includes('monitoring_yantek') || user.allowedMenus.includes('material') || user.allowedMenus.includes('alker_apd'))) return true;
+    if (menuKey === 'share_laporan' && (user.allowedMenus.includes('share_laporan') || user.allowedMenus.includes('share'))) return true;
+    if ((menuKey === 'kelola_user' || menuKey === 'users') && (user.allowedMenus.includes('kelola_user') || user.allowedMenus.includes('users'))) return true;
     
     return false;
   }
 
-  // Fallback defaults for legacy users without explicit allowedMenus array:
+  // 2. Fallback default access for legacy accounts without explicit allowedMenus array:
+  const roleLower = (user.role || '').toLowerCase().trim();
+  if (roleLower.includes('koordinator') || roleLower.includes('admin system') || roleLower === 'admin' || roleLower === 'admin aplikasi') {
+    return true;
+  }
   if (isPemasaranUser(user)) {
     return menuKey === 'survey_pb_pd' || menuKey === 'dashboard';
   }
@@ -157,7 +174,6 @@ export const canAccessMenu = (user: User | null | undefined, menuKey: string): b
     return menuKey === 'pemeliharaan' || menuKey === 'row' || menuKey === 'peta' || menuKey === 'peta_pohon';
   }
 
-  // By default, non-Koordinator roles can access all operational views except kelola_user
   if (menuKey === 'kelola_user') return false;
   return true;
 };

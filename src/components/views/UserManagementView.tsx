@@ -25,7 +25,10 @@ import {
   Zap,
   BarChart3,
   Share2,
-  Key
+  Key,
+  Map,
+  Database,
+  TrendingUp
 } from 'lucide-react';
 import { User } from '../../types';
 import { canEditData, canManageUsers, getRoleCategory } from '../../utils/permissions';
@@ -34,6 +37,12 @@ const getMenuBadgeProps = (menuId: string) => {
   switch (menuId) {
     case 'dashboard':
       return { label: 'Dashboard', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+    case 'peta':
+      return { label: 'Peta Penyulang', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case 'master_data':
+      return { label: 'Master Data', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+    case 'health_index':
+      return { label: 'Health Index', bg: 'bg-cyan-50 text-cyan-700 border-cyan-200' };
     case 'gangguan':
       return { label: 'Gangguan', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'pemeliharaan':
@@ -728,6 +737,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <div className="space-y-2.5 overflow-y-auto max-h-[350px] pr-1.5 flex-1 scrollbar-thin">
                   {[
                     { id: 'dashboard', label: 'Dashboard & Beranda Utama', icon: LayoutDashboard, color: 'text-blue-500 bg-blue-50 border-blue-200', desc: 'Halaman ringkasan statistik dan monitoring cepat' },
+                    { id: 'peta', label: 'Peta Penyulang & GIS', icon: Map, color: 'text-emerald-500 bg-emerald-50 border-emerald-200', desc: 'Peta spasial jaringan 20kV, trafo, & tracing kaset' },
+                    { id: 'master_data', label: 'Master Data Penyulang', icon: Database, color: 'text-purple-500 bg-purple-50 border-purple-200', desc: 'Data inventaris penyulang, section, & SLD Visio' },
+                    { id: 'health_index', label: 'Health Index Penyulang', icon: TrendingUp, color: 'text-cyan-500 bg-cyan-50 border-cyan-200', desc: 'Indeks kesehatan trafo & penyulang 20kV' },
                     { id: 'gangguan', label: 'Gangguan Trip Feeder', icon: Zap, color: 'text-amber-500 bg-amber-50 border-amber-200', desc: 'Manajemen data laporan gangguan & trip feeder' },
                     { id: 'pemeliharaan', label: 'Pemeliharaan 20kV (ROW & Inspeksi)', icon: Wrench, color: 'text-rose-500 bg-rose-50 border-rose-200', desc: 'Akses menu Pangkas Pohon (ROW) & checklist Inspeksi Tier 1 & 2' },
                     { id: 'spk', label: 'Format Surat & SPK', icon: FileText, color: 'text-teal-500 bg-teal-50 border-teal-200', desc: 'Pembuatan Perintah Kerja Harian & surat dinas teknik' },
