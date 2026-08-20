@@ -42,7 +42,7 @@ export const generateSpkPDF = async (spk: PerintahKerja) => {
   doc.text('PT PLN (Persero)', 38, 15);
 
   doc.setFontSize(7.5);
-  doc.text('UNIT INDUK WILAYAH MALUKU DAN MALUKU UTARA', 38, 19.5);
+  doc.text('UIW MALUKU & MALUKU UTARA', 38, 19.5);
   doc.text('UP3 AMBON', 38, 24);
   doc.text('ULP BAGUALA', 38, 28.5);
 

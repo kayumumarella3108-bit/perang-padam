@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import JSZip from 'jszip';
 import {
   Upload,
@@ -19,7 +20,16 @@ import {
   FileCode,
   Pencil,
   X,
-  Check
+  Check,
+  Zap,
+  GitBranch,
+  Building2,
+  Activity,
+  Shield,
+  Cpu,
+  ToggleRight,
+  Power,
+  RotateCcw
 } from 'lucide-react';
 import { MapLayerItem } from '../../types';
 
@@ -38,9 +48,29 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   onAddLayer,
   onUpdateLayer
 }) => {
+  const getLayerIconComponent = (type?: string) => {
+    switch (type) {
+      case 'git-branch': return GitBranch;
+      case 'map-pin': return MapPin;
+      case 'building': return Building2;
+      case 'gardu-dist': return Cpu;
+      case 'lbs': return ToggleRight;
+      case 'pmcb': return Power;
+      case 'recloser': return RotateCcw;
+      case 'trees': return Trees;
+      case 'wrench': return Wrench;
+      case 'activity': return Activity;
+      case 'shield': return Shield;
+      case 'zap':
+      default:
+        return Zap;
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'Semua' | 'ROW' | 'Inspeksi' | 'Maintenance'>('Semua');
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
+  const [useClustering, setUseClustering] = useState<boolean>(true);
   const [fileImporting, setFileImporting] = useState(false);
   const [editingLayer, setEditingLayer] = useState<MapLayerItem | null>(null);
 
@@ -59,6 +89,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
+  const markerClusterGroupRef = useRef<any>(null);
 
   // Attach global window handler for manual tiang status selection
   useEffect(() => {
@@ -129,32 +160,126 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     tileLayerRef.current = newTile;
   }, [mapStyle]);
 
-  // Render Node Circle Markers (Garis Penghubung Dihapus, Hanya Titik Peta)
+const getIconSvgHtml = (iconType?: string, size = 12) => {
+  switch (iconType) {
+    case 'git-branch':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>`;
+    case 'map-pin':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+    case 'building':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>`;
+    case 'gardu-dist':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M15 2v2"></path><path d="M15 20v2"></path><path d="M2 15h2"></path><path d="M2 9h2"></path><path d="M20 15h2"></path><path d="M20 9h2"></path><path d="M9 2v2"></path><path d="M9 20v2"></path></svg>`;
+    case 'lbs':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect><circle cx="16" cy="12" r="3"></circle></svg>`;
+    case 'pmcb':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>`;
+    case 'recloser':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>`;
+    case 'trees':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"></path><path d="M7 16v6"></path><path d="M13 19v3"></path><path d="M12 19h8a3 3 0 0 0 .6-5.9 3 3 0 0 0-3.3-3.3 3 3 0 0 0-5.3 1.2 3 3 0 0 0-.5 2V14a3 3 0 0 0 .5 5Z"></path></svg>`;
+    case 'wrench':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
+    case 'activity':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`;
+    case 'shield':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+    case 'zap':
+    default:
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+  }
+};
+
+const createLeafletDivIcon = (iconType: string | undefined, color: string, borderColor: string, isManualStatus: boolean) => {
+  const containerSize = isManualStatus ? 26 : 22;
+  const svgSize = isManualStatus ? 14 : 12;
+  const svgHtml = getIconSvgHtml(iconType, svgSize);
+
+  const html = `
+    <div style="
+      width: ${containerSize}px;
+      height: ${containerSize}px;
+      background-color: ${color};
+      border: 2px solid ${borderColor};
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      cursor: pointer;
+    ">
+      ${svgHtml}
+    </div>
+  `;
+
+  return L.divIcon({
+    html: html,
+    className: 'custom-feeder-div-icon',
+    iconSize: [containerSize, containerSize],
+    iconAnchor: [containerSize / 2, containerSize / 2],
+    popupAnchor: [0, -containerSize / 2]
+  });
+};
+
+  // Render Feeder Line and Custom Markers with Selected Icons (with optional Clustering)
   useEffect(() => {
     if (!mapInstanceRef.current || !featureGroupRef.current) return;
+    const map = mapInstanceRef.current;
     const fg = featureGroupRef.current;
     fg.clearLayers();
+
+    // Remove previous marker cluster group if active
+    if (markerClusterGroupRef.current) {
+      map.removeLayer(markerClusterGroupRef.current);
+      markerClusterGroupRef.current = null;
+    }
+
+    let clusterGroup: any = null;
+    if (useClustering) {
+      clusterGroup = (L as any).markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 18,
+        iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          let c = ' marker-cluster-small';
+          if (count >= 100) c = ' marker-cluster-large';
+          else if (count >= 20) c = ' marker-cluster-medium';
+
+          return L.divIcon({
+            html: `<div><span>${count}</span></div>`,
+            className: 'marker-cluster' + c,
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+      map.addLayer(clusterGroup);
+      markerClusterGroupRef.current = clusterGroup;
+    }
 
     const visibleLayers = layers.filter((l) => l.visible);
 
     visibleLayers.forEach((layer) => {
       if (!layer.coordinates || layer.coordinates.length === 0) return;
 
+
       layer.coordinates.forEach((coord, idx) => {
         const key = `${layer.id}_${idx}`;
         const manualStatus = manualStatuses[key] || 'NORMAL';
 
-        let markerColor = layer.color;
-        let radius = 7;
-        let weight = 2;
+        let markerColor = layer.color || '#3b82f6';
         let borderColor = '#ffffff';
+        let activeIconType = layer.iconType || 'zap';
         let statusBadgeHtml = '';
 
         if (manualStatus === 'POHON') {
           markerColor = '#22c55e'; // Hijau Pohon
           borderColor = '#dcfce7';
-          radius = 11;
-          weight = 3;
+          activeIconType = 'trees';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
@@ -164,8 +289,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         } else if (manualStatus === 'KONSTRUKSI') {
           markerColor = '#a855f7'; // Ungu Temuan Konstruksi
           borderColor = '#f3e8ff';
-          radius = 11;
-          weight = 3;
+          activeIconType = 'wrench';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
@@ -175,8 +299,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         } else if (manualStatus === 'GANGGUAN') {
           markerColor = '#ef4444'; // Red Merah
           borderColor = '#fee2e2';
-          radius = 11;
-          weight = 3;
+          activeIconType = 'activity';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-black text-[11px] flex items-center gap-1.5 animate-pulse">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
@@ -186,8 +309,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
         } else if (manualStatus === 'PEMELIHARAAN') {
           markerColor = '#f97316'; // Orange Oranye
           borderColor = '#ffedd5';
-          radius = 11;
-          weight = 3;
+          activeIconType = 'wrench';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
@@ -198,8 +320,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           // Default / PENYULANG -> Menggunakan Warna Pilihan File Import / Layer Peta
           markerColor = layer.color || '#3b82f6';
           borderColor = '#ffffff';
-          radius = 8;
-          weight = 2;
+          activeIconType = layer.iconType || 'zap';
           statusBadgeHtml = `
             <div class="mt-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-black text-[11px] flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${markerColor}"></span>
@@ -208,14 +329,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           `;
         }
 
-        const circle = L.circleMarker(coord, {
-          radius: radius,
-          fillColor: markerColor,
-          color: borderColor,
-          weight: weight,
-          opacity: 1,
-          fillOpacity: 0.95
-        });
+        const markerIcon = createLeafletDivIcon(activeIconType, markerColor, borderColor, manualStatus !== 'NORMAL');
+        const marker = L.marker(coord, { icon: markerIcon });
 
         const popupContent = `
           <div class="p-2 text-slate-900 font-sans min-w-[220px]">
@@ -291,16 +406,21 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           </div>
         `;
 
-        circle.bindPopup(popupContent);
-        circle.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
+        marker.bindPopup(popupContent);
+        marker.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
           permanent: false, 
           direction: 'top',
           className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
         });
-        fg.addLayer(circle);
+
+        if (clusterGroup) {
+          clusterGroup.addLayer(marker);
+        } else {
+          fg.addLayer(marker);
+        }
       });
     });
-  }, [layers, manualStatuses]);
+  }, [layers, manualStatuses, useClustering]);
 
   // Center map on specific feeder route
   const handleLocateLayer = (layer: MapLayerItem) => {
@@ -579,54 +699,57 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
               Tidak ada lokasi feeder cocok.
             </div>
           ) : (
-            filteredLayers.map((layer) => (
-              <div
-                key={layer.id}
-                className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
-                  layer.visible
-                    ? 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm'
-                    : 'bg-slate-50/50 border-slate-100 opacity-60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {/* Checkbox visibility */}
-                  <input
-                    type="checkbox"
-                    checked={layer.visible}
-                    onChange={() => onToggleLayer(layer.id)}
-                    className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
-                  />
+            filteredLayers.map((layer) => {
+              const LayerIcon = getLayerIconComponent(layer.iconType);
+              return (
+                <div
+                  key={layer.id}
+                  className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
+                    layer.visible
+                      ? 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm'
+                      : 'bg-slate-50/50 border-slate-100 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {/* Checkbox visibility */}
+                    <input
+                      type="checkbox"
+                      checked={layer.visible}
+                      onChange={() => onToggleLayer(layer.id)}
+                      className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+                    />
 
-                  {/* Eye Toggle */}
-                  <button
-                    onClick={() => onToggleLayer(layer.id)}
-                    className="text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
-                  >
-                    {layer.visible ? (
-                      <Eye className="w-3.5 h-3.5 text-blue-600" />
-                    ) : (
-                      <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                    )}
-                  </button>
+                    {/* Eye Toggle */}
+                    <button
+                      onClick={() => onToggleLayer(layer.id)}
+                      className="text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                    >
+                      {layer.visible ? (
+                        <Eye className="w-3.5 h-3.5 text-blue-600" />
+                      ) : (
+                        <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
 
-                  {/* Color Pill */}
-                  <button
-                    onClick={() => setEditingLayer(layer)}
-                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 hover:scale-125 transition-transform cursor-pointer"
-                    style={{ backgroundColor: layer.color || '#3b82f6' }}
-                    title="Ubah warna marker file peta"
-                  />
+                    {/* Color Pill */}
+                    <button
+                      onClick={() => setEditingLayer(layer)}
+                      className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 hover:scale-125 transition-transform cursor-pointer"
+                      style={{ backgroundColor: layer.color || '#3b82f6' }}
+                      title="Ubah warna marker file peta"
+                    />
 
-                  {/* Text Details */}
-                  <div className="min-w-0">
-                    <h3 className="text-xs font-bold text-slate-800 truncate leading-tight">
-                      {layer.nama}
-                    </h3>
-                    <p className="text-[10px] text-slate-500 truncate">
-                      {layer.ruteLength} • {layer.tanggalImport}
-                    </p>
+                    {/* Text Details */}
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-slate-800 truncate leading-tight flex items-center gap-1">
+                        <LayerIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span className="truncate">{layer.nama}</span>
+                      </h3>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {layer.ruteLength} • {layer.tanggalImport}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
                 {/* Right Actions: Edit, Center & Delete */}
                 <div className="flex items-center gap-1 shrink-0">
@@ -653,8 +776,9 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                   </button>
                 </div>
               </div>
-            ))
-          )}
+            );
+          })
+        )}
         </div>
       </div>
 
@@ -726,8 +850,20 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
           )}
         </div>
 
-        {/* Top Right Map Style Selector Controls */}
+        {/* Top Right Map Style & Clustering Selector Controls */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1 p-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-md">
+          <button
+            onClick={() => setUseClustering(!useClustering)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              useClustering
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+            title="Kelompokkan marker yang berdekatan untuk meningkatkan performa visual"
+          >
+            <Layers className="w-3.5 h-3.5" /> Cluster: {useClustering ? 'ON' : 'OFF'}
+          </button>
+          <div className="w-[1px] h-4 bg-slate-200 my-auto mx-0.5" />
           <button
             onClick={() => setMapStyle('dark')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -817,11 +953,56 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
                 <select
                   value={editingLayer.kategori}
                   onChange={(e) => setEditingLayer({ ...editingLayer, kategori: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
+                  <option value="Utama">Penyulang Utama</option>
+                  <option value="Percabangan">Penyulang Percabangan</option>
                   <option value="Inspeksi">Inspeksi Jaringan</option>
                   <option value="Maintenance">Maintenance / Pemeliharaan</option>
+                  <option value="ROW">Perintisan Pohon (ROW)</option>
                 </select>
+              </div>
+
+              {/* Pemilihan Icon Marker Feeder */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Pemilihan Icon Marker Feeder
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: 'zap', label: 'Feeder (Zap)', icon: Zap },
+                    { id: 'git-branch', label: 'Percabangan', icon: GitBranch },
+                    { id: 'map-pin', label: 'Titik Lokasi', icon: MapPin },
+                    { id: 'building', label: 'Gardu GI', icon: Building2 },
+                    { id: 'gardu-dist', label: 'Gardu Dist.', icon: Cpu },
+                    { id: 'lbs', label: 'LBS (Switch)', icon: ToggleRight },
+                    { id: 'pmcb', label: 'PMCB / PMT', icon: Power },
+                    { id: 'recloser', label: 'Recloser', icon: RotateCcw },
+                    { id: 'trees', label: 'ROW / Pohon', icon: Trees },
+                    { id: 'wrench', label: 'Har / Maint.', icon: Wrench },
+                    { id: 'activity', label: 'Status / Trip', icon: Activity },
+                    { id: 'shield', label: 'Proteksi', icon: Shield }
+                  ].map((item) => {
+                    const IconComponent = item.icon;
+                    const isSelected = (editingLayer.iconType || 'zap') === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setEditingLayer({ ...editingLayer, iconType: item.id })}
+                        className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold ring-2 ring-blue-500/30'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                        title={item.label}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        <span className="text-[10px] truncate max-w-full">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Warna Marker Titik */}

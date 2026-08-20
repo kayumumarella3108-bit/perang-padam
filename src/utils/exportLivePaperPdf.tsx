@@ -93,10 +93,10 @@ export function exportLivePaperVectorPdf(data: Partial<SurveyPbPdItem>, fileName
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('PT PLN (PERSERO) UIW MALUKU DAN MALUKU UTARA - UP3 AMBON', 14, 9.5);
+  doc.text('PT PLN (PERSERO) UIW MALUKU & MALUKU UTARA - UP3 AMBON', 14, 9.5);
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
-  doc.text('UNIT LAYANAN PELANGGAN (ULP) BAGUALA | SISTEM INFORMASI PERANG PADAM', 14, 15.5);
+  doc.text('UNIT LAYANAN PELANGGAN (ULP) BAGUALA', 14, 15.5);
   doc.setFontSize(7.5);
   doc.text(`Tgl Cetak: ${new Date().toLocaleDateString('id-ID')} | Edisi: Rev 02.1`, 196, 15.5, { align: 'right' });
 

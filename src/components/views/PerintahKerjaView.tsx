@@ -577,7 +577,7 @@ export const PerintahKerjaView: React.FC<PerintahKerjaViewProps> = ({
                   <img src={PLN_LOGO_BASE64} alt="PLN Logo" className="w-14 h-16 object-contain shrink-0" />
                   <div>
                     <h2 className="text-xs font-black tracking-normal text-slate-900 leading-tight">PT PLN (Persero)</h2>
-                    <h3 className="text-[10px] font-bold text-slate-900 leading-tight">UNIT INDUK WILAYAH MALUKU DAN MALUKU UTARA</h3>
+                    <h3 className="text-[10px] font-bold text-slate-900 leading-tight">UIW MALUKU & MALUKU UTARA</h3>
                     <h4 className="text-[10px] font-bold text-slate-900 leading-tight">UP3 AMBON</h4>
                     <h4 className="text-[10px] font-bold text-slate-900 leading-tight">ULP BAGUALA</h4>
                   </div>

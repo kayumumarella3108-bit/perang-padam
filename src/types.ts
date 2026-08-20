@@ -230,7 +230,8 @@ export interface MapLayerItem {
   tiangCount: number;
   ruteLength: string;
   tanggalImport: string;
-  kategori: 'ROW' | 'Inspeksi' | 'Maintenance';
+  kategori: 'Utama' | 'Percabangan' | 'ROW' | 'Inspeksi' | 'Maintenance' | string;
+  iconType?: 'zap' | 'git-branch' | 'map-pin' | 'building' | 'gardu-dist' | 'lbs' | 'pmcb' | 'recloser' | 'trees' | 'wrench' | 'activity' | 'shield' | string;
   visible: boolean;
   color: string;
   coordinates: [number, number][];

@@ -296,10 +296,10 @@ export const LivePaperPbPdDocument: React.FC<LivePaperPbPdDocumentProps> = ({
                 PT PLN (PERSERO)
               </h1>
               <p className="text-[10.5px] font-bold text-slate-800 leading-tight">
-                DISTRIBUSI MALUKU & MALUKU UTARA — UP3 AMBON
+                UIW MALUKU & MALUKU UTARA — UP3 AMBON
               </p>
               <p className="text-[9.5px] text-slate-600 leading-tight">
-                UNIT LAYANAN PELANGGAN (ULP) BAGUALA | SISTEM INFORMASI PERANG PADAM
+                UNIT LAYANAN PELANGGAN (ULP) BAGUALA
               </p>
             </div>
           </div>

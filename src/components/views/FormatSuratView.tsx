@@ -1218,8 +1218,8 @@ export const FormatSuratView: React.FC<FormatSuratViewProps> = ({ currentUser })
               <div className="flex items-start justify-between border-b-2 border-double border-slate-800 pb-3 mb-6">
                 <div>
                   <h1 className="text-sm font-extrabold text-blue-800 leading-none">PT PLN (PERSERO)</h1>
-                  <h2 className="text-xs font-black text-slate-800 leading-none mt-1">DISTRIBUSI SULUTTENGGO</h2>
-                  <h3 className="text-[11px] font-bold text-slate-700 leading-none mt-0.5">ULP BAGUA - SEKTOR MANADO</h3>
+                  <h2 className="text-xs font-black text-slate-800 leading-none mt-1">UIW MALUKU & MALUKU UTARA — UP3 AMBON</h2>
+                  <h3 className="text-[11px] font-bold text-slate-700 leading-none mt-0.5">UNIT LAYANAN PELANGGAN (ULP) BAGUALA</h3>
                   <p className="text-[9px] text-slate-400 mt-1 leading-normal font-mono">
                     Jl. Trans Sulawesi No. 12 Bagua, Manado | Telp: 0431-123456 | Email: ulp.bagua@pln.co.id
                   </p>
