@@ -10,7 +10,10 @@ import {
   Info,
   RefreshCw,
   Zap,
-  Check
+  Check,
+  Calendar,
+  Building2,
+  Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { PengukuranGardu, MasterGardu, Penyulang } from '../../types';
@@ -23,6 +26,79 @@ interface ImportPengukuranModalProps {
   penyulangList?: Penyulang[];
 }
 
+export const parseExcelDate = (val: any): string | null => {
+  if (val === undefined || val === null || val === '') return null;
+
+  // 1. If XLSX parsed it as a JS Date object
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 2. If it's an Excel numeric serial number
+  if (typeof val === 'number') {
+    if (val > 1000) {
+      try {
+        const utcDays = val - 25569;
+        const utcValue = utcDays * 86400;
+        const dateInfo = new Date(utcValue * 1000);
+        if (!isNaN(dateInfo.getTime())) {
+          const y = dateInfo.getUTCFullYear();
+          const m = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(dateInfo.getUTCDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+      } catch {}
+    }
+  }
+
+  const str = String(val).trim();
+  if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined' || str === '-' || str === '#n/a') {
+    return null;
+  }
+
+  // 3. Regex ISO: YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+  const isoMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) {
+    const y = isoMatch[1];
+    const m = String(parseInt(isoMatch[2], 10)).padStart(2, '0');
+    const d = String(parseInt(isoMatch[3], 10)).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 4. Regex DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (dmyMatch) {
+    const d = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
+    const m = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
+    const y = dmyMatch[3];
+    return `${y}-${m}-${d}`;
+  }
+
+  // 5. Regex DD-MM-YY or DD/MM/YY
+  const dmyShortMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+  if (dmyShortMatch) {
+    const d = String(parseInt(dmyShortMatch[1], 10)).padStart(2, '0');
+    const m = String(parseInt(dmyShortMatch[2], 10)).padStart(2, '0');
+    const y = '20' + dmyShortMatch[3];
+    return `${y}-${m}-${d}`;
+  }
+
+  // 6. Generic Date parse
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
+};
+
 export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
   isOpen,
   onClose,
@@ -34,9 +110,11 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
   const [parsedRows, setParsedRows] = useState<PengukuranGardu[]>([]);
+  const [skippedCount, setSkippedCount] = useState(0);
   const [validationReport, setValidationReport] = useState<{
     total: number;
     validCount: number;
+    skippedCount: number;
     errors: string[];
   } | null>(null);
 
@@ -44,75 +122,65 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Generate and download sample Excel template for Pengukuran Gardu
+  // Generate and download sample Excel template for Pengukuran Gardu based on Master Data Gardu Lama
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'No. Gardu': 'BG-01',
-        'Tanggal Ukur (YYYY-MM-DD)': '2026-08-20',
-        'Unit PLN': 'ULP Baguala',
-        'Penyulang': 'PASSO',
-        'Daya (kVA)': 160,
-        'Petugas Ukur': 'Tim Har-Dist ULP Baguala',
-        'Alamat Gardu': 'Jl. Syaranualo Passo',
-        'Arus Total R (A)': 185,
-        'Arus Total S (A)': 190,
-        'Arus Total T (A)': 180,
-        'Arus Total N (A)': 15,
-        'Tegangan VR-N (V)': 220,
-        'Tegangan VS-N (V)': 222,
-        'Tegangan VT-N (V)': 219,
-        'Tegangan VR-S (V)': 380,
-        'Tegangan VS-T (V)': 382,
-        'Tegangan VR-T (V)': 381,
-        'Cos Phi / TPF R': 0.92,
-        'Cos Phi / TPF S': 0.92,
-        'Cos Phi / TPF T': 0.92,
-        'Jurusan 1 - Arus R (A)': 95,
-        'Jurusan 1 - Arus S (A)': 98,
-        'Jurusan 1 - Arus T (A)': 92,
-        'Jurusan 1 - Arus N (A)': 8,
-        'Jurusan 2 - Arus R (A)': 90,
-        'Jurusan 2 - Arus S (A)': 92,
-        'Jurusan 2 - Arus T (A)': 88,
-        'Jurusan 2 - Arus N (A)': 7
-      },
-      {
-        'No. Gardu': 'BG-02',
-        'Tanggal Ukur (YYYY-MM-DD)': '2026-08-20',
-        'Unit PLN': 'ULP Baguala',
-        'Penyulang': 'PASSO',
-        'Daya (kVA)': 100,
-        'Petugas Ukur': 'Tim Yantek Baguala',
-        'Alamat Gardu': 'Jl. Raya Laha Passo',
-        'Arus Total R (A)': 110,
-        'Arus Total S (A)': 115,
-        'Arus Total T (A)': 108,
-        'Arus Total N (A)': 12,
-        'Tegangan VR-N (V)': 221,
-        'Tegangan VS-N (V)': 220,
-        'Tegangan VT-N (V)': 218,
-        'Tegangan VR-S (V)': 380,
-        'Tegangan VS-T (V)': 381,
-        'Tegangan VR-T (V)': 379,
-        'Cos Phi / TPF R': 0.91,
-        'Cos Phi / TPF S': 0.91,
-        'Cos Phi / TPF T': 0.91,
-        'Jurusan 1 - Arus R (A)': 110,
-        'Jurusan 1 - Arus S (A)': 115,
-        'Jurusan 1 - Arus T (A)': 108,
-        'Jurusan 1 - Arus N (A)': 12,
-        'Jurusan 2 - Arus R (A)': 0,
-        'Jurusan 2 - Arus S (A)': 0,
-        'Jurusan 2 - Arus T (A)': 0,
-        'Jurusan 2 - Arus N (A)': 0
-      }
-    ];
+    // Generate sample rows using real Gardu Lama from master data if available
+    const sampleGarduList = masterGarduList.length > 0
+      ? masterGarduList.slice(0, 5)
+      : [
+          { noGarduLama: 'BG001', unit: 'ULP Baguala', penyulang: 'PASSO', daya: 160, alamatGardu: 'Jl. Raya Passo' },
+          { noGarduLama: 'BG002', unit: 'ULP Baguala', penyulang: 'PASSO', daya: 100, alamatGardu: 'Jl. Lateri Utama' },
+          { noGarduLama: 'BG003', unit: 'ULP Baguala', penyulang: 'PASSO', daya: 250, alamatGardu: 'Jl. Halong Baru' }
+        ];
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const templateData = sampleGarduList.map((g, i) => ({
+      'No. Gardu Lama': g.noGarduLama || `BG00${i + 1}`,
+      'Tanggal Ukur (YYYY-MM-DD)': todayStr,
+      'Unit PLN': g.unit || 'ULP Baguala',
+      'Penyulang': g.penyulang || 'PASSO',
+      'Daya (kVA)': g.daya || 160,
+      'Petugas Ukur': 'Tim Har-Dist ULP Baguala',
+      'Alamat Gardu': g.alamatGardu || 'Jl. Raya Baguala, Ambon',
+      'Arus Total R (A)': 180 + i * 5,
+      'Arus Total S (A)': 185 + i * 5,
+      'Arus Total T (A)': 175 + i * 5,
+      'Arus Total N (A)': 15 + i * 2,
+      'Tegangan VR-N (V)': 220,
+      'Tegangan VS-N (V)': 222,
+      'Tegangan VT-N (V)': 219,
+      'Tegangan VR-S (V)': 380,
+      'Tegangan VS-T (V)': 382,
+      'Tegangan VR-T (V)': 381,
+      'Cos Phi R': 0.92,
+      'Cos Phi S': 0.92,
+      'Cos Phi T': 0.92,
+      'THD R (%)': 2.5,
+      'THD S (%)': 2.5,
+      'THD T (%)': 2.5,
+      'Jurusan 1 - Arus R (A)': 95 + i * 2,
+      'Jurusan 1 - Arus S (A)': 98 + i * 2,
+      'Jurusan 1 - Arus T (A)': 92 + i * 2,
+      'Jurusan 1 - Arus N (A)': 8,
+      'Jurusan 2 - Arus R (A)': 85 + i * 3,
+      'Jurusan 2 - Arus S (A)': 87 + i * 3,
+      'Jurusan 2 - Arus T (A)': 83 + i * 3,
+      'Jurusan 2 - Arus N (A)': 7,
+      'Jurusan 3 - Arus R (A)': 0,
+      'Jurusan 3 - Arus S (A)': 0,
+      'Jurusan 3 - Arus T (A)': 0,
+      'Jurusan 3 - Arus N (A)': 0,
+      'Jurusan 4 - Arus R (A)': 0,
+      'Jurusan 4 - Arus S (A)': 0,
+      'Jurusan 4 - Arus T (A)': 0,
+      'Jurusan 4 - Arus N (A)': 0
+    }));
 
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data_Pengukuran_Beban');
-    XLSX.writeFile(wb, 'Template_Import_Pengukuran_Beban_Gardu.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Data_Pengukuran_Gardu_Lama');
+    XLSX.writeFile(wb, 'Template_Import_Pengukuran_Gardu_Lama.xlsx');
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -145,6 +213,7 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
     setFileName(file.name);
     setIsProcessing(true);
     setParsedRows([]);
+    setSkippedCount(0);
     setValidationReport(null);
 
     const reader = new FileReader();
@@ -160,6 +229,7 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
           setValidationReport({
             total: 0,
             validCount: 0,
+            skippedCount: 0,
             errors: ['File Excel kosong atau tidak memiliki data baris yang valid.']
           });
           setIsProcessing(false);
@@ -168,6 +238,7 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
 
         const items: PengukuranGardu[] = [];
         const errors: string[] = [];
+        let skipped = 0;
 
         rawJson.forEach((row, idx) => {
           const findVal = (...keys: string[]) => {
@@ -190,78 +261,113 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
             return isNaN(parsed) ? fallback : parsed;
           };
 
-          const noGarduRaw = findVal(
-            'No. Gardu', 'No Gardu', 'KODE GARDU', 'NO_GARDU', 'Gardu', 'No. Gardu Baru', 'GARDU', 'Nama Gardu'
+          // 1. DATA GARDU: Disesuaikan dengan No. Gardu Lama Saja
+          const noGarduLamaRaw = findVal(
+            'No. Gardu Lama', 'No Gardu Lama', 'NO_GARDU_LAMA', 'Gardu Lama', 'KODE GARDU LAMA',
+            'No. Gardu', 'No Gardu', 'KODE GARDU', 'NO_GARDU', 'Gardu', 'GARDU', 'Nama Gardu', 'Kode', 'GARDU_LAMA'
           );
-          const noGardu = String(noGarduRaw || `GARDU-${idx + 1}`).trim();
+          const noGarduInput = String(noGarduLamaRaw || '').trim();
 
-          // Auto-match master gardu info if available
-          const matchedMaster = masterGarduList.find(
-            (mg) =>
-              (mg.noGarduBaru && mg.noGarduBaru.trim().toLowerCase() === noGardu.toLowerCase()) ||
-              (mg.noGarduLama && mg.noGarduLama.trim().toLowerCase() === noGardu.toLowerCase()) ||
-              (mg.ssotNumber && mg.ssotNumber !== '-' && mg.ssotNumber.trim().toLowerCase() === noGardu.toLowerCase())
-          );
-
-          let tglVal = findVal('Tanggal Ukur (YYYY-MM-DD)', 'Tanggal Ukur', 'Tanggal', 'TGL_UKUR', 'Tgl Ukur', 'Tgl', 'DATE');
-          let tglUkur = new Date().toISOString().split('T')[0];
-          if (tglVal) {
-            if (tglVal instanceof Date) {
-              tglUkur = tglVal.toISOString().split('T')[0];
-            } else {
-              const str = String(tglVal).trim();
-              if (str.length >= 10 && str.includes('-')) {
-                tglUkur = str.substring(0, 10);
-              }
-            }
+          if (!noGarduInput) {
+            skipped++;
+            errors.push(`Baris ${idx + 1}: Ditolak / Tidak Terupload karena No. Gardu Lama kosong.`);
+            return;
           }
 
+          // Pencocokan Data Gardu Khusus Berdasarkan No. Gardu Lama di Master Data
+          const matchedMaster = masterGarduList.find(
+            (mg) =>
+              mg.noGarduLama &&
+              mg.noGarduLama.trim().toLowerCase() === noGarduInput.toLowerCase()
+          ) || masterGarduList.find(
+            (mg) =>
+              (mg.noGarduBaru && mg.noGarduBaru.trim().toLowerCase() === noGarduInput.toLowerCase()) ||
+              (mg.ssotNumber && mg.ssotNumber !== '-' && mg.ssotNumber.trim().toLowerCase() === noGarduInput.toLowerCase())
+          );
+
+          // Selalu prioritaskan format Gardu Lama
+          const finalNoGarduLama = matchedMaster?.noGarduLama || noGarduInput;
+
+          // 2. TANGGAL UKUR: Harus disesuaikan dengan data Excel. Jika belum ada tanggal, TIDAK BISA TERUPLOAD
+          const tglVal = findVal(
+            'Tanggal Ukur (YYYY-MM-DD)', 'Tanggal Ukur', 'Tanggal', 'TGL_UKUR', 'Tgl Ukur', 'Tgl', 'DATE',
+            'TANGGAL PENGUKURAN', 'TGL UKUR', 'WAKTU UKUR', 'TGL_PENGUKURAN', 'TANGGAL'
+          );
+
+          const tglUkur = parseExcelDate(tglVal);
+
+          if (!tglUkur) {
+            skipped++;
+            errors.push(`Baris ${idx + 1} (Gardu: ${finalNoGarduLama}): Ditolak / Tidak Terupload karena Tanggal Ukur belum diisi atau tidak sesuai format.`);
+            return; // STRICT: Row WITHOUT a date cannot be uploaded
+          }
+
+          // 3. SEMUA DATA INPUT OTOMATIS TERINPUT SESUAI NILAI EXCEL
           const unit = String(findVal('Unit PLN', 'Unit', 'ULP', 'Unit ULP') || matchedMaster?.unit || 'ULP Baguala');
-          const penyulang = String(findVal('Penyulang', 'Nama Penyulang', 'FEEDER') || matchedMaster?.penyulang || 'PASSO');
-          const dayaKva = parseNum(findVal('Daya (kVA)', 'Daya', 'KVA', 'Daya Trafo'), matchedMaster?.daya || 160);
-          const petugas = String(findVal('Petugas Ukur', 'Petugas', 'Tim Ukur', 'Tim', 'PETUGAS') || 'Tim Har-Dist ULP');
-          const alamat = String(findVal('Alamat Gardu', 'Alamat', 'Lokasi', 'LOKASI GARDU') || matchedMaster?.alamatGardu || 'Jl. Raya Baguala, Ambon');
+          const penyulang = String(findVal('Penyulang', 'Nama Penyulang', 'FEEDER', 'Penyulang Trafo') || matchedMaster?.penyulang || 'PASSO');
+          const dayaKva = parseNum(findVal('Daya (kVA)', 'Daya', 'KVA', 'Daya Trafo', 'Kapasitas Trafo'), matchedMaster?.daya || 160);
+          const petugas = String(findVal('Petugas Ukur', 'Petugas', 'Tim Ukur', 'Tim', 'PETUGAS', 'PETUGAS UKUR', 'NAMA PETUGAS') || 'Tim Har-Dist ULP');
+          const alamat = String(findVal('Alamat Gardu', 'Alamat', 'Lokasi', 'LOKASI GARDU', 'ALAMAT') || matchedMaster?.alamatGardu || 'Jl. Raya Baguala, Ambon');
 
-          // Arus Total
-          const iRTotal = parseNum(findVal('Arus Total R (A)', 'Arus R Total', 'I_R', 'IR', 'Arus R', 'R Total'), 100);
-          const iSTotal = parseNum(findVal('Arus Total S (A)', 'Arus S Total', 'I_S', 'IS', 'Arus S', 'S Total'), 105);
-          const iTTotal = parseNum(findVal('Arus Total T (A)', 'Arus T Total', 'I_T', 'IT', 'Arus T', 'T Total'), 98);
-          const iNTotal = parseNum(findVal('Arus Total N (A)', 'Arus N Total', 'I_N', 'IN', 'Arus N', 'N Total'), 10);
+          // Arus Total R, S, T, N
+          const iRTotal = parseNum(findVal('Arus Total R (A)', 'Arus Total R', 'Arus R Total', 'I_R', 'IR', 'Arus R', 'R Total', 'I R', 'IR (A)', 'R (A)'), 0);
+          const iSTotal = parseNum(findVal('Arus Total S (A)', 'Arus Total S', 'Arus S Total', 'I_S', 'IS', 'Arus S', 'S Total', 'I S', 'IS (A)', 'S (A)'), 0);
+          const iTTotal = parseNum(findVal('Arus Total T (A)', 'Arus Total T', 'Arus T Total', 'I_T', 'IT', 'Arus T', 'T Total', 'I T', 'IT (A)', 'T (A)'), 0);
+          const iNTotal = parseNum(findVal('Arus Total N (A)', 'Arus Total N', 'Arus N Total', 'I_N', 'IN', 'Arus N', 'N Total', 'I N', 'IN (A)', 'N (A)'), 0);
 
-          // Tegangan
-          const vRN = parseNum(findVal('Tegangan VR-N (V)', 'V_RN', 'VRN', 'VR-N', 'V R-N'), 220);
-          const vSN = parseNum(findVal('Tegangan VS-N (V)', 'V_SN', 'VSN', 'VS-N', 'V S-N'), 220);
-          const vTN = parseNum(findVal('Tegangan VT-N (V)', 'V_TN', 'VTN', 'VT-N', 'V T-N'), 220);
-          const vRS = parseNum(findVal('Tegangan VR-S (V)', 'V_RS', 'VRS', 'VR-S'), 380);
-          const vST = parseNum(findVal('Tegangan VS-T (V)', 'V_ST', 'VST', 'VS-T'), 380);
-          const vRT = parseNum(findVal('Tegangan VR-T (V)', 'V_RT', 'VRT', 'VR-T'), 380);
+          // Tegangan Fasa - Netral
+          const vRN = parseNum(findVal('Tegangan VR-N (V)', 'Tegangan VR-N', 'V_RN', 'VRN', 'VR-N', 'V R-N', 'VR_N', 'VR N (V)'), 220);
+          const vSN = parseNum(findVal('Tegangan VS-N (V)', 'Tegangan VS-N', 'V_SN', 'VSN', 'VS-N', 'V S-N', 'VS_N', 'VS N (V)'), 220);
+          const vTN = parseNum(findVal('Tegangan VT-N (V)', 'Tegangan VT-N', 'V_TN', 'VTN', 'VT-N', 'V T-N', 'VT_N', 'VT N (V)'), 220);
+
+          // Tegangan Fasa - Fasa
+          const vRS = parseNum(findVal('Tegangan VR-S (V)', 'Tegangan VR-S', 'V_RS', 'VRS', 'VR-S', 'V R-S', 'VR_S', 'VR S (V)'), 380);
+          const vST = parseNum(findVal('Tegangan VS-T (V)', 'Tegangan VS-T', 'V_ST', 'VST', 'VS-T', 'V S-T', 'VS_T', 'VS T (V)'), 380);
+          const vRT = parseNum(findVal('Tegangan VR-T (V)', 'Tegangan VR-T', 'V_RT', 'VRT', 'VR-T', 'V R-T', 'VR_T', 'VR T (V)', 'Tegangan VT-R (V)', 'VTR', 'VT-R'), 380);
 
           // Power factor / Cosphi
-          const tpfR = parseNum(findVal('Cos Phi / TPF R', 'Cos Phi R', 'TPF R', 'Cosphi'), 0.92);
-          const tpfS = parseNum(findVal('Cos Phi / TPF S', 'Cos Phi S', 'TPF S'), 0.92);
-          const tpfT = parseNum(findVal('Cos Phi / TPF T', 'Cos Phi T', 'TPF T'), 0.92);
+          const tpfR = parseNum(findVal('Cos Phi R', 'Cos Phi / TPF R', 'Cosphi R', 'TPF R', 'Cos Phi', 'Cosphi', 'PF R', 'PF'), 0.92);
+          const tpfS = parseNum(findVal('Cos Phi S', 'Cos Phi / TPF S', 'Cosphi S', 'TPF S', 'Cos Phi', 'Cosphi', 'PF S', 'PF'), 0.92);
+          const tpfT = parseNum(findVal('Cos Phi T', 'Cos Phi / TPF T', 'Cosphi T', 'TPF T', 'Cos Phi', 'Cosphi', 'PF T', 'PF'), 0.92);
+
+          // THD
+          const thdR = parseNum(findVal('THD R (%)', 'THD R', 'THD_R', 'THD'), 2.5);
+          const thdS = parseNum(findVal('THD S (%)', 'THD S', 'THD_S', 'THD'), 2.5);
+          const thdT = parseNum(findVal('THD T (%)', 'THD T', 'THD_T', 'THD'), 2.5);
 
           // Jurusan 1
-          const j1_iR = parseNum(findVal('Jurusan 1 - Arus R (A)', 'J1_IR', 'J1 IR'), iRTotal);
-          const j1_iS = parseNum(findVal('Jurusan 1 - Arus S (A)', 'J1_IS', 'J1 IS'), iSTotal);
-          const j1_iT = parseNum(findVal('Jurusan 1 - Arus T (A)', 'J1_IT', 'J1 IT'), iTTotal);
-          const j1_iN = parseNum(findVal('Jurusan 1 - Arus N (A)', 'J1_IN', 'J1 IN'), iNTotal);
+          const j1_iR = parseNum(findVal('Jurusan 1 - Arus R (A)', 'Jurusan 1 - Arus R', 'J1_IR', 'J1 IR', 'J1 R', 'Jurusan 1 R', 'J1_R'), iRTotal > 0 ? iRTotal : 0);
+          const j1_iS = parseNum(findVal('Jurusan 1 - Arus S (A)', 'Jurusan 1 - Arus S', 'J1_IS', 'J1 IS', 'J1 S', 'Jurusan 1 S', 'J1_S'), iSTotal > 0 ? iSTotal : 0);
+          const j1_iT = parseNum(findVal('Jurusan 1 - Arus T (A)', 'Jurusan 1 - Arus T', 'J1_IT', 'J1 IT', 'J1 T', 'Jurusan 1 T', 'J1_T'), iTTotal > 0 ? iTTotal : 0);
+          const j1_iN = parseNum(findVal('Jurusan 1 - Arus N (A)', 'Jurusan 1 - Arus N', 'J1_IN', 'J1 IN', 'J1 N', 'Jurusan 1 N', 'J1_N'), iNTotal > 0 ? iNTotal : 0);
 
           // Jurusan 2
-          const j2_iR = parseNum(findVal('Jurusan 2 - Arus R (A)', 'J2_IR', 'J2 IR'), 0);
-          const j2_iS = parseNum(findVal('Jurusan 2 - Arus S (A)', 'J2_IS', 'J2 IS'), 0);
-          const j2_iT = parseNum(findVal('Jurusan 2 - Arus T (A)', 'J2_IT', 'J2 IT'), 0);
-          const j2_iN = parseNum(findVal('Jurusan 2 - Arus N (A)', 'J2_IN', 'J2 IN'), 0);
+          const j2_iR = parseNum(findVal('Jurusan 2 - Arus R (A)', 'Jurusan 2 - Arus R', 'J2_IR', 'J2 IR', 'J2 R', 'Jurusan 2 R', 'J2_R'), 0);
+          const j2_iS = parseNum(findVal('Jurusan 2 - Arus S (A)', 'Jurusan 2 - Arus S', 'J2_IS', 'J2 IS', 'J2 S', 'Jurusan 2 S', 'J2_S'), 0);
+          const j2_iT = parseNum(findVal('Jurusan 2 - Arus T (A)', 'Jurusan 2 - Arus T', 'J2_IT', 'J2 IT', 'J2 T', 'Jurusan 2 T', 'J2_T'), 0);
+          const j2_iN = parseNum(findVal('Jurusan 2 - Arus N (A)', 'Jurusan 2 - Arus N', 'J2_IN', 'J2 IN', 'J2 N', 'Jurusan 2 N', 'J2_N'), 0);
+
+          // Jurusan 3
+          const j3_iR = parseNum(findVal('Jurusan 3 - Arus R (A)', 'Jurusan 3 - Arus R', 'J3_IR', 'J3 IR', 'J3 R', 'Jurusan 3 R', 'J3_R'), 0);
+          const j3_iS = parseNum(findVal('Jurusan 3 - Arus S (A)', 'Jurusan 3 - Arus S', 'J3_IS', 'J3 IS', 'J3 S', 'Jurusan 3 S', 'J3_S'), 0);
+          const j3_iT = parseNum(findVal('Jurusan 3 - Arus T (A)', 'Jurusan 3 - Arus T', 'J3_IT', 'J3 IT', 'J3 T', 'Jurusan 3 T', 'J3_T'), 0);
+          const j3_iN = parseNum(findVal('Jurusan 3 - Arus N (A)', 'Jurusan 3 - Arus N', 'J3_IN', 'J3 IN', 'J3 N', 'Jurusan 3 N', 'J3_N'), 0);
+
+          // Jurusan 4
+          const j4_iR = parseNum(findVal('Jurusan 4 - Arus R (A)', 'Jurusan 4 - Arus R', 'J4_IR', 'J4 IR', 'J4 R', 'Jurusan 4 R', 'J4_R'), 0);
+          const j4_iS = parseNum(findVal('Jurusan 4 - Arus S (A)', 'Jurusan 4 - Arus S', 'J4_IS', 'J4 IS', 'J4 S', 'Jurusan 4 S', 'J4_S'), 0);
+          const j4_iT = parseNum(findVal('Jurusan 4 - Arus T (A)', 'Jurusan 4 - Arus T', 'J4_IT', 'J4 IT', 'J4 T', 'Jurusan 4 T', 'J4_T'), 0);
+          const j4_iN = parseNum(findVal('Jurusan 4 - Arus N (A)', 'Jurusan 4 - Arus N', 'J4_IN', 'J4 IN', 'J4 N', 'Jurusan 4 N', 'J4_N'), 0);
 
           const newPengukuran: PengukuranGardu = {
             id: `UKUR_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 4)}`,
             garduId: matchedMaster?.id || '',
-            noGardu,
+            noGardu: finalNoGarduLama, // Sesuai No. Gardu Lama
             unit,
             penyulang,
             dayaKva,
             alamat,
-            tanggalUkur,
+            tanggalUkur: tglUkur, // Disesuaikan dengan data Excel
             petugas,
             iRTotal,
             iSTotal,
@@ -273,9 +379,9 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
             vRS,
             vST,
             vRT,
-            thdR: 2.5,
-            thdS: 2.5,
-            thdT: 2.5,
+            thdR,
+            thdS,
+            thdT,
             iPeakR: Math.round(iRTotal * 1.15),
             iPeakS: Math.round(iSTotal * 1.15),
             iPeakT: Math.round(iTTotal * 1.15),
@@ -324,42 +430,42 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
             },
             jurusan3: {
               nama: 'JURUSAN 3',
-              iRTotal: 0,
-              iSTotal: 0,
-              iTTotal: 0,
-              iNTotal: 0,
+              iRTotal: j3_iR,
+              iSTotal: j3_iS,
+              iTTotal: j3_iT,
+              iNTotal: j3_iN,
               vRN,
               vSN,
               vTN,
               vRS,
               vST,
               vRT,
-              iPeakR: 0,
-              iPeakS: 0,
-              iPeakT: 0,
-              tpfR: 0.92,
-              tpfS: 0.92,
-              tpfT: 0.92,
+              iPeakR: Math.round(j3_iR * 1.15),
+              iPeakS: Math.round(j3_iS * 1.15),
+              iPeakT: Math.round(j3_iT * 1.15),
+              tpfR,
+              tpfS,
+              tpfT,
               titikUkur: 'Pangkal Jurusan 3'
             },
             jurusan4: {
               nama: 'JURUSAN 4',
-              iRTotal: 0,
-              iSTotal: 0,
-              iTTotal: 0,
-              iNTotal: 0,
+              iRTotal: j4_iR,
+              iSTotal: j4_iS,
+              iTTotal: j4_iT,
+              iNTotal: j4_iN,
               vRN,
               vSN,
               vTN,
               vRS,
               vST,
               vRT,
-              iPeakR: 0,
-              iPeakS: 0,
-              iPeakT: 0,
-              tpfR: 0.92,
-              tpfS: 0.92,
-              tpfT: 0.92,
+              iPeakR: Math.round(j4_iR * 1.15),
+              iPeakS: Math.round(j4_iS * 1.15),
+              iPeakT: Math.round(j4_iT * 1.15),
+              tpfR,
+              tpfS,
+              tpfT,
               titikUkur: 'Pangkal Jurusan 4'
             },
             createdAt: new Date().toISOString()
@@ -369,15 +475,18 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
         });
 
         setParsedRows(items);
+        setSkippedCount(skipped);
         setValidationReport({
           total: rawJson.length,
           validCount: items.length,
+          skippedCount: skipped,
           errors
         });
       } catch (err: any) {
         setValidationReport({
           total: 0,
           validCount: 0,
+          skippedCount: 0,
           errors: [`Gagal memproses file Excel: ${err.message || 'Format file tidak didukung.'}`]
         });
       } finally {
@@ -406,7 +515,7 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
             <div>
               <h2 className="text-base font-bold tracking-tight">Import Data Pengukuran Beban Gardu</h2>
               <p className="text-xs text-slate-400">
-                Unggah file Excel (.xlsx / .xls) untuk mengimpor histori pengukuran arus &amp; tegangan trafo
+                Pencocokan berbasis <b>No. Gardu Lama</b> &amp; validasi ketat <b>Tanggal Ukur</b> sesuai file Excel
               </p>
             </div>
           </div>
@@ -424,8 +533,8 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
           <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <Info className="w-4 h-4 text-blue-600 shrink-0" />
-              <div className="text-xs text-blue-900">
-                <span className="font-bold">Gunakan Format Kolom Standar PLN:</span> No. Gardu, Tanggal Ukur, Penyulang, Daya kVA, Arus Total R/S/T/N, Tegangan VR-N/VS-N/VT-N.
+              <div className="text-xs text-blue-900 leading-relaxed">
+                <span className="font-bold">Ketentuan Import:</span> Data gardu disesuaikan dengan <b>No. Gardu Lama</b>. Baris tanpa tanggal ukur tidak akan terupload. Semua nilai arus, tegangan, cos phi &amp; jurusan otomatis terinput.
               </div>
             </div>
             <button
@@ -433,7 +542,7 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
               className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download Template Excel</span>
+              <span>Download Template Excel (.xlsx)</span>
             </button>
           </div>
 
@@ -491,28 +600,37 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
           {/* Validation & Preview Summary */}
           {validationReport && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-600">Total Baris Terbaca:</span>
+                  <span className="text-xs font-medium text-slate-600">Total Baris:</span>
                   <span className="text-sm font-black text-slate-900">{validationReport.total} Baris</span>
                 </div>
                 <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex items-center justify-between">
-                  <span className="text-xs font-medium text-emerald-800">Siap Diimpor / Upload:</span>
+                  <span className="text-xs font-medium text-emerald-800">Valid &amp; Siap Upload:</span>
                   <span className="text-sm font-black text-emerald-700 flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4" />
                     {validationReport.validCount} Pengukuran
                   </span>
                 </div>
+                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                  validationReport.skippedCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-500'
+                }`}>
+                  <span className="text-xs font-medium">Ditolak / Dilewati:</span>
+                  <span className="text-sm font-black flex items-center gap-1">
+                    {validationReport.skippedCount > 0 && <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                    {validationReport.skippedCount} Baris
+                  </span>
+                </div>
               </div>
 
-              {/* Error list if any */}
+              {/* Error / Warning list if any */}
               {validationReport.errors.length > 0 && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-800 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5 text-rose-900">
-                    <AlertTriangle className="w-4 h-4 text-rose-600" />
-                    <span>Catatan Validasi File:</span>
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-800 space-y-1 max-h-36 overflow-y-auto">
+                  <div className="font-bold flex items-center gap-1.5 text-rose-900 sticky top-0 bg-rose-50 pb-1">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>Catatan Validasi ({validationReport.errors.length} Baris Ditolak):</span>
                   </div>
-                  <ul className="list-disc pl-5 space-y-0.5">
+                  <ul className="list-disc pl-5 space-y-0.5 font-medium">
                     {validationReport.errors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -526,45 +644,55 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                       <Activity className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Pratinjau Data Pengukuran Gardu ({parsedRows.length})</span>
+                      <span>Pratinjau Data Pengukuran Gardu Lama ({parsedRows.length})</span>
                     </h3>
                     <span className="text-[10px] text-slate-500 font-medium">Menampilkan maks 10 data pertama</span>
                   </div>
 
-                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto shadow-xs">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[9px] sticky top-0 border-b border-slate-200">
+                      <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase text-[9px] sticky top-0 border-b border-slate-200">
                         <tr>
-                          <th className="py-2 px-3">No. Gardu</th>
-                          <th className="py-2 px-3">Tgl Ukur &amp; Petugas</th>
-                          <th className="py-2 px-3">Penyulang &amp; Daya</th>
-                          <th className="py-2 px-3 text-center">Arus Total R/S/T/N</th>
-                          <th className="py-2 px-3 text-center">Tegangan V R-N/S-N/T-N</th>
+                          <th className="py-2.5 px-3">No. Gardu Lama</th>
+                          <th className="py-2.5 px-3">Tanggal Ukur</th>
+                          <th className="py-2.5 px-3">Penyulang &amp; Daya</th>
+                          <th className="py-2.5 px-3 text-center">Arus Total R/S/T (N)</th>
+                          <th className="py-2.5 px-3 text-center">Tegangan VR-N/VS-N/VT-N</th>
+                          <th className="py-2.5 px-3 text-center">Cos Phi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                         {parsedRows.slice(0, 10).map((p, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-2 px-3 font-bold text-blue-900">
-                              <div>{p.noGardu}</div>
-                              <div className="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">{p.alamat}</div>
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2.5 px-3 font-bold text-blue-900">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                                <span>{p.noGardu}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-normal truncate max-w-[130px]">{p.alamat}</div>
                             </td>
-                            <td className="py-2 px-3">
-                              <div className="font-semibold text-slate-800">{p.tanggalUkur}</div>
-                              <div className="text-[10px] text-slate-500">{p.petugas}</div>
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-emerald-800 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-emerald-600" />
+                                <span>{p.tanggalUkur}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 truncate max-w-[120px]">{p.petugas}</div>
                             </td>
-                            <td className="py-2 px-3">
+                            <td className="py-2.5 px-3">
                               <span className="font-semibold text-slate-800">{p.penyulang}</span>
                               <div className="text-[10px] font-bold text-blue-700">{p.dayaKva} kVA</div>
                             </td>
-                            <td className="py-2 px-3 text-center font-bold text-slate-700">
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">
                               <span className="text-blue-700">{p.iRTotal}</span> / {' '}
                               <span className="text-amber-700">{p.iSTotal}</span> / {' '}
-                              <span className="text-rose-700">{p.iTTotal}</span> | {' '}
-                              <span className="text-slate-500">N:{p.iNTotal}A</span>
+                              <span className="text-rose-700">{p.iTTotal}</span> <br/>
+                              <span className="text-[10px] text-slate-500 font-normal">N: {p.iNTotal} A</span>
                             </td>
-                            <td className="py-2 px-3 text-center font-semibold text-slate-600">
+                            <td className="py-2.5 px-3 text-center font-semibold text-slate-600 text-[11px]">
                               {p.vRN}V / {p.vSN}V / {p.vTN}V
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-bold text-indigo-700">
+                              {p.tpfR || 0.92}
                             </td>
                           </tr>
                         ))}
@@ -602,3 +730,4 @@ export const ImportPengukuranModal: React.FC<ImportPengukuranModalProps> = ({
     </div>
   );
 };
+

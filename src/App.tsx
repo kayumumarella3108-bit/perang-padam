@@ -1334,6 +1334,24 @@ export default function App() {
     logActivity(`Input/Edit Pengukuran Gardu: ${pkg.noGardu} (${pkg.tanggalUkur})`, pkg.penyulang);
   };
 
+  const handleImportPengukuranGardu = async (items: PengukuranGardu[]) => {
+    setPengukuranList((prev) => {
+      const existingIds = new Set(items.map((i) => i.id));
+      const filteredPrev = prev.filter((p) => !existingIds.has(p.id));
+      return [...items, ...filteredPrev];
+    });
+    try {
+      const batch = writeBatch(db);
+      items.forEach((item) => {
+        batch.set(doc(db, 'pengukuran_gardu', item.id), sanitizeForFirestore(item));
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error('Error batch saving Pengukuran Gardu to Firestore:', err);
+    }
+    logActivity(`Import ${items.length} Data Pengukuran Beban Gardu dari Excel`, 'Pengukuran Gardu');
+  };
+
   const handleDeletePengukuranGardu = async (id: string) => {
     registerDeletedId(id);
     setPengukuranList((prev) => prev.filter((p) => p.id !== id));
@@ -1817,6 +1835,7 @@ export default function App() {
               onAddGardu={handleAddMasterGardu}
               onDeleteGardu={handleDeleteMasterGardu}
               onImportGardu={handleImportMasterGardu}
+              onImportPengukuran={handleImportPengukuranGardu}
             />
           )}
 

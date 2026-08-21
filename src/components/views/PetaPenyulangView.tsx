@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import JSZip from 'jszip';
 import {
   Upload,
@@ -109,20 +110,34 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
   });
 
   const [nodeIcons, setNodeIcons] = useState<Record<string, string>>({});
+  const [densityMode, setDensityMode] = useState<'cluster' | 'smart' | 'all'>('cluster');
+  const [showPolyline, setShowPolyline] = useState<boolean>(true);
+  const [visibleMarkerCount, setVisibleMarkerCount] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const canvasRendererRef = useRef<L.Canvas | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const featureGroupRef = useRef<L.FeatureGroup | null>(null);
+  const polylineGroupRef = useRef<L.FeatureGroup | null>(null);
+  const markerGroupRef = useRef<L.FeatureGroup | null>(null);
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
 
   const layersRef = useRef(layers);
   const onUpdateLayerRef = useRef(onUpdateLayer);
+  const manualStatusesRef = useRef(manualStatuses);
+  const nodeIconsRef = useRef(nodeIcons);
+  const densityModeRef = useRef(densityMode);
+  const showPolylineRef = useRef(showPolyline);
 
   useEffect(() => {
     layersRef.current = layers;
     onUpdateLayerRef.current = onUpdateLayer;
-  }, [layers, onUpdateLayer]);
+    manualStatusesRef.current = manualStatuses;
+    nodeIconsRef.current = nodeIcons;
+    densityModeRef.current = densityMode;
+    showPolylineRef.current = showPolyline;
+  }, [layers, onUpdateLayer, manualStatuses, nodeIcons, densityMode, showPolyline]);
 
   // Sync layer customIcons & customStatuses to local state
   useEffect(() => {
@@ -242,8 +257,14 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
       center: [-3.63, 128.23],
       zoom: 12,
       zoomControl: false,
-      preferCanvas: true
+      preferCanvas: true,
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true
     });
+
+    const canvasRenderer = L.canvas({ padding: 0.5 });
+    canvasRendererRef.current = canvasRenderer;
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -254,7 +275,8 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
-    featureGroupRef.current = L.featureGroup().addTo(map);
+    polylineGroupRef.current = L.featureGroup().addTo(map);
+    markerGroupRef.current = L.featureGroup().addTo(map);
     mapInstanceRef.current = map;
 
     return () => {
@@ -283,7 +305,7 @@ export const PetaPenyulangView: React.FC<PetaPenyulangViewProps> = ({
     tileLayerRef.current = newTile;
   }, [mapStyle]);
 
-const getIconSvgHtml = (iconType?: string, size = 12) => {
+const getIconSvgHtml = (iconType?: string) => {
   switch (iconType) {
     case 'tiang-single':
     case 'tiang-listrik':
@@ -295,57 +317,43 @@ const getIconSvgHtml = (iconType?: string, size = 12) => {
     case 'gardu-beton':
       return ELECTRIC_ICON_SVG_STRINGS.garduBeton;
     case 'gardu-cantol':
-      return ELECTRIC_ICON_SVG_STRINGS.garduPortal;
+      return ELECTRIC_ICON_SVG_STRINGS.garduTrafo;
     case 'gardu-portal':
+      return ELECTRIC_ICON_SVG_STRINGS.garduPortal;
+    case 'tiang-portal':
       return ELECTRIC_ICON_SVG_STRINGS.tiangPortal3Pole;
-    case 'git-branch':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>`;
-    case 'map-pin':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
-    case 'building':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>`;
-    case 'gardu-dist':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M15 2v2"></path><path d="M15 20v2"></path><path d="M2 15h2"></path><path d="M2 9h2"></path><path d="M20 15h2"></path><path d="M20 9h2"></path><path d="M9 2v2"></path><path d="M9 20v2"></path></svg>`;
     case 'lbs':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect><circle cx="16" cy="12" r="3"></circle></svg>`;
-    case 'pmcb':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>`;
+      return ELECTRIC_ICON_SVG_STRINGS.tiangLBS;
     case 'recloser':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>`;
+    case 'pmcb':
+      return ELECTRIC_ICON_SVG_STRINGS.tiangLBS;
     case 'trees':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"></path><path d="M7 16v6"></path><path d="M13 19v3"></path><path d="M12 19h8a3 3 0 0 0 .6-5.9 3 3 0 0 0-3.3-3.3 3 3 0 0 0-5.3 1.2 3 3 0 0 0-.5 2V14a3 3 0 0 0 .5 5Z"></path></svg>`;
+      return ELECTRIC_ICON_SVG_STRINGS.trees;
     case 'wrench':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
+      return ELECTRIC_ICON_SVG_STRINGS.wrench;
     case 'activity':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`;
-    case 'shield':
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+      return ELECTRIC_ICON_SVG_STRINGS.activity;
     case 'zap':
+      return ELECTRIC_ICON_SVG_STRINGS.zap;
     default:
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+      return ELECTRIC_ICON_SVG_STRINGS.tiangSingle;
   }
 };
 
-const createLeafletDivIcon = (iconType: string | undefined, color: string, isCustomNode: boolean) => {
-  const containerSize = isCustomNode ? 22 : 18;
-  const svgSize = isCustomNode ? 13 : 10;
-  const svgHtml = getIconSvgHtml(iconType, svgSize);
+const createLeafletDivIcon = (iconType: string | undefined, isCustomNode: boolean) => {
+  const svgHtml = getIconSvgHtml(iconType);
 
-  // Desain icon bersih, sederhana, TANPA ARSIRAN/BORDER PUTIH (border: none)
   const html = `
     <div style="
-      width: ${containerSize}px;
-      height: ${containerSize}px;
-      background-color: ${color};
-      border: none !important;
-      border-radius: 50%;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      background: transparent !important;
+      border: none !important;
       cursor: pointer;
+      transform-origin: bottom center;
       transition: transform 0.15s ease;
+      ${isCustomNode ? 'transform: scale(1.15);' : ''}
     ">
       ${svgHtml}
     </div>
@@ -353,266 +361,396 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, isCus
 
   return L.divIcon({
     html: html,
-    className: 'custom-feeder-div-icon',
-    iconSize: [containerSize, containerSize],
-    iconAnchor: [containerSize / 2, containerSize / 2],
-    popupAnchor: [0, -containerSize / 2]
+    className: 'custom-feeder-realistic-icon',
+    iconSize: [28, 32],
+    iconAnchor: [14, 30],
+    popupAnchor: [0, -28]
   });
 };
 
-  // Render Feeder Line and Custom Markers with Selected Icons
+  // Smart High-Performance Marker & Feeder Line Rendering Engine with Canvas & Clustering
   useEffect(() => {
-    if (!mapInstanceRef.current || !featureGroupRef.current) return;
-    const fg = featureGroupRef.current;
-    fg.clearLayers();
+    if (!mapInstanceRef.current || !polylineGroupRef.current || !markerGroupRef.current) return;
+    const map = mapInstanceRef.current;
+    const polyFg = polylineGroupRef.current;
+    const markerFg = markerGroupRef.current;
 
-    const visibleLayers = layers.filter((l) => l.visible);
+    let renderTimeout: any = null;
 
-    visibleLayers.forEach((layer) => {
-      if (!layer.coordinates || layer.coordinates.length === 0) return;
+    const renderMapContent = () => {
+      if (!mapInstanceRef.current) return;
 
-      // 1. RENDER GARIS JALUR FEEDER (POLYLINE)
-      if (layer.coordinates.length > 1) {
-        const polyline = L.polyline(layer.coordinates, {
-          color: layer.color || '#3b82f6',
-          weight: 4,
-          opacity: 0.85,
-          smoothFactor: 1
+      const curLayers = layersRef.current;
+      const curManualStatuses = manualStatusesRef.current;
+      const curNodeIcons = nodeIconsRef.current;
+      const curDensity = densityModeRef.current;
+      const curShowPoly = showPolylineRef.current;
+
+      const visibleLayers = curLayers.filter((l) => l.visible);
+
+      // 1. RENDER JALUR KABEL PENYULANG DENGAN CANVAS RENDERER - RINGAN, 60 FPS & HALUS
+      polyFg.clearLayers();
+      if (curShowPoly) {
+        visibleLayers.forEach((layer) => {
+          if (!layer.coordinates || layer.coordinates.length <= 1) return;
+          const polyline = L.polyline(layer.coordinates, {
+            renderer: canvasRendererRef.current || undefined,
+            color: layer.color || '#3b82f6',
+            weight: 3.5,
+            opacity: 0.85,
+            smoothFactor: 1.2
+          });
+          polyline.bindTooltip(`Rute Feeder: ${layer.nama}`, {
+            permanent: false,
+            direction: 'center',
+            className: 'font-bold text-[10px] px-2 py-0.5 rounded-lg bg-slate-900/80 text-white border-none'
+          });
+          polyFg.addLayer(polyline);
         });
-        fg.addLayer(polyline);
       }
 
-      // 2. RENDER ICON POINT DENGAN KINERJA TINGGI & TANPA ARSIRAN PUTIH
-      const totalCoords = layer.coordinates.length;
+      // 2. RENDER MARKERS WITH CLUSTERING / SMART LOD / RAW
+      markerFg.clearLayers();
 
-      layer.coordinates.forEach((coord, idx) => {
-        const key = `${layer.id}_${idx}`;
-        const manualStatus = manualStatuses[key] || 'NORMAL';
-        const customIcon = nodeIcons[key];
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+        clusterGroupRef.current = null;
+      }
 
-        let markerColor = layer.color || '#3b82f6';
-        let activeIconType = customIcon || layer.iconType || 'zap';
-        let statusBadgeHtml = '';
+      let clusterGroup: L.MarkerClusterGroup | null = null;
+      if (curDensity === 'cluster') {
+        clusterGroup = L.markerClusterGroup({
+          chunkedLoading: true,
+          chunkInterval: 50,
+          chunkDelay: 10,
+          maxClusterRadius: 50,
+          spiderfyOnMaxZoom: true,
+          showCoverageOnHover: true,
+          zoomToBoundsOnClick: true,
+          animate: true,
+          disableClusteringAtZoom: 18,
+          iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            const childMarkers = cluster.getAllChildMarkers();
+            
+            // Check for transformers or alerts in this cluster
+            let trafoCount = 0;
+            let hasAlert = false;
 
-        if (manualStatus === 'POHON') {
-          markerColor = '#22c55e'; // Hijau Pohon
-          if (!customIcon) activeIconType = 'trees';
-          statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-              🌳 TEMUAN POHON (HIJAU)
-            </div>
-          `;
-        } else if (manualStatus === 'KONSTRUKSI') {
-          markerColor = '#a855f7'; // Ungu Temuan Konstruksi
-          if (!customIcon) activeIconType = 'wrench';
-          statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-              🏗️ TEMUAN KONSTRUKSI (UNGU)
-            </div>
-          `;
-        } else if (manualStatus === 'GANGGUAN') {
-          markerColor = '#ef4444'; // Red Merah
-          if (!customIcon) activeIconType = 'activity';
-          statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-black text-[11px] flex items-center gap-1.5 animate-pulse">
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
-              ⚡ LOKASI GANGGUAN (MERAH)
-            </div>
-          `;
-        } else if (manualStatus === 'PEMELIHARAAN') {
-          markerColor = '#f97316'; // Orange Oranye
-          if (!customIcon) activeIconType = 'wrench';
-          statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-              🔧 LOKASI PEMELIHARAAN (ORANYE)
-            </div>
-          `;
-        } else {
-          // Default / PENYULANG -> Menggunakan Warna Pilihan File Import / Layer Peta
-          markerColor = layer.color || '#3b82f6';
-          if (!customIcon) activeIconType = layer.iconType || 'zap';
-          statusBadgeHtml = `
-            <div class="mt-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-black text-[11px] flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${markerColor}"></span>
-              📍 WARNA LAYER (${layer.nama})
-            </div>
-          `;
-        }
+            childMarkers.forEach((m: any) => {
+              const iconT = m._activeIconType || '';
+              const stat = m._manualStatus || '';
+              if (iconT.includes('gardu') || iconT.includes('trafo') || iconT.includes('beton') || iconT.includes('cantol') || iconT.includes('portal')) {
+                trafoCount++;
+              }
+              if (stat === 'GANGGUAN' || stat === 'POHON' || stat === 'KONSTRUKSI') {
+                hasAlert = true;
+              }
+            });
 
-        const isCustomNode = manualStatus !== 'NORMAL' || !!customIcon || idx === 0 || idx === totalCoords - 1;
+            let size = 40;
+            let fontSize = '11px';
+            if (count < 10) {
+              size = 36;
+              fontSize = '10.5px';
+            } else if (count > 50) {
+              size = 46;
+              fontSize = '12px';
+            }
 
-        // Popup Content standar untuk semua titik
-        const popupContent = `
-          <div class="p-2 text-slate-900 font-sans min-w-[240px]">
-            <div class="font-black text-xs text-blue-800 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
-              <span class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full inline-block shadow-xs" style="background-color: ${markerColor}"></span>
-                Penyulang ${layer.nama}
-              </span>
-              <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px]">
-                No. Urut: ${idx + 1}
-              </span>
-            </div>
+            const borderColor = hasAlert ? '#f43f5e' : '#3b82f6';
+            const glowColor = hasAlert ? 'rgba(244, 63, 94, 0.5)' : 'rgba(59, 130, 246, 0.4)';
 
-            <div class="text-[11px] text-slate-600 space-y-0.5 mt-1">
-              <div class="font-bold text-blue-600">ID Tiang: ${layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`}</div>
-              <div><span class="font-semibold">Koordinat:</span> ${coord[0].toFixed(5)}, ${coord[1].toFixed(5)}</div>
-              <div><span class="font-semibold">Kategori Feeder:</span> <span class="font-bold text-amber-600">${layer.kategori}</span></div>
-              <div><span class="font-semibold">Icon Aktif:</span> <span class="font-bold text-indigo-600 uppercase">${activeIconType}</span></div>
-            </div>
-
-            ${statusBadgeHtml}
-
-            <!-- EDIT ICON PER TITIK -->
-            <div class="mt-2.5 pt-2 border-t border-slate-200">
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>🎨 Edit Icon Titik Ini:</span>
-                ${customIcon ? `<span class="text-blue-600 font-bold">Kustom</span>` : `<span class="text-slate-400">Layer</span>`}
+            const html = `
+              <div class="cluster-feeder-badge" style="
+                width: ${size}px;
+                height: ${size}px;
+                border: 2px solid ${borderColor};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.7), 0 0 12px ${glowColor};
+                position: relative;
+              ">
+                ${trafoCount > 0 ? `<span style="position: absolute; top: -3px; right: -3px; background: #eab308; color: #000; font-size: 8px; font-weight: 900; padding: 1px 3.5px; border-radius: 9999px; border: 1px solid #000;" title="${trafoCount} Gardu Trafo">⚡${trafoCount}</span>` : ''}
+                <div style="color: #f8fafc; font-weight: 900; font-size: ${fontSize}; line-height: 1;">
+                  ${count}
+                </div>
+                <div style="font-size: 7px; font-weight: 800; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase;">
+                  Titik
+                </div>
               </div>
-              <div class="grid grid-cols-4 gap-1">
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-single')"
-                  class="p-1 rounded ${activeIconType === 'tiang-single' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Tiang Listrik Single"
-                >💈 Tiang</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-double')"
-                  class="p-1 rounded ${activeIconType === 'tiang-double' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Tiang 2 Travers"
-                >🗼 2-Trv</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-trafo')"
-                  class="p-1 rounded ${activeIconType === 'gardu-trafo' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Gardu Trafo"
-                >⚡ Trafo</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-beton')"
-                  class="p-1 rounded ${activeIconType === 'gardu-beton' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Gardu Beton"
-                >🏢 Beton</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-cantol')"
-                  class="p-1 rounded ${activeIconType === 'gardu-cantol' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Gardu Cantol"
-                >🔌 Cantol</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-portal')"
-                  class="p-1 rounded ${activeIconType === 'gardu-portal' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Gardu Portal"
-                >📐 Portal</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'lbs')"
-                  class="p-1 rounded ${activeIconType === 'lbs' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="LBS Switch"
-                >🔘 LBS</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'recloser')"
-                  class="p-1 rounded ${activeIconType === 'recloser' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Recloser"
-                >🔄 Rec</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'trees')"
-                  class="p-1 rounded ${activeIconType === 'trees' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 hover:bg-emerald-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Pohon ROW"
-                >🌳 Pohon</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'wrench')"
-                  class="p-1 rounded ${activeIconType === 'wrench' ? 'bg-purple-600 text-white font-black' : 'bg-slate-100 hover:bg-purple-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Har / Maint."
-                >🔧 Har</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'activity')"
-                  class="p-1 rounded ${activeIconType === 'activity' ? 'bg-rose-600 text-white font-black' : 'bg-slate-100 hover:bg-rose-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Gangguan / Trip"
-                >💥 Trip</button>
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'zap')"
-                  class="p-1 rounded ${activeIconType === 'zap' ? 'bg-amber-500 text-white font-black' : 'bg-slate-100 hover:bg-amber-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
-                  title="Zap Feeder"
-                >⚡ Zap</button>
-              </div>
-              ${customIcon ? `
-                <button
-                  onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'RESET')"
-                  class="w-full mt-1.5 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded flex items-center justify-center gap-1 cursor-pointer transition-all"
-                >
-                  ✓ Reset Icon Ke Default Layer
-                </button>
-              ` : ''}
-            </div>
+            `;
 
-            <!-- PILIHAN STATUS / WARNA TIANG -->
-            <div class="mt-2.5 pt-2 border-t border-slate-200 space-y-1">
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Pilihan Status / Warna Tiang:
+            return L.divIcon({
+              html: html,
+              className: 'cluster-trafo-icon',
+              iconSize: [size, size],
+              iconAnchor: [size / 2, size / 2]
+            });
+          }
+        });
+        clusterGroupRef.current = clusterGroup;
+        map.addLayer(clusterGroup);
+      }
+
+      const targetMarkerLayer = curDensity === 'cluster' && clusterGroup ? clusterGroup : markerFg;
+
+      const currentZoom = map.getZoom();
+      const bounds = map.getBounds().pad(0.15); // Buffer 15% di luar viewport layar
+
+      // Tentukan sampling rate berdasarkan zoom level jika mode smart
+      let sampleStep = 1;
+      if (curDensity === 'smart') {
+        if (currentZoom >= 16) sampleStep = 1;
+        else if (currentZoom === 15) sampleStep = 2;
+        else if (currentZoom === 14) sampleStep = 4;
+        else if (currentZoom === 13) sampleStep = 8;
+        else if (currentZoom === 12) sampleStep = 16;
+        else sampleStep = 32;
+      }
+
+      let renderedCount = 0;
+
+      visibleLayers.forEach((layer) => {
+        if (!layer.coordinates || layer.coordinates.length === 0) return;
+        const totalCoords = layer.coordinates.length;
+
+        layer.coordinates.forEach((coord, idx) => {
+          // Viewport Culling for non-clustered modes
+          if (curDensity !== 'cluster' && !bounds.contains(coord)) return;
+
+          const key = `${layer.id}_${idx}`;
+          const manualStatus = curManualStatuses[key] || 'NORMAL';
+          const customIcon = curNodeIcons[key];
+
+          let markerColor = layer.color || '#3b82f6';
+          let activeIconType = customIcon || layer.iconType || 'zap';
+          let statusBadgeHtml = '';
+
+          if (manualStatus === 'POHON') {
+            markerColor = '#22c55e'; // Hijau Pohon
+            if (!customIcon) activeIconType = 'trees';
+            statusBadgeHtml = `
+              <div class="mt-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                🌳 TEMUAN POHON (HIJAU)
               </div>
-              <div class="grid grid-cols-1 gap-1">
-                <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PENYULANG')"
-                  class="w-full py-1.5 px-2 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all hover:brightness-110"
-                  style="background-color: ${layer.color || '#3b82f6'}"
-                >
-                  <span class="w-2 h-2 rounded-full bg-white"></span>
-                  📍 Warna Layer File (${layer.nama})
-                </button>
-                <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'POHON')"
-                  class="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
-                >
-                  <span class="w-2 h-2 rounded-full bg-white"></span>
-                  🌳 Pohon / ROW (Hijau)
-                </button>
-                <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'KONSTRUKSI')"
-                  class="w-full py-1.5 px-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
-                >
-                  <span class="w-2 h-2 rounded-full bg-white"></span>
-                  🏗️ Temuan Konstruksi (Ungu)
-                </button>
-                <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'GANGGUAN')"
-                  class="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
-                >
-                  <span class="w-2 h-2 rounded-full bg-white"></span>
-                  ⚡ Lokasi Gangguan (Merah)
-                </button>
-                <button
-                  onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PEMELIHARAAN')"
-                  class="w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
-                >
-                  <span class="w-2 h-2 rounded-full bg-white"></span>
-                  🔧 Lokasi Pemeliharaan (Oranye)
-                </button>
-                ${manualStatus !== 'NORMAL' ? `
+            `;
+          } else if (manualStatus === 'KONSTRUKSI') {
+            markerColor = '#a855f7'; // Ungu Temuan Konstruksi
+            if (!customIcon) activeIconType = 'wrench';
+            statusBadgeHtml = `
+              <div class="mt-2 p-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-black text-[11px] flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                🏗️ TEMUAN KONSTRUKSI (UNGU)
+              </div>
+            `;
+          } else if (manualStatus === 'GANGGUAN') {
+            markerColor = '#ef4444'; // Red Merah
+            if (!customIcon) activeIconType = 'activity';
+            statusBadgeHtml = `
+              <div class="mt-2 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-black text-[11px] flex items-center gap-1.5 animate-pulse">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                ⚡ LOKASI GANGGUAN (MERAH)
+              </div>
+            `;
+          } else if (manualStatus === 'PEMELIHARAAN') {
+            markerColor = '#f97316'; // Orange Oranye
+            if (!customIcon) activeIconType = 'wrench';
+            statusBadgeHtml = `
+              <div class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-black text-[11px] flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+                🔧 LOKASI PEMELIHARAAN (ORANYE)
+              </div>
+            `;
+          } else {
+            // Default / PENYULANG -> Menggunakan Warna Pilihan File Import / Layer Peta
+            markerColor = layer.color || '#3b82f6';
+            if (!customIcon) activeIconType = layer.iconType || 'zap';
+            statusBadgeHtml = `
+              <div class="mt-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-black text-[11px] flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${markerColor}"></span>
+                📍 WARNA LAYER (${layer.nama})
+              </div>
+            `;
+          }
+
+          // Prioritas: Titik temuan, titik berkustom icon, atau ujung awal & akhir SELALU dirender
+          const isCustomNode = manualStatus !== 'NORMAL' || !!customIcon || idx === 0 || idx === totalCoords - 1;
+          const shouldRender = curDensity === 'cluster' || isCustomNode || (idx % sampleStep === 0);
+
+          if (!shouldRender) return;
+
+          // Popup Content standar untuk semua titik
+          const popupContent = `
+            <div class="p-2 text-slate-900 font-sans min-w-[240px]">
+              <div class="font-black text-xs text-blue-800 flex items-center justify-between gap-2 mb-1 border-b border-slate-100 pb-1">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full inline-block shadow-xs" style="background-color: ${markerColor}"></span>
+                  Penyulang ${layer.nama}
+                </span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px]">
+                  No. Urut: ${idx + 1}
+                </span>
+              </div>
+
+              <div class="text-[11px] text-slate-600 space-y-0.5 mt-1">
+                <div class="font-bold text-blue-600">ID Tiang: ${layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`}</div>
+                <div><span class="font-semibold">Koordinat:</span> ${coord[0].toFixed(5)}, ${coord[1].toFixed(5)}</div>
+                <div><span class="font-semibold">Kategori Feeder:</span> <span class="font-bold text-amber-600">${layer.kategori}</span></div>
+                <div><span class="font-semibold">Icon Aktif:</span> <span class="font-bold text-indigo-600 uppercase">${activeIconType}</span></div>
+              </div>
+
+              ${statusBadgeHtml}
+
+              <!-- EDIT ICON PER TITIK -->
+              <div class="mt-2.5 pt-2 border-t border-slate-200">
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>🎨 Edit Icon Titik Ini:</span>
+                  ${customIcon ? `<span class="text-blue-600 font-bold">Kustom</span>` : `<span class="text-slate-400">Layer</span>`}
+                </div>
+                <div class="grid grid-cols-4 gap-1">
                   <button
-                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'NORMAL')"
-                    class="w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-single')"
+                    class="p-1 rounded ${activeIconType === 'tiang-single' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Tiang Listrik Single"
+                  >💈 Tiang</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'tiang-double')"
+                    class="p-1 rounded ${activeIconType === 'tiang-double' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Tiang 2 Travers"
+                  >🗼 2-Trv</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-trafo')"
+                    class="p-1 rounded ${activeIconType === 'gardu-trafo' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Gardu Trafo"
+                  >⚡ Trafo</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-beton')"
+                    class="p-1 rounded ${activeIconType === 'gardu-beton' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Gardu Beton"
+                  >🏢 Beton</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-cantol')"
+                    class="p-1 rounded ${activeIconType === 'gardu-cantol' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Gardu Cantol"
+                  >🔌 Cantol</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'gardu-portal')"
+                    class="p-1 rounded ${activeIconType === 'gardu-portal' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Gardu Portal"
+                  >📐 Portal</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'lbs')"
+                    class="p-1 rounded ${activeIconType === 'lbs' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="LBS Switch"
+                  >🔘 LBS</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'recloser')"
+                    class="p-1 rounded ${activeIconType === 'recloser' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 hover:bg-blue-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Recloser"
+                  >🔄 Rec</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'trees')"
+                    class="p-1 rounded ${activeIconType === 'trees' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 hover:bg-emerald-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Pohon ROW"
+                  >🌳 Pohon</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'wrench')"
+                    class="p-1 rounded ${activeIconType === 'wrench' ? 'bg-purple-600 text-white font-black' : 'bg-slate-100 hover:bg-purple-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Har / Maint."
+                  >🔧 Har</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'activity')"
+                    class="p-1 rounded ${activeIconType === 'activity' ? 'bg-rose-600 text-white font-black' : 'bg-slate-100 hover:bg-rose-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Gangguan / Trip"
+                  >💥 Trip</button>
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'zap')"
+                    class="p-1 rounded ${activeIconType === 'zap' ? 'bg-amber-500 text-white font-black' : 'bg-slate-100 hover:bg-amber-100 text-slate-800'} text-[10px] font-bold flex flex-col items-center justify-center cursor-pointer transition-all"
+                    title="Zap Feeder"
+                  >⚡ Zap</button>
+                </div>
+                ${customIcon ? `
+                  <button
+                    onclick="window.setTiangCustomIcon('${layer.id}', ${idx}, 'RESET')"
+                    class="w-full mt-1.5 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded flex items-center justify-center gap-1 cursor-pointer transition-all"
                   >
-                    ✓ Reset Ke Default File
+                    ✓ Reset Icon Ke Default Layer
                   </button>
                 ` : ''}
               </div>
-            </div>
 
-            <!-- TOMBOL BUKA MODAL EDIT INDIVIDUAL TITIK -->
-            <div class="mt-2.5 pt-2 border-t border-slate-200">
-              <button
-                onclick="window.openEditMarkerModal('${layer.id}', ${idx})"
-                class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-              >
-                ✏️ Edit Marker Individual (Modal)
-              </button>
-            </div>
-          </div>
-        `;
+              <!-- PILIHAN STATUS / WARNA TIANG -->
+              <div class="mt-2.5 pt-2 border-t border-slate-200 space-y-1">
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Pilihan Status / Warna Tiang:
+                </div>
+                <div class="grid grid-cols-1 gap-1">
+                  <button
+                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PENYULANG')"
+                    class="w-full py-1.5 px-2 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all hover:brightness-110"
+                    style="background-color: ${layer.color || '#3b82f6'}"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    📍 Warna Layer File (${layer.nama})
+                  </button>
+                  <button
+                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'POHON')"
+                    class="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    🌳 Pohon / ROW (Hijau)
+                  </button>
+                  <button
+                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'KONSTRUKSI')"
+                    class="w-full py-1.5 px-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    🏗️ Temuan Konstruksi (Ungu)
+                  </button>
+                  <button
+                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'GANGGUAN')"
+                    class="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    ⚡ Lokasi Gangguan (Merah)
+                  </button>
+                  <button
+                    onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'PEMELIHARAAN')"
+                    class="w-full py-1.5 px-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center justify-start gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-white"></span>
+                    🔧 Lokasi Pemeliharaan (Oranye)
+                  </button>
+                  ${manualStatus !== 'NORMAL' ? `
+                    <button
+                      onclick="window.setTiangManualStatus('${layer.id}', ${idx}, 'NORMAL')"
+                      class="w-full py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all mt-1"
+                    >
+                      ✓ Reset Ke Default File
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
 
-        if (isCustomNode || totalCoords < 60) {
-          // Render Marker DivIcon yang Sederhana & Bersih TANPA ARSIRAN/BORDER PUTIH
-          const markerDivIcon = createLeafletDivIcon(activeIconType, markerColor, isCustomNode);
+              <!-- TOMBOL BUKA MODAL EDIT INDIVIDUAL TITIK -->
+              <div class="mt-2.5 pt-2 border-t border-slate-200">
+                <button
+                  onclick="window.openEditMarkerModal('${layer.id}', ${idx})"
+                  class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                >
+                  ✏️ Edit Marker Individual (Modal)
+                </button>
+              </div>
+            </div>
+          `;
+
+          // Render Marker DivIcon Realistis
+          const markerDivIcon = createLeafletDivIcon(activeIconType, isCustomNode);
           const marker = L.marker(coord, { icon: markerDivIcon });
+
+          // Attach metadata for clustering
+          (marker as any)._activeIconType = activeIconType;
+          (marker as any)._manualStatus = manualStatus;
 
           marker.bindPopup(popupContent);
           marker.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
@@ -621,29 +759,34 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, isCus
             className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
           });
 
-          fg.addLayer(marker);
-        } else {
-          // Render titik biasa dengan CircleMarker (Canvas Renderer untuk Performa Super Cepat 60 FPS)
-          const circle = L.circleMarker(coord, {
-            radius: 3.5,
-            fillColor: markerColor,
-            color: markerColor,
-            weight: 1,
-            fillOpacity: 0.85
-          });
-
-          circle.bindPopup(popupContent);
-          circle.bindTooltip(layer.poleNames?.[idx] || `${layer.nama}-${idx + 1}`, { 
-            permanent: false, 
-            direction: 'top',
-            className: 'font-bold text-[10px] px-1.5 py-0.5 rounded-lg bg-slate-900/80 text-white border-none shadow-sm'
-          });
-
-          fg.addLayer(circle);
-        }
+          targetMarkerLayer.addLayer(marker);
+          renderedCount++;
+        });
       });
-    });
-  }, [layers, manualStatuses, nodeIcons]);
+
+      setVisibleMarkerCount(renderedCount);
+    };
+
+    // Debounced Map Events (moveend & zoomend) for 60 FPS performance
+    const handleMapMovement = () => {
+      if (renderTimeout) clearTimeout(renderTimeout);
+      renderTimeout = setTimeout(() => {
+        renderMapContent();
+      }, 70);
+    };
+
+    // Initial render
+    renderMapContent();
+
+    map.on('moveend', handleMapMovement);
+    map.on('zoomend', handleMapMovement);
+
+    return () => {
+      if (renderTimeout) clearTimeout(renderTimeout);
+      map.off('moveend', handleMapMovement);
+      map.off('zoomend', handleMapMovement);
+    };
+  }, [layers, manualStatuses, nodeIcons, densityMode, showPolyline]);
 
   // Center map on specific feeder route
   const handleLocateLayer = (layer: MapLayerItem) => {
@@ -1183,38 +1326,100 @@ const createLeafletDivIcon = (iconType: string | undefined, color: string, isCus
           )}
         </div>
 
-        {/* Top Right Map Style Selector Controls */}
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-1 p-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-md">
-          <button
-            onClick={() => setMapStyle('dark')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              mapStyle === 'dark'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Moon className="w-3.5 h-3.5" /> Dark
-          </button>
-          <button
-            onClick={() => setMapStyle('satellite')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              mapStyle === 'satellite'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" /> Satelit
-          </button>
-          <button
-            onClick={() => setMapStyle('street')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              mapStyle === 'street'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <MapPin className="w-3.5 h-3.5" /> Street Map
-          </button>
+        {/* Top Right Controls: Performance Engine & Map Base Style */}
+        <div className="absolute top-4 right-4 z-10 flex flex-wrap items-center gap-2">
+          {/* Performance & Clustering Badge / Selector */}
+          <div className="flex items-center gap-1 p-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-md">
+            <button
+              onClick={() => setDensityMode('cluster')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                densityMode === 'cluster'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              title="Mode Cluster: Mengelompokkan tiang dan gardu trafo yang padat secara dinamis untuk performa zoom super mulus (60 FPS)"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Cluster (60 FPS)</span>
+            </button>
+
+            <button
+              onClick={() => setDensityMode('smart')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                densityMode === 'smart'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              title="Smart LOD: Level of Detail adaptif berdasarkan tingkat zoom peta"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Smart LOD</span>
+            </button>
+
+            <button
+              onClick={() => setDensityMode('all')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                densityMode === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              title="Semua Titik: Render seluruh titik tiang dan gardu tanpa sampling/pengelompokan"
+            >
+              <span>Semua Tiang</span>
+            </button>
+
+            <button
+              onClick={() => setShowPolyline(!showPolyline)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                showPolyline
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Aktifkan/Nonaktifkan garis rute feeder kabel (Canvas Hardware Accelerated)"
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>Garis Feeder</span>
+            </button>
+
+            <div className="px-2 py-1 text-[11px] font-bold text-slate-500 border-l border-slate-200 flex items-center gap-1">
+              <span>{visibleMarkerCount}</span>
+              <span className="font-medium text-slate-400">tiang</span>
+            </div>
+          </div>
+
+          {/* Map Base Style Selector */}
+          <div className="flex items-center gap-1 p-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-md">
+            <button
+              onClick={() => setMapStyle('dark')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                mapStyle === 'dark'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5" /> Dark
+            </button>
+            <button
+              onClick={() => setMapStyle('satellite')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                mapStyle === 'satellite'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" /> Satelit
+            </button>
+            <button
+              onClick={() => setMapStyle('street')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                mapStyle === 'street'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" /> Street Map
+            </button>
+          </div>
         </div>
       </div>
 

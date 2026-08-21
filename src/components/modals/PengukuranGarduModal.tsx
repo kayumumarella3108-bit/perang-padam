@@ -119,7 +119,7 @@ export const PengukuranGarduModal: React.FC<PengukuranGarduModalProps> = ({
       if (masterGarduList.length > 0) {
         const first = masterGarduList[0];
         setSelectedGarduId(first.id);
-        setNoGardu(first.noGarduBaru || first.noGarduLama);
+        setNoGardu(first.noGarduLama || first.noGarduBaru);
         setUnit(first.unit);
         setPenyulang(first.penyulang);
         setDayaKva(first.daya);
@@ -132,7 +132,7 @@ export const PengukuranGarduModal: React.FC<PengukuranGarduModalProps> = ({
     setSelectedGarduId(garduId);
     const g = masterGarduList.find(x => x.id === garduId);
     if (g) {
-      setNoGardu(g.noGarduBaru || g.noGarduLama);
+      setNoGardu(g.noGarduLama || g.noGarduBaru);
       setUnit(g.unit);
       setPenyulang(g.penyulang);
       setDayaKva(g.daya);
@@ -262,7 +262,7 @@ export const PengukuranGarduModal: React.FC<PengukuranGarduModalProps> = ({
                   <option value="">-- Input Manual / Pilih Gardu --</option>
                   {masterGarduList.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.noGarduBaru} ({g.penyulang} - {g.daya} kVA)
+                      {g.noGarduLama || g.noGarduBaru} - {g.alamatGardu || g.penyulang} ({g.daya} kVA)
                     </option>
                   ))}
                 </select>
