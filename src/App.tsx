@@ -1317,6 +1317,29 @@ export default function App() {
     logActivity('Menghapus Master Gardu', 'Master Data');
   };
 
+  const handleDeleteAllMasterGardu = async () => {
+    const listToDelete = [...masterGarduList];
+    if (listToDelete.length === 0) return;
+
+    listToDelete.forEach((g) => registerDeletedId(g.id));
+    setMasterGarduList([]);
+
+    try {
+      const batchSize = 450;
+      for (let i = 0; i < listToDelete.length; i += batchSize) {
+        const chunk = listToDelete.slice(i, i + batchSize);
+        const batch = writeBatch(db);
+        chunk.forEach((g) => {
+          batch.delete(doc(db, 'master_gardu', g.id));
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error('Error batch deleting all Master Gardu from Firestore:', err);
+    }
+    logActivity(`Menghapus seluruh Master Data Gardu (${listToDelete.length} gardu)`, 'Master Data');
+  };
+
   // Pengukuran Gardu Handlers
   const handleAddPengukuranGardu = async (pkg: PengukuranGardu) => {
     setPengukuranList((prev) => {
@@ -1361,6 +1384,22 @@ export default function App() {
       console.error('Error deleting Pengukuran Gardu from Firestore:', err);
     }
     logActivity('Menghapus data pengukuran beban gardu', 'Pengukuran Gardu');
+  };
+
+  const handleDeleteAllPengukuran = async () => {
+    const listToDelete = [...pengukuranList];
+    if (listToDelete.length === 0) return;
+
+    listToDelete.forEach((p) => registerDeletedId(p.id));
+    setPengukuranList([]);
+
+    try {
+      const deletePromises = listToDelete.map((p) => deleteDoc(doc(db, 'pengukuran_gardu', p.id)).catch(() => {}));
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error('Error deleting all Pengukuran Gardu from Firestore:', err);
+    }
+    logActivity(`Menghapus seluruh Data Pengukuran Gardu (${listToDelete.length} data)`, 'Pengukuran Gardu');
   };
 
   // Kendaraan Operasional Handlers
@@ -1834,6 +1873,8 @@ export default function App() {
               onDeletePengukuran={handleDeletePengukuranGardu}
               onAddGardu={handleAddMasterGardu}
               onDeleteGardu={handleDeleteMasterGardu}
+              onDeleteAllGardu={handleDeleteAllMasterGardu}
+              onDeleteAllPengukuran={handleDeleteAllPengukuran}
               onImportGardu={handleImportMasterGardu}
               onImportPengukuran={handleImportPengukuranGardu}
             />

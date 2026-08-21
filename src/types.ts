@@ -326,18 +326,30 @@ export interface PerintahKerja {
 
 export interface MasterGardu {
   id: string;
-  unit: string; // Unit (e.g. ULP Baguala)
-  noGarduLama: string; // No Gardu Lama
-  noGarduBaru: string; // No Gardu Baru
-  alamatGardu: string; // ALAMAT GARDU
-  latt: number | string; // LATT
-  long: number | string; // LONG
-  ssotNumber: string; // Ssotnumber
-  penyulang: string; // Penyulang
-  daya: number; // Daya (kVA) e.g. 100, 160, 250, 400
-  jumlahFasa: '1 Fasa' | '3 Fasa' | string; // Jumlah Fasa
+  // 11 Core Standard Columns as requested by user
+  noBaru?: string; // NO baru
+  noGarduBaru?: string; // NO baru (alias)
+  noGarduLama?: string; // NO GARDU lama
+  alamat?: string; // ALAMAT
+  alamatGardu?: string; // ALAMAT (alias)
+  penyulang?: string; // PENYULANG
+  daya?: number | string; // DAYA (kVA)
+  phase?: string; // PHASE (1 Fasa, 3 Fasa, etc.)
+  jumlahFasa?: '1 Fasa' | '3 Fasa' | string; // PHASE (alias)
+  status?: string; // STATUS (Operasi, Standby, Pemeliharaan, etc.)
+  aktif?: string | boolean; // AKTIF (Aktif, Non-Aktif, etc.)
+  latitude?: number | string; // LATITUDE
+  latt?: number | string; // LATITUDE (alias)
+  longitude?: number | string; // LONGITUDE
+  long?: number | string; // LONGITUDE (alias)
+  thnOperasi?: number | string; // THNOPERASI
+  tahunOperasi?: number | string; // THNOPERASI (alias)
+
+  // Optional supplementary fields
+  unit?: string; // Unit (e.g. ULP Baguala)
+  ssotNumber?: string; // Ssotnumber
   tipeGardu?: string; // Tipe Gardu (GTT, Beton, Cantol, Portal, Tiang)
-  iconType?: string; // Marker Icon Type (GTT Trafo, Gardu Beton, Gardu Cantol, Gardu Portal, Tiang Single, Tiang Double)
+  iconType?: string; // Marker Icon Type
 }
 
 export interface JurusanData {
@@ -364,13 +376,16 @@ export interface JurusanData {
 export interface PengukuranGardu {
   id: string;
   garduId?: string;
-  noGardu: string; // No Gardu Baru / Lama
+  noGardu: string; // No Gardu (Lama / Baru)
+  noGarduLama?: string; // No Gardu Lama (sesuai header Excel)
+  noGarduBaru?: string; // No Gardu Baru (sesuai header Excel)
+  jamUkur?: string; // Jam Ukur (contoh: "10:00", "09:30 WIT")
   unit?: string;
   penyulang?: string;
   dayaKva?: number;
   alamat?: string;
-  tanggalUkur: string; // Tanggal Ukur YYYY-MM-DD
-  petugas: string; // Petugas
+  tanggalUkur: string; // Tanggal Ukur (disimpan dan dibaca sebagai D/M/YYYY contoh 6/8/2026 atau ISO)
+  petugas: string; // Petugas ukur
   
   // Total / Main Trafo Measurements
   iRTotal: number;
